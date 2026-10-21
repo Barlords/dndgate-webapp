@@ -91,6 +91,8 @@ La réponse est `{ "content": [...], "page": 0, "size": 20, "totalElements": 57,
 | `GET /ratings?targetedAccountId=` | identifiant |
 
 La visibilité (aventures publiques ou auxquelles on participe, notes privées du MJ) est décidée **dans la requête** : le total ne compte que ce que la personne a le droit de voir.
+`POST /planning/{planningId}/availability` (et `PUT`) est « créer ou remplacer » : un seul vote par compte et par planning (index unique), le vote enregistré est renvoyé. La date d'un message est fixée par le serveur à la réception (`Instant`, UTC) : `sendDate` n'existe plus dans la requête d'envoi (rupture de contrat), et la liste reste du plus récent au plus ancien.
+
 Les listes bornées par nature (personnages d'une aventure ou d'un compte, grimoires, disponibilités) ne sont pas paginées.
 
 ## Limites et validation des entrées
@@ -98,7 +100,7 @@ Les listes bornées par nature (personnages d'une aventure ou d'un compte, grimo
 - **Corps JSON** : 512 Ko au plus (`app.limits.max-body-bytes`), sinon `413`. Le plus long champ légitime (le fond d'un personnage, 80 000 caractères) y tient.
 - **Images** : 5 Mo au plus (`413` au-delà). Seuls le **PNG** et le **JPEG** sont acceptés, reconnus par le **contenu** du fichier (signature) et non par le type annoncé par le client ; un autre contenu, un fichier vide ou tronqué répond `400`. L'extension du fichier stocké suit le format réel (`.png` ou `.jpg`).
 - **Textes obligatoires** (noms, descriptions, contenus) : non vides une fois les espaces retirés. **Textes facultatifs d'une modification** (`PATCH`) : s'ils sont présents, non vides ; **absents, ils ne changent pas**.
-- **Plannings et disponibilités** : de 1 à 100 dates. **Dates** (plannings, disponibilités, notes, date d'envoi d'un message) : entre les années 1900 et 2200, sinon `400` (le format accepte des années que PostgreSQL ne sait pas stocker, ce qui finissait en `500`). **Signaux WebRTC** : type `offer`, `answer` ou `candidate`, contenu de 20 000 caractères au plus.
+- **Plannings et disponibilités** : de 1 à 100 dates. **Dates** (plannings, disponibilités, notes) : entre les années 1900 et 2200, sinon `400` (le format accepte des années que PostgreSQL ne sait pas stocker, ce qui finissait en `500`). **Signaux WebRTC** : type `offer`, `answer` ou `candidate`, contenu de 20 000 caractères au plus.
 - **WebSocket** : un client n'envoie que `CONNECT`, `SUBSCRIBE` et des battements de cœur ; toute publication est refusée. Une trame de plus de 16 Ko coupe la connexion avant d'être lue.
 - Toutes les routes qui reçoivent un corps JSON sont validées (`@Valid`).
 - **Erreurs** : chaque réponse d'erreur (`application/problem+json`) porte un `correlationId`, le même que l'en-tête `X-Request-Id` et que sur chaque ligne de log de la requête ; c'est l'identifiant à donner pour signaler un problème.

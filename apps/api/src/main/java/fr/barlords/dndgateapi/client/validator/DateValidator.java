@@ -4,7 +4,6 @@ import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 public final class DateValidator {
 
@@ -24,14 +23,6 @@ public final class DateValidator {
         @Override
         public boolean isValid(LocalDate date, ConstraintValidatorContext context) {
             return date == null || inRange(date);
-        }
-    }
-
-    public static class ForDateTime implements ConstraintValidator<ValidDate, LocalDateTime> {
-
-        @Override
-        public boolean isValid(LocalDateTime dateTime, ConstraintValidatorContext context) {
-            return dateTime == null || inRange(dateTime.toLocalDate());
         }
     }
 

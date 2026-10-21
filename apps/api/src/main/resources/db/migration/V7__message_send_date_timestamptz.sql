@@ -3,4 +3,7 @@
 ALTER TABLE message
     ALTER COLUMN send_date TYPE timestamp(6) with time zone USING send_date AT TIME ZONE 'UTC';
 
+-- the composite index below also serves lookups by adventure alone
+DROP INDEX idx_message_adventure;
+
 CREATE INDEX message_adventure_send_date_idx ON message (adventure_id, send_date DESC);

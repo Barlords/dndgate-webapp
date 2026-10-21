@@ -250,6 +250,8 @@ class FlywayMigrationIntegrationTest {
                     "select data_type from information_schema.columns where table_name = 'message' and column_name = 'send_date'"));
             Assertions.assertEquals(1, count(connection,
                     "select count(*) from pg_indexes where tablename = 'message' and indexname = 'message_adventure_send_date_idx'"));
+            Assertions.assertEquals(0, count(connection, "select count(*) from pg_indexes where indexname = 'idx_message_adventure'"),
+                    "the old single-column index is covered by the composite one");
         }
     }
 

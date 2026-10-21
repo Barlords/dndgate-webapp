@@ -90,14 +90,14 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
 - Correctif : retirer `updatable = false` (aucune migration nécessaire) ; ajouter au test un `PATCH` de la date, relu en base.
 
 ### 29. Un compte peut voter plusieurs fois au planning — *vérifié*
-- [x] *Corrigé : `POST` devient « créer ou remplacer » (délègue à l'updater), `PUT` renvoie le vote enregistré, migration `V6` qui dédoublonne puis index unique `(planning_id, account_id)`, opération rejouée si deux premiers votes simultanés se heurtent à l'index. `V6` garde un doublon arbitraire (le plus grand UUID) faute d'horodatage en base.*
+- [x] *Corrigé : `POST` devient « créer ou remplacer » (délègue à l'updater), `PUT` renvoie le vote enregistré, migration `V6` qui dédoublonne puis index unique `(planning_id, account_id)`, opération rejouée si deux premiers votes simultanés se heurtent à l'index. `V6` garde un doublon arbitraire (le plus grand UUID) faute d'horodatage en base. Contrôle par mutation fait (retry désactivé : tests rouges).*
   `POST /planning/availability` (`AvailabilityCreatorService.create`) créait un nouveau vote à chaque appel. Mesuré : 3 appels du même compte, **3 votes** en base.
   Rien en base ne l'empêche (pas d'unicité sur `(planning_id, account_id)`). Tout compte qui voit une aventure publique peut ainsi fausser son planning.
 - `PUT /planning/availability`, lui, met à jour, mais renvoie l'objet reçu (`AvailabilityUpdaterService`, ligne 39) et non le vote enregistré : l'`id` de la réponse est un identifiant neuf qui n'existe pas en base.
 - Correctif : faire de `POST` un alias de « créer ou remplacer », ou répondre `409` s'il existe déjà un vote ; migration qui dédoublonne puis crée l'index unique `(planning_id, account_id)` ; renvoyer le vote enregistré.
 
 ### 30. La date d'un message est choisie par le client — *vérifié*
-- [x] **Corrigé** (date fixée par le serveur via `Clock` en `Instant`, `message.send_date` en `timestamptz` + index `(adventure_id, send_date desc)` en V7 ; **rupture de contrat** : `sendDate` retiré de `MessageCreationRequest`). `MessageCreationRequest.sendDate` vient du client, et la liste est triée par cette date. Mesuré : un message daté du `2199-12-31` reste **en tête du chat pour toujours**.
+- [x] **Corrigé** (date fixée par le serveur via `Clock` en `Instant`, `message.send_date` en `timestamptz` + index `(adventure_id, send_date desc)` en V7 ; **rupture de contrat** : `sendDate` retiré de `MessageCreationRequest`). `MessageCreationRequest.sendDate` vient du client, et la liste est triée par cette date. Mesuré : un message daté du `2199-12-31` reste **en tête du chat pour toujours**. Contrôle par mutation fait (date du client conservée au lieu de celle du `Clock` : tests rouges).
   On peut aussi antidater un message pour le glisser dans l'historique.
 - La colonne est un `timestamp without time zone` (`LocalDateTime`) : deux clients dans deux fuseaux horaires produisent un ordre faux, même de bonne foi.
 - Correctif : date fixée par le serveur (`Clock`), en `Instant` ; migration de `message.send_date` en `timestamptz` ; retirer `sendDate` de la requête (**rupture de contrat**) ; ajouter un index `(adventure_id, send_date desc)`.
@@ -191,6 +191,7 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
   - `AccountUpdaterService.update` : le nouveau mot de passe est enregistré, puis les sessions sont révoquées dans un second temps (si la seconde étape échoue, les anciennes sessions survivent au changement de mot de passe) ;
   - `AvailabilityUpdaterService` : une boucle d'écritures ;
   - `PlanningUpdaterService` : lecture puis écriture, avec une course possible à la création.
+- Deux re-votes simultanés d'un même compte peuvent laisser les dates des deux votes : `AvailabilityEntity` n'a pas de `@Version` et la mise à jour ne réécrit que `availability_dates`. Correctif : `@Version` + rejeu, ou `SELECT ... FOR UPDATE`.
 - Effet secondaire des identifiants fixés par le domaine : sans `@Version`, Spring Data ne sait pas qu'une entité est nouvelle et fait un `merge`, donc **un `SELECT` avant chaque `INSERT`**.
 - Correctif : `@Version` sur les entités modifiables (compte, grimoire, personnage, notes, planning) ; un décorateur transactionnel pour `AccountUpdaterApi` (comme `TransactionalAccountAnonymizer`) ; `Persistable<UUID>` ou `@Version` pour supprimer les `SELECT` inutiles.
 
@@ -206,11 +207,11 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
 ### 44. Contraintes manquantes en base — *lu*
 - [ ] **Clés étrangères absentes** : `adventure.creator_id`, `adventure_players.player_id`, `message.adventure_id` et `sender_id`, `rating.emitter_id` et `target_id`, `availability.planning_id` et `account_id`, `planning.adventure_id`, `master_claims.candidate_id`, `master_claim_votes.voter_id`.
   Aujourd'hui, la cohérence ne tient que si le code supprime tout dans le bon ordre (la v1 a déjà trouvé une méthode de suppression vide).
-- [ ] **Unicités absentes** : `(adventure_id, player_id)`, `rating(emitter_id, target_id)` (le contrôle « déjà noté » est une lecture puis une écriture : deux requêtes simultanées créent deux notes), `availability(planning_id, account_id)` (point 29), `adventure.invitation_code`.
+- [ ] **Unicités absentes** : `(adventure_id, player_id)`, `rating(emitter_id, target_id)` (le contrôle « déjà noté » est une lecture puis une écriture : deux requêtes simultanées créent deux notes), `availability(planning_id, account_id)` (fait par `V6`, point 29), `adventure.invitation_code`.
 - [ ] **NOT NULL absents** : `adventure_players.player_id`, `adventure.visibility`.
 - Les tables de collection (`adventure_players`, `propositions`…) n'ont pas de clé primaire : Hibernate efface et réécrit toute la liste à chaque modification.
 - Nom hérité : `spell_book_entity_spell_list(spell_book_entity_id, spell_list)`.
-- Correctif : une migration `V6` qui vérifie d'abord les données (comme `V2` pour les pseudos), puis ajoute les contraintes ; `FlywayMigrationIntegrationTest` couvre le cas « données incohérentes : la migration s'arrête ».
+- Correctif : une migration `V8` (`V6` et `V7` sont pris) qui vérifie d'abord les données (comme `V2` pour les pseudos), puis ajoute les contraintes ; `FlywayMigrationIntegrationTest` couvre le cas « données incohérentes : la migration s'arrête ».
 
 ---
 
@@ -290,7 +291,7 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
 
 ### 55. Tests manquants — *lu*
 - Aucun test unitaire pour : services des grimoires (sauf la création), planning et disponibilités, évaluations (création, mise à jour, `PATCH`), modification, suppression et lecture des personnages, services des notes.
-- Aucun test d'intégration pour : import et export de grimoire, vote multiple (29), modification de la date d'une note (28), chemin encodé et limite par IP (25), abonnement WebSocket après départ de l'aventure (33), statut d'aventure à rebours (34).
+- Aucun test d'intégration pour : import et export de grimoire, (faits : vote multiple (29), modification de la date d'une note (28), chemin encodé et limite par IP (25), date d'un message (30)) abonnement WebSocket après départ de l'aventure (33), statut d'aventure à rebours (34).
 - La marge de couverture est de 0,5 point (v1) : chaque correctif de ce rapport doit arriver avec son test, et suivre la méthode habituelle (réintroduire le défaut, vérifier que le test devient rouge, restaurer).
 
 ---

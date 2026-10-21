@@ -5,8 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import tools.jackson.databind.JsonNode;
 
-import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -18,7 +18,7 @@ class MessageSendDateIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     private void send(TestAccount account, UUID adventureId, String content, Object... extra) {
-        java.util.HashMap<String, Object> request = new java.util.HashMap<>(Map.of("adventureId", adventureId.toString(), "content", content));
+        HashMap<String, Object> request = new HashMap<>(Map.of("adventureId", adventureId.toString(), "content", content));
         for (int i = 0; i < extra.length; i += 2) {
             request.put((String) extra[i], extra[i + 1]);
         }
@@ -36,7 +36,6 @@ class MessageSendDateIntegrationTest extends ApiIntegrationTestSupport {
         Instant after = Instant.now().plusSeconds(1);
         Instant stored = Instant.parse(history(master, adventureId).get(0).get("sendDate").asString());
         Assertions.assertFalse(stored.isBefore(before) || stored.isAfter(after), "stored " + stored);
-        Assertions.assertTrue(Duration.between(before, after).toSeconds() < 30);
     }
 
     @Test
