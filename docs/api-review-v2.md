@@ -155,8 +155,8 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
 - L'export envoie `Content-Disposition: form-data; name="attachment"; filename="book.json"` (`setContentDispositionFormData`, ligne 103), qui est l'en-tête d'un formulaire : il faut `ContentDisposition.attachment().filename("book.json")`.
 - Correctif : valider le DTO importé avec les mêmes contraintes que la création (via `Validator`, `@NotBlank`, `@Size`, liste ≤ N sorts de 255 caractères au plus), et répondre `400` avec la liste des erreurs.
 
-### 37. Ajout d'un sort sans identifiant — *vérifié*
-- [ ] `AddSpellToSpellBookRequest.spellIndex` n'a que `@Size` (ligne 8), sans `@NotBlank`. Mesuré : `POST /spellbooks/{id}/spells` `{}` répond **201 avec `"spellList":[null]`**, et rien n'est enregistré (Hibernate ignore l'élément nul). La réponse ment.
+### 37. Ajout d'un sort sans identifiant — *corrigé*
+- [x] Corrigé : `@NotBlank` sur `spellIndex` (400 sur `{}` ou texte blanc), pas de validation contre le SRD ; test + contrôle par mutation.
 - Correctif : `@NotBlank`. À décider : valider l'identifiant contre la liste des sorts du SRD (voir le point 58).
 
 ### 38. Un candidat dont le compte est supprimé peut devenir MJ — *lu*
@@ -217,8 +217,8 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
 
 ## P3 — Contrat de l'API et qualité du code
 
-### 45. WebRTC répond du texte là où le contrat annonce du JSON — *vérifié*
-- [ ] Les trois routes `/webrtc/*` renvoient `"Offer received and broadcasted"` (`WebRTCController`, lignes 32, 38, 44) avec `Content-Type: application/json`, et le contrat déclare une `string` JSON.
+### 45. WebRTC répond du texte là où le contrat annonce du JSON — *corrigé*
+- [x] Corrigé : les trois routes répondent `204 No Content` (`@ResponseStatus`), contrat régénéré, diffusion WebSocket couverte par un test (mutation vérifiée).
   Mesuré : le corps n'est pas du JSON valide. Le client Angular généré échouera à le lire.
 - Correctif : `204 No Content`, et régénérer le contrat.
 
@@ -250,9 +250,9 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
 - [ ] `SecurityConfig.corsConfigurationSource` n'expose aucun en-tête. Depuis une autre origine (le front en dev sur `localhost:4200`), le JavaScript ne peut pas lire `X-Request-Id`, `Retry-After` (429) ni `Content-Disposition` (export).
 - Correctif : `setExposedHeaders(List.of("X-Request-Id", "Retry-After", "Content-Disposition"))`. Remplacer aussi `setAllowedHeaders("*")` par la liste réellement utilisée.
 
-### 50. Deux textes en français ont échappé à `LanguagePolicyTest` — *vérifié*
-- [ ] `ValidPseudo.message()` (ligne 30) : « le pseudo ne peut contenir que des lettres, des chiffres… » est renvoyé tel quel dans les erreurs de validation de l'API.
-- [ ] `SecurityConfig` (ligne 76) : commentaire « Sinon toute erreur serveur serait masquee en 401… ».
+### 50. Deux textes en français ont échappé à `LanguagePolicyTest` — *corrigé*
+- [x] Corrigé : les deux textes sont en anglais et `LanguagePolicyTest` refuse aussi une liste de mots français fréquents (test rouge avant la traduction ; `pom.xml` non touché).
+- [x] `SecurityConfig` (ligne 76) : commentaire « Sinon toute erreur serveur serait masquee en 401… ».
 - Le test ne cherche que les lettres accentuées ; ces deux textes n'en ont pas. Le renforcer, par exemple en refusant aussi une courte liste de mots français fréquents (` les `, ` des `, ` une `, ` pour `, ` sinon `…) dans les chaînes et les commentaires.
 - Les commentaires du `pom.xml` sont aussi en français (hors du périmètre du test) : à traduire si la règle doit valoir pour tout le code.
 

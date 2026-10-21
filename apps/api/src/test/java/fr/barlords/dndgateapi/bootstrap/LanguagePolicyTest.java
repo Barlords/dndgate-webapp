@@ -18,6 +18,11 @@ class LanguagePolicyTest {
 
     private static final Pattern ACCENT = Pattern.compile("[àâäçéèêëîïôöûùüÀÂÇÉÈÊËÎÏÔÛÙ]");
 
+    /** Frequent French words that are not English ones: catches French text written without any accent. */
+    private static final Pattern FRENCH_WORD = Pattern.compile(
+            "\\b(les|des|une|pour|sinon|avec|dans|sans|sont|mais|que|est|pas|cette|vous|nous|toute|tous|par)\\b",
+            Pattern.CASE_INSENSITIVE);
+
     @Test
     void the_java_code_of_the_application_is_in_english() throws IOException {
         List<String> found;
@@ -34,7 +39,7 @@ class LanguagePolicyTest {
         try {
             List<String> lines = Files.readAllLines(file);
             return java.util.stream.IntStream.range(0, lines.size())
-                    .filter(i -> ACCENT.matcher(lines.get(i)).find())
+                    .filter(i -> ACCENT.matcher(lines.get(i)).find() || FRENCH_WORD.matcher(lines.get(i)).find())
                     .mapToObj(i -> file + ":" + (i + 1) + " " + lines.get(i).strip());
         } catch (IOException e) {
             throw new IllegalStateException(e);

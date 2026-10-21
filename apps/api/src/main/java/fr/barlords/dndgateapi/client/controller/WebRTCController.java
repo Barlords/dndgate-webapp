@@ -7,12 +7,14 @@ import fr.barlords.dndgateapi.client.validator.UuidValidator;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureAccessVerifierApi;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+
+import static org.springframework.http.HttpStatus.NO_CONTENT;
 
 @Tag(name = "WebRTC")
 @RestController
@@ -27,21 +29,21 @@ public class WebRTCController {
     private final AdventureAccessVerifierApi adventureAccessVerifierApi;
 
     @PostMapping("/offer")
-    public ResponseEntity<String> sendOffer(@Valid @RequestBody WebRTCMessage offer) {
+    @ResponseStatus(NO_CONTENT)
+    public void sendOffer(@Valid @RequestBody WebRTCMessage offer) {
         broadcast(offer);
-        return ResponseEntity.ok("Offer received and broadcasted");
     }
 
     @PostMapping("/answer")
-    public ResponseEntity<String> sendAnswer(@Valid @RequestBody WebRTCMessage answer) {
+    @ResponseStatus(NO_CONTENT)
+    public void sendAnswer(@Valid @RequestBody WebRTCMessage answer) {
         broadcast(answer);
-        return ResponseEntity.ok("Answer received and broadcasted");
     }
 
     @PostMapping("/candidate")
-    public ResponseEntity<String> sendCandidate(@Valid @RequestBody WebRTCMessage candidate) {
+    @ResponseStatus(NO_CONTENT)
+    public void sendCandidate(@Valid @RequestBody WebRTCMessage candidate) {
         broadcast(candidate);
-        return ResponseEntity.ok("Candidate received and broadcasted");
     }
 
     private void broadcast(WebRTCMessage message) {

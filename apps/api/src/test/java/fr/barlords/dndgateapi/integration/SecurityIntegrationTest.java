@@ -181,6 +181,6 @@ class SecurityIntegrationTest extends ApiIntegrationTestSupport {
                 "accountId", owner.id().toString());
 
         Assertions.assertEquals(403, call(HttpMethod.POST, "/webrtc/offer", stranger.token(), signal).getStatusCode().value());
-        Assertions.assertEquals(200, call(HttpMethod.POST, "/webrtc/offer", owner.token(), signal).getStatusCode().value());
+        Assertions.assertEquals(204, call(HttpMethod.POST, "/webrtc/offer", owner.token(), signal).getStatusCode().value());
     }
 }
