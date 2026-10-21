@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
 
 class WebSocketSubscriptionRegistryTest {
 
-    private final WebSocketSubscriptionRegistry registry = new WebSocketSubscriptionRegistry();
+    private final WebSocketSubscriptionRegistry registry = new WebSocketSubscriptionRegistry(20);
 
     private void open(String connectionId, UUID account, UUID session) {
         registry.connectionEstablished(connectionId);
@@ -70,6 +70,53 @@ class WebSocketSubscriptionRegistryTest {
         Assertions.assertFalse(registry.authenticated("c1", alice, aliceLaptop));
         Assertions.assertFalse(registry.isOpen("c1"));
         Assertions.assertFalse(registry.authenticated("never-opened", alice, aliceLaptop));
+    }
+
+    @Test
+    void a_second_connect_frame_on_an_authenticated_connection_is_refused_and_changes_nothing() {
+        open("c1", alice, aliceLaptop);
+
+        Assertions.assertFalse(registry.authenticated("c1", bob, bobSession));
+        Assertions.assertEquals(List.of("c1"), registry.removeConnectionsOfSession(aliceLaptop), "still tied to its first session");
+    }
+
+    /** The broker keeps the first destination of an id: overwriting it here would let the first one escape revocation. */
+    @Test
+    void a_subscription_id_in_use_cannot_be_reused_and_keeps_its_first_adventure() {
+        open("c1", alice, aliceLaptop);
+        registry.subscribe("c1", "sub-0", quest);
+
+        Assertions.assertFalse(registry.subscribe("c1", "sub-0", otherQuest));
+        Assertions.assertEquals(java.util.Optional.of(quest), registry.adventureOf("c1", "sub-0"));
+
+        registry.removeSubscriptions(alice, quest);
+        Assertions.assertFalse(registry.isLive("c1", "sub-0"));
+        Assertions.assertTrue(registry.subscribe("c1", "sub-0", otherQuest), "a freed id can be used again");
+    }
+
+    @Test
+    void a_connection_has_a_limited_number_of_subscriptions() {
+        WebSocketSubscriptionRegistry limited = new WebSocketSubscriptionRegistry(2);
+        limited.connectionEstablished("c1");
+        limited.authenticated("c1", alice, aliceLaptop);
+        limited.connectionEstablished("c2");
+        limited.authenticated("c2", alice, aliceLaptop);
+
+        Assertions.assertTrue(limited.subscribe("c1", "sub-0", quest));
+        Assertions.assertTrue(limited.subscribe("c1", "sub-1", otherQuest));
+        Assertions.assertFalse(limited.subscribe("c1", "sub-2", quest));
+        Assertions.assertTrue(limited.subscribe("c2", "sub-0", quest), "the limit is per connection");
+
+        limited.unsubscribe("c1", "sub-0");
+        Assertions.assertTrue(limited.subscribe("c1", "sub-2", quest), "an unsubscription frees a place");
+    }
+
+    @Test
+    void an_unknown_subscription_has_no_adventure() {
+        open("c1", alice, aliceLaptop);
+
+        Assertions.assertEquals(java.util.Optional.empty(), registry.adventureOf("c1", "sub-0"));
+        Assertions.assertEquals(java.util.Optional.empty(), registry.adventureOf("unknown", "sub-0"));
     }
 
     @Test

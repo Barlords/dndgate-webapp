@@ -26,7 +26,7 @@ import static org.mockito.Mockito.verify;
 /** The accesses are cut once the change that ends them is committed, never for a change that is rolled back. */
 class WebSocketAccessRevocationAdapterTest {
 
-    private final WebSocketSubscriptionRegistry registry = new WebSocketSubscriptionRegistry();
+    private final WebSocketSubscriptionRegistry registry = new WebSocketSubscriptionRegistry(20);
 
     private void open(String connectionId, UUID account, UUID session) {
         registry.connectionEstablished(connectionId);

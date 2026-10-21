@@ -17,7 +17,7 @@ import static org.mockito.Mockito.when;
 
 class OpenWebSocketSessionsTest {
 
-    private final WebSocketSubscriptionRegistry registry = new WebSocketSubscriptionRegistry();
+    private final WebSocketSubscriptionRegistry registry = new WebSocketSubscriptionRegistry(20);
 
     private void open(String connectionId, UUID account, UUID session) {
         registry.connectionEstablished(connectionId);

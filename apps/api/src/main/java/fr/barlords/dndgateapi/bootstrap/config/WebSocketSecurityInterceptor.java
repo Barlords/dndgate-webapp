@@ -54,7 +54,7 @@ public class WebSocketSecurityInterceptor implements ChannelInterceptor {
         switch (accessor.getCommand()) {
             case CONNECT -> accessor.setUser(authenticate(accessor));
             case SUBSCRIBE -> authorizeSubscription(accessor);
-            case UNSUBSCRIBE -> registry.unsubscribe(accessor.getSessionId(), accessor.getSubscriptionId());
+            case UNSUBSCRIBE -> forgetSubscription(accessor);
             case SEND -> throw new AccessDeniedException("Clients are not allowed to publish messages");
             default -> {
                 // other frames (DISCONNECT, heart-beats...) need no check; a closed connection is forgotten by OpenWebSocketSessions
@@ -62,6 +62,13 @@ public class WebSocketSecurityInterceptor implements ChannelInterceptor {
         }
 
         return message;
+    }
+
+    /** An UNSUBSCRIBE without its id names nothing: it is ignored. */
+    private void forgetSubscription(StompHeaderAccessor accessor) {
+        if (accessor.getSessionId() != null && accessor.getSubscriptionId() != null) {
+            registry.unsubscribe(accessor.getSessionId(), accessor.getSubscriptionId());
+        }
     }
 
     private Authentication authenticate(StompHeaderAccessor accessor) {
@@ -82,9 +89,10 @@ public class WebSocketSecurityInterceptor implements ChannelInterceptor {
         }
 
         // Recorded first, checked again after: a logout committed in between either finds the connection here,
-        // or is seen by this check. A connection already closed (the frame is handled asynchronously) is refused.
+        // or is seen by this check. A connection already closed (the frame is handled asynchronously) or already
+        // authenticated (a second CONNECT) is refused.
         if (!registry.authenticated(accessor.getSessionId(), accountId, sessionId)) {
-            throw new AccessDeniedException("Connection closed");
+            throw new AccessDeniedException("Connection not allowed");
         }
         if (!sessionVerifierApi.isActive(sessionId)) {
             registry.connectionClosed(accessor.getSessionId());
@@ -106,7 +114,8 @@ public class WebSocketSecurityInterceptor implements ChannelInterceptor {
         }
 
         // Recorded before the check, for the same reason as the connection: a departure committed in between
-        // either removes it, or is seen by the check. An unknown (closed or revoked) connection cannot subscribe.
+        // either removes it, or is seen by the check. Refused: an unknown (closed or revoked) connection, an id already
+        // in use on the connection (the broker would keep routing its first destination), too many subscriptions.
         if (!registry.subscribe(connectionId, subscriptionId, adventureId)) {
             throw subscriptionDenied();
         }

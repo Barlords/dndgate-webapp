@@ -225,6 +225,25 @@ class WebSocketSecurityIntegrationTest extends ApiIntegrationTestSupport {
         assertSubscriptionRefused(owner, "/topic/adventure/chat/" + adventureId.toString().toUpperCase());
     }
 
+    /** limits.websocket.subscriptions-per-connection, 20 by default. */
+    @Test
+    void a_connection_cannot_open_more_than_twenty_subscriptions() throws Exception {
+        TestAccount owner = registerAndLogin();
+        UUID adventureId = createAdventure(owner, "PUBLIC");
+
+        Probe probe = connect(owner.token());
+        StompSession session = probe.connected.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        for (int i = 0; i < 20; i++) {
+            subscribe(session, (i % 2 == 0 ? "/topic/adventure/chat/" : "/topic/adventure/webrtc/") + adventureId);
+        }
+        Assertions.assertThrows(TimeoutException.class, () -> probe.rejected.get(1, TimeUnit.SECONDS),
+                "twenty subscriptions are allowed");
+
+        subscribe(session, "/topic/adventure/chat/" + adventureId);
+
+        Assertions.assertNotNull(probe.rejected.get(TIMEOUT_SECONDS, TimeUnit.SECONDS), "the twenty-first is refused");
+    }
+
     @Test
     void clients_cannot_publish_messages_themselves() throws Exception {
         TestAccount owner = registerAndLogin();

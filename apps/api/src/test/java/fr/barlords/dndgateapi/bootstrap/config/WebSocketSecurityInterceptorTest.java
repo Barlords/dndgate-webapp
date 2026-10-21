@@ -35,7 +35,7 @@ class WebSocketSecurityInterceptorTest {
 
     private final SessionVerifierApi sessionVerifier = mock(SessionVerifierApi.class);
 
-    private final WebSocketSubscriptionRegistry registry = new WebSocketSubscriptionRegistry();
+    private final WebSocketSubscriptionRegistry registry = new WebSocketSubscriptionRegistry(20);
 
     private final WebSocketSecurityInterceptor interceptor =
             new WebSocketSecurityInterceptor(jwtDecoder, accessVerifier, sessionVerifier, registry);
@@ -139,6 +139,39 @@ class WebSocketSecurityInterceptorTest {
 
         interceptor.preSend(unsubscribe("sub-0"), null);
         Assertions.assertFalse(registry.isLive("c1", "sub-0"));
+    }
+
+    @Test
+    void an_unsubscribe_frame_without_id_is_ignored() {
+        connected();
+        interceptor.preSend(subscribe("/topic/adventure/chat/" + adventure, "sub-0"), null);
+
+        Assertions.assertDoesNotThrow(() -> interceptor.preSend(unsubscribe(null), null));
+
+        Assertions.assertTrue(registry.isLive("c1", "sub-0"));
+    }
+
+    @Test
+    void a_second_connect_frame_on_the_same_connection_is_refused() {
+        connected();
+
+        Assertions.assertThrows(AccessDeniedException.class, () -> interceptor.preSend(connect(), null));
+
+        Assertions.assertEquals(List.of("c1"), registry.removeConnectionsOfSession(session));
+    }
+
+    @Test
+    void a_subscription_id_already_in_use_is_refused_without_reading_anything() {
+        connected();
+        interceptor.preSend(subscribe("/topic/adventure/chat/" + adventure, "sub-0"), null);
+        UUID other = UUID.randomUUID();
+
+        Assertions.assertThrows(AccessDeniedException.class,
+                () -> interceptor.preSend(subscribe("/topic/adventure/chat/" + other, "sub-0"), null));
+
+        verify(accessVerifier, never()).verifyParticipant(account, other);
+        Assertions.assertEquals(java.util.Optional.of(adventure), registry.adventureOf("c1", "sub-0"),
+                "the first subscription is untouched");
     }
 
     @Test

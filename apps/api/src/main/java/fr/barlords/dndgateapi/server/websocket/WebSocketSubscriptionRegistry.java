@@ -1,10 +1,12 @@
 package fr.barlords.dndgateapi.server.websocket;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
@@ -36,6 +38,15 @@ public class WebSocketSubscriptionRegistry {
 
     private final Map<String, Connection> connections = new ConcurrentHashMap<>();
 
+    /** A client opens one subscription per topic it shows: beyond this, a connection is refused new ones. */
+    private final int maxSubscriptionsPerConnection;
+
+    public WebSocketSubscriptionRegistry(
+            @Value("${limits.websocket.subscriptions-per-connection:20}") int maxSubscriptionsPerConnection
+    ) {
+        this.maxSubscriptionsPerConnection = maxSubscriptionsPerConnection;
+    }
+
     /** A WebSocket connection is open; nothing can be subscribed on it before its CONNECT frame is accepted. */
     public synchronized void connectionEstablished(String connectionId) {
         connections.putIfAbsent(connectionId, new Connection(null, null, new ConcurrentHashMap<>()));
@@ -45,11 +56,12 @@ public class WebSocketSubscriptionRegistry {
      * Ties the connection to the account and the session of the token presented at CONNECT.
      * The frames of a connection are handled after it may already be closed: a closed connection is not brought back.
      *
-     * @return false when the connection is no longer open: the CONNECT frame must be refused
+     * @return false when the connection is no longer open, or already authenticated (a second CONNECT):
+     *         the frame must be refused
      */
     public synchronized boolean authenticated(String connectionId, UUID accountId, UUID sessionId) {
         Connection connection = connections.get(connectionId);
-        if (connection == null) {
+        if (connection == null || connection.isAuthenticated()) {
             return false;
         }
         connections.put(connectionId, new Connection(accountId, sessionId, connection.adventureBySubscription()));
@@ -68,14 +80,23 @@ public class WebSocketSubscriptionRegistry {
      * Records the subscription before the access is checked, so that a revocation committed in the meantime
      * either finds it here, or is already visible to the check.
      *
-     * @return false when the connection is unknown (closed or revoked) or not authenticated: the subscription must be refused
+     * The broker keeps the first destination of a subscription id: an id already in use is refused, never
+     * overwritten, so that what is recorded here is always what the broker routes.
+     *
+     * @return false when the connection is unknown (closed or revoked) or not authenticated, when the id is already
+     *         in use on the connection, or when the connection has reached its number of subscriptions:
+     *         the subscription must be refused
      */
     public synchronized boolean subscribe(String connectionId, String subscriptionId, UUID adventureId) {
         Connection connection = connections.get(connectionId);
         if (connection == null || !connection.isAuthenticated()) {
             return false;
         }
-        connection.adventureBySubscription().put(subscriptionId, adventureId);
+        Map<String, UUID> subscriptions = connection.adventureBySubscription();
+        if (subscriptions.containsKey(subscriptionId) || subscriptions.size() >= maxSubscriptionsPerConnection) {
+            return false;
+        }
+        subscriptions.put(subscriptionId, adventureId);
         return true;
     }
 
@@ -86,10 +107,17 @@ public class WebSocketSubscriptionRegistry {
         }
     }
 
+    /** The adventure a live subscription listens to, or empty when nothing may be delivered to it any more. */
+    public Optional<UUID> adventureOf(String connectionId, String subscriptionId) {
+        Connection connection = connections.get(connectionId);
+        return connection == null
+                ? Optional.empty()
+                : Optional.ofNullable(connection.adventureBySubscription().get(subscriptionId));
+    }
+
     /** Whether a frame may still be delivered to this subscription. */
     public boolean isLive(String connectionId, String subscriptionId) {
-        Connection connection = connections.get(connectionId);
-        return connection != null && connection.adventureBySubscription().containsKey(subscriptionId);
+        return adventureOf(connectionId, subscriptionId).isPresent();
     }
 
     /** Removes the subscriptions of the account to the adventure, on every connection of the account. */

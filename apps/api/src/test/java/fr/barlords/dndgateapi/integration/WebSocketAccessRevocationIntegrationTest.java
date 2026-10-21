@@ -33,6 +33,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 
 /**
  * The participant rule is checked when a subscription is opened; these tests check that it keeps holding afterwards:
@@ -144,9 +145,8 @@ class WebSocketAccessRevocationIntegrationTest extends ApiIntegrationTestSupport
         return connection;
     }
 
-    private Inbox subscribe(Connection connection, String destination) throws Exception {
-        BlockingQueue<String> frames = new LinkedBlockingQueue<>();
-        connection.session().subscribe(destination, new StompFrameHandler() {
+    private static StompFrameHandler collectingInto(BlockingQueue<String> frames) {
+        return new StompFrameHandler() {
             @Override
             public Type getPayloadType(StompHeaders headers) {
                 return Map.class;
@@ -156,7 +156,15 @@ class WebSocketAccessRevocationIntegrationTest extends ApiIntegrationTestSupport
             public void handleFrame(StompHeaders headers, Object payload) {
                 frames.add(String.valueOf(payload));
             }
-        });
+        };
+    }
+
+    /** Subscribes, then waits until the broker routes the destination to this new subscription. */
+    private Inbox subscribe(Connection connection, String destination) throws Exception {
+        int before = brokerSubscriptionCount(destination);
+        BlockingQueue<String> frames = new LinkedBlockingQueue<>();
+        connection.session().subscribe(destination, collectingInto(frames));
+        awaitUntil(() -> brokerSubscriptionCount(destination) > before, "the broker never registered " + destination);
         return new Inbox(frames);
     }
 
@@ -168,9 +176,15 @@ class WebSocketAccessRevocationIntegrationTest extends ApiIntegrationTestSupport
         return subscribe(connection, "/topic/adventure/webrtc/" + adventureId);
     }
 
-    /** The subscriptions are registered by the broker asynchronously. */
-    private static void letTheSubscriptionsSettle() throws InterruptedException {
-        TimeUnit.MILLISECONDS.sleep(500);
+    /** Polls the condition until it holds, or fails after the timeout. */
+    private static void awaitUntil(BooleanSupplier condition, String failure) throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(TIMEOUT_SECONDS);
+        while (!condition.getAsBoolean()) {
+            if (System.nanoTime() > deadline) {
+                Assertions.fail(failure);
+            }
+            TimeUnit.MILLISECONDS.sleep(20);
+        }
     }
 
     private String say(TestAccount author, UUID adventureId) {
@@ -199,13 +213,20 @@ class WebSocketAccessRevocationIntegrationTest extends ApiIntegrationTestSupport
                 .getStatusCode().value());
     }
 
+    private Map<String, List<String>> brokerSubscriptions(String destination) {
+        SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE);
+        accessor.setDestination(destination);
+        return broker.getSubscriptionRegistry()
+                .findSubscriptions(MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders()));
+    }
+
+    private int brokerSubscriptionCount(String destination) {
+        return brokerSubscriptions(destination).values().stream().mapToInt(List::size).sum();
+    }
+
     /** The sessions the broker still delivers the chat of the adventure to. */
     private List<String> brokerSubscribersOfTheChat(UUID adventureId) {
-        SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE);
-        accessor.setDestination("/topic/adventure/chat/" + adventureId);
-        return new ArrayList<>(broker.getSubscriptionRegistry()
-                .findSubscriptions(MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders()))
-                .keySet());
+        return new ArrayList<>(brokerSubscriptions("/topic/adventure/chat/" + adventureId).keySet());
     }
 
     private static void assertClosedByTheServer(Connection connection) throws Exception {
@@ -228,7 +249,6 @@ class WebSocketAccessRevocationIntegrationTest extends ApiIntegrationTestSupport
         Connection leaverConnection = connect(leaver);
         Inbox leaverChat = chat(leaverConnection, adventureId);
         Inbox leaverSignals = webrtc(leaverConnection, adventureId);
-        letTheSubscriptionsSettle();
 
         String before = say(owner, adventureId);
         Assertions.assertTrue(leaverChat.receives(before), "a participant receives the chat");
@@ -258,11 +278,45 @@ class WebSocketAccessRevocationIntegrationTest extends ApiIntegrationTestSupport
         Connection connection = connect(player);
         chat(connection, left);
         Inbox keptChat = chat(connection, kept);
-        letTheSubscriptionsSettle();
 
         leave(player, left);
 
         Assertions.assertTrue(keptChat.receives(say(owner, kept)));
+    }
+
+    /**
+     * The broker keeps the first destination of a subscription id: a second SUBSCRIBE reusing the id for another
+     * adventure must not let the first one go on after the access to it ends.
+     */
+    @Test
+    void a_subscription_id_cannot_be_reused_to_keep_listening_to_an_adventure_after_leaving_it() throws Exception {
+        TestAccount owner = registerAndLogin();
+        TestAccount player = registerAndLogin();
+        UUID left = createAdventure(owner, "PUBLIC");
+        UUID own = createAdventure(player, "PUBLIC");
+        join(player, left);
+
+        Inbox ownerChat = chat(connect(owner), left);
+        Connection connection = connect(player);
+        BlockingQueue<String> frames = new LinkedBlockingQueue<>();
+        StompHeaders first = new StompHeaders();
+        first.setDestination("/topic/adventure/chat/" + left);
+        first.setId("reused");
+        connection.session().subscribe(first, collectingInto(frames));
+        awaitUntil(() -> brokerSubscriptionCount("/topic/adventure/chat/" + left) == 2, "first subscription never registered");
+
+        StompHeaders second = new StompHeaders();
+        second.setDestination("/topic/adventure/chat/" + own);
+        second.setId("reused");
+        connection.session().subscribe(second, collectingInto(frames));
+
+        Assertions.assertNotNull(connection.closed.get(TIMEOUT_SECONDS, TimeUnit.SECONDS),
+                "a SUBSCRIBE reusing a live subscription id is refused");
+
+        leave(player, left);
+        String line = say(owner, left);
+        Assertions.assertTrue(ownerChat.receives(line));
+        Assertions.assertTrue(new Inbox(frames).staysSilentAbout(line), "the former player hears nothing of the adventure left");
     }
 
     @Test
@@ -273,7 +327,6 @@ class WebSocketAccessRevocationIntegrationTest extends ApiIntegrationTestSupport
         join(player, adventureId);
 
         Inbox playerChat = chat(connect(player), adventureId);
-        letTheSubscriptionsSettle();
 
         Assertions.assertThrows(IllegalStateException.class, () -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             adventureUpdater.quitAdventure(adventureId, player.id());
@@ -296,7 +349,7 @@ class WebSocketAccessRevocationIntegrationTest extends ApiIntegrationTestSupport
 
         Inbox masterChat = chat(connect(master), adventureId);
         Inbox playerChat = chat(connect(player), adventureId);
-        letTheSubscriptionsSettle();
+        Assertions.assertTrue(masterChat.receives(say(player, adventureId)), "the master listens before the hand-over");
 
         ResponseEntity<String> invitation = call(HttpMethod.POST, "/adventures/" + adventureId + "/master/invitation", master.token(), null);
         Assertions.assertEquals(201, invitation.getStatusCode().value(), invitation.getBody());
@@ -304,7 +357,6 @@ class WebSocketAccessRevocationIntegrationTest extends ApiIntegrationTestSupport
                 Map.of("code", body(invitation).get("code").asString())).getStatusCode().value());
 
         Inbox newMasterChat = chat(connect(newMaster), adventureId);
-        letTheSubscriptionsSettle();
 
         String line = say(player, adventureId);
         Assertions.assertTrue(playerChat.receives(line));
@@ -320,7 +372,6 @@ class WebSocketAccessRevocationIntegrationTest extends ApiIntegrationTestSupport
         jdbc.update("update adventure set status = 'ONGOING' where id = ?", adventureId);
 
         Inbox masterChat = chat(connect(master), adventureId);
-        letTheSubscriptionsSettle();
 
         ResponseEntity<String> invitation = call(HttpMethod.POST, "/adventures/" + adventureId + "/master/invitation", master.token(), null);
         Assertions.assertEquals(200, call(HttpMethod.POST, "/adventures/master/accept", newMaster.token(),
@@ -342,7 +393,6 @@ class WebSocketAccessRevocationIntegrationTest extends ApiIntegrationTestSupport
         Connection laptopConnection = connect(laptop);
         Inbox laptopChat = chat(laptopConnection, adventureId);
         Inbox phoneChat = chat(connect(phone), adventureId);
-        letTheSubscriptionsSettle();
 
         Assertions.assertEquals(204, call(HttpMethod.POST, "/accounts/logout", laptop.token(), null).getStatusCode().value());
 
@@ -363,7 +413,6 @@ class WebSocketAccessRevocationIntegrationTest extends ApiIntegrationTestSupport
         Connection laptopConnection = connect(laptop);
         Connection phoneConnection = connect(phone);
         Inbox ownerChat = chat(connect(owner), adventureId);
-        letTheSubscriptionsSettle();
 
         Assertions.assertEquals(204, call(HttpMethod.POST, "/accounts/logout-all", phone.token(), null).getStatusCode().value());
 
@@ -382,7 +431,6 @@ class WebSocketAccessRevocationIntegrationTest extends ApiIntegrationTestSupport
         Connection playerConnection = connect(player);
         Inbox playerChat = chat(playerConnection, adventureId);
         Inbox ownerChat = chat(connect(owner), adventureId);
-        letTheSubscriptionsSettle();
 
         Assertions.assertEquals(200, call(HttpMethod.PATCH, "/accounts", player.token(),
                 Map.of("currentPassword", player.password(), "newPassword", "a-brand-new-password")).getStatusCode().value());
@@ -416,7 +464,6 @@ class WebSocketAccessRevocationIntegrationTest extends ApiIntegrationTestSupport
         Connection playerConnection = connect(player);
         Inbox playerChat = chat(playerConnection, adventureId);
         Inbox ownerChat = chat(connect(owner), adventureId);
-        letTheSubscriptionsSettle();
 
         Assertions.assertEquals(204, deleteAccount(player));
 
@@ -433,7 +480,6 @@ class WebSocketAccessRevocationIntegrationTest extends ApiIntegrationTestSupport
 
         Connection connection = connect(owner);
         Inbox ownerChat = chat(connection, adventureId);
-        letTheSubscriptionsSettle();
 
         Assertions.assertThrows(IllegalStateException.class, () -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             sessionRevoker.logoutAll(owner.id());
@@ -455,7 +501,6 @@ class WebSocketAccessRevocationIntegrationTest extends ApiIntegrationTestSupport
 
         chat(connect(owner), adventureId);
         chat(connect(player), adventureId);
-        letTheSubscriptionsSettle();
         Assertions.assertEquals(2, brokerSubscribersOfTheChat(adventureId).size());
 
         Assertions.assertEquals(204, call(HttpMethod.DELETE, "/adventures/" + adventureId, owner.token(),
