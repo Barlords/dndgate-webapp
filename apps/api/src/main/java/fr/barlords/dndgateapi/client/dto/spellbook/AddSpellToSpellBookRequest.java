@@ -6,6 +6,6 @@ import jakarta.validation.constraints.Size;
 
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public record AddSpellToSpellBookRequest(
-        @NotBlank @Size(max = 255) String spellIndex
+        @NotBlank @Size(min = 1, max = 255) String spellIndex
 ) {
 }
