@@ -2,6 +2,7 @@ package fr.barlords.dndgateapi.domain.functional.service.planning;
 
 import fr.barlords.dndgateapi.domain.ApplicationError;
 import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
+import fr.barlords.dndgateapi.domain.functional.exception.planning.PlanningNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.model.planning.Availability;
 import fr.barlords.dndgateapi.domain.port.in.planning.AvailabilityUpdaterApi;
 import fr.barlords.dndgateapi.domain.port.out.AvailabilityPersistenceSpi;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -85,5 +87,27 @@ class AvailabilityServicesTest {
         when(updater.createOrUpdate(accountId, given)).thenReturn(stored);
 
         Assertions.assertSame(stored, new AvailabilityCreatorService(updater).create(accountId, given));
+    }
+
+    @Test
+    void the_planning_must_be_visible_to_the_caller_before_anything_is_saved() {
+        AvailabilityUpdaterService service = new AvailabilityUpdaterService(spi, verifier);
+        when(verifier.verify(accountId, planningId)).thenThrow(new PlanningNotFoundException());
+
+        Assertions.assertThrows(PlanningNotFoundException.class, () -> service.createOrUpdate(accountId, received()));
+
+        verify(spi, never()).save(any());
+        verify(spi, never()).findByAccountIdAndPlanningId(any(), any());
+    }
+
+    @Test
+    void the_visibility_of_the_planning_is_checked_for_the_caller() {
+        AvailabilityUpdaterService service = new AvailabilityUpdaterService(spi, verifier);
+        when(spi.findByAccountIdAndPlanningId(accountId, planningId)).thenReturn(List.of());
+        when(spi.save(any())).thenAnswer(call -> Either.right(call.getArgument(0)));
+
+        service.createOrUpdate(accountId, received());
+
+        verify(verifier).verify(accountId, planningId);
     }
 }

@@ -97,4 +97,26 @@ class AvailabilityVoteIntegrationTest extends ApiIntegrationTestSupport {
 
         Assertions.assertEquals(2, votes());
     }
+
+    @Test
+    void simultaneous_first_votes_of_one_account_all_succeed_and_leave_a_single_vote() throws Exception {
+        int callers = 8;
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(callers);
+        var start = new java.util.concurrent.CountDownLatch(1);
+        List<java.util.concurrent.Future<Integer>> results = new java.util.ArrayList<>();
+        for (int i = 0; i < callers; i++) {
+            String date = "2027-02-0" + (i + 1);
+            results.add(pool.submit(() -> {
+                start.await();
+                return call(HttpMethod.POST, "/planning/availability", player.token(), vote(date)).getStatusCode().value();
+            }));
+        }
+        start.countDown();
+        for (var result : results) {
+            Assertions.assertEquals(201, result.get());
+        }
+        pool.shutdown();
+
+        Assertions.assertEquals(1, votes());
+    }
 }

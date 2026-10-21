@@ -90,7 +90,7 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
 - Correctif : retirer `updatable = false` (aucune migration nécessaire) ; ajouter au test un `PATCH` de la date, relu en base.
 
 ### 29. Un compte peut voter plusieurs fois au planning — *vérifié*
-- [x] *Corrigé : `POST` devient « créer ou remplacer » (délègue à l'updater), `PUT` renvoie le vote enregistré, migration `V6` qui dédoublonne puis index unique `(planning_id, account_id)`.*
+- [x] *Corrigé : `POST` devient « créer ou remplacer » (délègue à l'updater), `PUT` renvoie le vote enregistré, migration `V6` qui dédoublonne puis index unique `(planning_id, account_id)`, opération rejouée si deux premiers votes simultanés se heurtent à l'index. `V6` garde un doublon arbitraire (le plus grand UUID) faute d'horodatage en base.*
   `POST /planning/availability` (`AvailabilityCreatorService.create`) créait un nouveau vote à chaque appel. Mesuré : 3 appels du même compte, **3 votes** en base.
   Rien en base ne l'empêche (pas d'unicité sur `(planning_id, account_id)`). Tout compte qui voit une aventure publique peut ainsi fausser son planning.
 - `PUT /planning/availability`, lui, met à jour, mais renvoie l'objet reçu (`AvailabilityUpdaterService`, ligne 39) et non le vote enregistré : l'`id` de la réponse est un identifiant neuf qui n'existe pas en base.

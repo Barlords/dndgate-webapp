@@ -50,6 +50,17 @@ class PaginationIntegrationTest extends ApiIntegrationTestSupport {
         return values;
     }
 
+    private List<String> allNames(String path, TestAccount account) {
+        List<String> names = new ArrayList<>();
+        for (int number = 0; ; number++) {
+            JsonNode page = page(path + "?size=100&page=" + number, account);
+            names.addAll(field(page, "name"));
+            if (names.size() >= page.get("totalElements").asLong() || page.get("content").isEmpty()) {
+                return names;
+            }
+        }
+    }
+
     private void join(TestAccount account, UUID adventureId) {
         Assertions.assertEquals(200, call(HttpMethod.POST, "/adventures/" + adventureId + "/join", account.token(), null).getStatusCode().value());
     }
@@ -123,7 +134,8 @@ class PaginationIntegrationTest extends ApiIntegrationTestSupport {
                 .getStatusCode().value());
 
         Assertions.assertEquals(List.of("Secret"), field(page("/adventures/as-player", player), "name"));
-        Assertions.assertTrue(field(page("/adventures?size=100", player), "name").contains("Secret"));
+        // the shared database holds the adventures of every test class: look through all the pages
+        Assertions.assertTrue(allNames("/adventures", player).contains("Secret"));
         Assertions.assertEquals(0, page("/adventures/as-player", stranger).get("totalElements").asInt());
     }
 
