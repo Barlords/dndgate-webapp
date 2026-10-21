@@ -27,7 +27,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ValidPseudo {
 
-    String message() default "le pseudo ne peut contenir que des lettres, des chiffres, '_', '-' et '.', sans espace";
+    String message() default "the pseudo can only contain letters, digits, '_', '-' and '.', without spaces";
 
     Class<?>[] groups() default {};
 

@@ -250,8 +250,8 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
 - [ ] `SecurityConfig.corsConfigurationSource` n'expose aucun en-tête. Depuis une autre origine (le front en dev sur `localhost:4200`), le JavaScript ne peut pas lire `X-Request-Id`, `Retry-After` (429) ni `Content-Disposition` (export).
 - Correctif : `setExposedHeaders(List.of("X-Request-Id", "Retry-After", "Content-Disposition"))`. Remplacer aussi `setAllowedHeaders("*")` par la liste réellement utilisée.
 
-### 50. Deux textes en français ont échappé à `LanguagePolicyTest` — *vérifié*
-- [ ] `ValidPseudo.message()` (ligne 30) : « le pseudo ne peut contenir que des lettres, des chiffres… » est renvoyé tel quel dans les erreurs de validation de l'API.
+### 50. Deux textes en français ont échappé à `LanguagePolicyTest` — *corrigé*
+- [x] Corrigé : les deux textes sont en anglais et `LanguagePolicyTest` refuse aussi une liste de mots français fréquents (test rouge avant la traduction ; `pom.xml` non touché). Constat initial : `ValidPseudo.message()` (ligne 30) : « le pseudo ne peut contenir que des lettres, des chiffres… » est renvoyé tel quel dans les erreurs de validation de l'API.
 - [ ] `SecurityConfig` (ligne 76) : commentaire « Sinon toute erreur serveur serait masquee en 401… ».
 - Le test ne cherche que les lettres accentuées ; ces deux textes n'en ont pas. Le renforcer, par exemple en refusant aussi une courte liste de mots français fréquents (` les `, ` des `, ` une `, ` pour `, ` sinon `…) dans les chaînes et les commentaires.
 - Les commentaires du `pom.xml` sont aussi en français (hors du périmètre du test) : à traduire si la règle doit valoir pour tout le code.
