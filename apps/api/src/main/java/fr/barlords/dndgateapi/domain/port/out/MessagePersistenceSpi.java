@@ -19,7 +19,6 @@ public interface MessagePersistenceSpi extends PersistenceSpi<Message, UUID> {
 
     void deleteByAdventureId(UUID adventureId);
 
-
     /** How many messages the account sent after the given instant. */
     long countBySenderIdSince(UUID senderId, Instant since);
 

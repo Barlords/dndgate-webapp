@@ -13,6 +13,5 @@ public interface AdventureNotePersistenceSpi extends PersistenceSpi<AdventureNot
     /** Newest first. The private notes are only returned when asked for. */
     Page<AdventureNote> findByAdventureId(UUID adventureId, boolean includePrivate, PageRequest request);
 
-
     long countByAdventureId(UUID adventureId);
 }

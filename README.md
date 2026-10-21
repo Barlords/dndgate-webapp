@@ -108,6 +108,7 @@ Les listes bornées par nature (personnages d'une aventure ou d'un compte, grimo
   - **1 000 sorts** par grimoire (`limits.spells-per-spell-book`), import compris ; ajouter un sort déjà présent n'est pas une erreur ;
   - **500 notes d'aventure** et **500 notes d'historique** par aventure (`limits.adventure-notes-per-adventure`, `limits.historical-notes-per-adventure`) ;
   - **30 messages par compte et par minute** (`limits.messages.max`, `limits.messages.window`) : au-delà, `429` avec `Retry-After` (secondes). Les messages sont comptés en base sur la dernière minute (index `message(sender_id, send_date)`).
+  Rouvrir une aventure terminée ou abandonnée contourne le plafond d'aventures actives, jusqu'à ce que le point 34 (machine à états du statut) interdise de quitter `FINISH` / `ABORT` ; le transfert de MJ (cession, réclamation) ne vérifie volontairement pas le plafond du nouveau MJ.
   Les comptages ne sont pas verrouillés : deux créations simultanées peuvent dépasser un plafond d'une unité ou deux. Les limites de taille des images ne changent pas.
 - **WebSocket** : un client n'envoie que `CONNECT`, `SUBSCRIBE` et des battements de cœur ; toute publication est refusée. Une trame de plus de 16 Ko coupe la connexion avant d'être lue.
 - Toutes les routes qui reçoivent un corps JSON sont validées (`@Valid`).

@@ -13,6 +13,5 @@ public interface HistoricalNotePersistenceSpi extends PersistenceSpi<HistoricalN
     /** Newest first. */
     Page<HistoricalNote> findByAdventureId(UUID adventureId, PageRequest request);
 
-
     long countByAdventureId(UUID adventureId);
 }

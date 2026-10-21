@@ -192,4 +192,47 @@ class QuantityLimitIntegrationTest extends ApiIntegrationTestSupport {
 
         Assertions.assertEquals(200, message(master, adventureId).getStatusCode().value());
     }
+
+    @Test
+    void an_adventure_without_game_master_does_not_count_in_the_active_limit() {
+        TestAccount master = registerAndLogin();
+        UUID first = createAdventure(master, "PRIVATE");
+        createAdventure(master, "PRIVATE");
+        assertConflict(createAdventureRaw(master));
+
+        jdbc.update("update adventure set master_vacant_since = now() where id = ?", first);
+
+        Assertions.assertEquals(201, createAdventureRaw(master).getStatusCode().value());
+    }
+
+    // ---- import ----
+
+    private ResponseEntity<String> importSpellBook(TestAccount account, int spellCount) {
+        String spells = java.util.stream.IntStream.range(0, spellCount)
+                .mapToObj(i -> "\"spell-" + i + "\"").collect(java.util.stream.Collectors.joining(","));
+        byte[] file = ("{\"name\":\"Imported\",\"description\":\"d\",\"spellList\":[" + spells + "]}")
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        org.springframework.util.LinkedMultiValueMap<String, Object> parts = new org.springframework.util.LinkedMultiValueMap<>();
+        parts.add("file", new org.springframework.core.io.ByteArrayResource(file) {
+            @Override
+            public String getFilename() {
+                return "book.json";
+            }
+        });
+        return client().post().uri("/spellbooks/import-file")
+                .headers(headers -> headers.setBearerAuth(account.token()))
+                .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA)
+                .body(parts)
+                .retrieve().toEntity(String.class);
+    }
+
+    @Test
+    void an_imported_spell_book_is_limited_in_spells_like_any_other() {
+        TestAccount wizard = registerAndLogin();
+
+        assertConflict(importSpellBook(wizard, 4));
+        Assertions.assertEquals(0, jdbc.queryForObject("select count(*) from spellbook where account_id = ?", Integer.class, wizard.id()));
+
+        Assertions.assertEquals(201, importSpellBook(wizard, 3).getStatusCode().value());
+    }
 }
