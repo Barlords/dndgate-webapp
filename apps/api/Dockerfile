@@ -7,7 +7,7 @@ COPY src ./src
 RUN mvn -B -q clean package -DskipTests
 
 # Run
-FROM eclipse-temurin:21-jre-alpine AS deploy
+FROM eclipse-temurin:25-jre-alpine AS deploy
 
 # The application does not need root: a flaw in it must not give the keys of the container
 RUN addgroup -S app && adduser -S -G app app
