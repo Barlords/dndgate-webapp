@@ -55,4 +55,10 @@ public class GameCharacterDatabaseAdapter implements GameCharacterPersistenceSpi
         return repository.findByAdventure_Id(adventureId).stream().map(GameCharacterEntityMapper::toDomain).toList();
     }
 
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countByOwnerIdAndAdventureId(UUID ownerId, UUID adventureId) {
+        return repository.countByOwner_IdAndAdventure_Id(ownerId, adventureId);
+    }
 }

@@ -64,4 +64,10 @@ public class AdventureNoteDatabaseAdapter implements AdventureNotePersistenceSpi
         return PageMapper.toDomain(found, request, AdventureNoteEntityMapper::toDomain);
     }
 
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countByAdventureId(UUID adventureId) {
+        return repository.countByAdventure_Id(adventureId);
+    }
 }

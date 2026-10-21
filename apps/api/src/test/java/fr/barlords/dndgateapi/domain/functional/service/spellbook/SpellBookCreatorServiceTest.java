@@ -2,6 +2,7 @@ package fr.barlords.dndgateapi.domain.functional.service.spellbook;
 
 import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.TokenNotValidException;
+import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
 import fr.barlords.dndgateapi.domain.functional.model.SpellBook;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
@@ -36,7 +37,7 @@ class SpellBookCreatorServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new SpellBookCreatorService(spi, currentAccountService);
+        service = new SpellBookCreatorService(spi, currentAccountService, QuantityLimits.defaults());
     }
 
     @Test

@@ -173,10 +173,11 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
 - Correctif : supprimer les images après le commit (le même `AfterCommit` que l'audit), en ignorant les échecs, qui sont journalisés ; supprimer l'image envoyée si l'enregistrement échoue ; à terme, un nettoyage périodique des objets orphelins.
 
 ### 40. Aucune limite de quantité — *lu*
-- [ ] Rien ne borne le nombre de personnages (chacun avec une image de 5 Mo), d'aventures, de grimoires, de sorts par grimoire, de notes ou de messages par compte.
+- [x] Rien ne borne le nombre de personnages (chacun avec une image de 5 Mo), d'aventures, de grimoires, de sorts par grimoire, de notes ou de messages par compte.
   Un participant peut remplir le stockage MinIO ; un compte peut créer des milliers d'aventures (et alimenter le point 26).
 - La v1 justifiait l'absence de pagination de ces listes par « bornées par nature (à revoir si on plafonne leur création) » : elles ne le sont pas.
 - Correctif : des plafonds dans le domaine (par exemple 10 personnages par joueur et par aventure, 50 aventures actives par compte, 100 grimoires, 1 000 sorts), `409` au-delà, et une limite d'écriture par compte pour les messages.
+- Corrigé : plafonds dans le domaine (`QuantityLimits`, clés `limits.*`), `409` via `QuantityLimitExceededException` et `429` + `Retry-After` pour les messages (`MessageRateLimitException`, comptés en base sur la minute écoulée, index V9 sur `message(sender_id, send_date)`). Aventures actives = celles dont le compte est le MJ (`creator_id`, MJ non vacant) en `NOT_STARTED` ou `ONGOING`. Tests unitaires (`QuantityLimitsServicesTest`) et d'intégration (`QuantityLimitIntegrationTest`, plafonds bas), contrôle par mutation fait sur chaque plafond. Non traité : le transfert de MJ ne vérifie pas le plafond du nouveau MJ ; pas de verrou, un dépassement d'une ou deux unités est possible en cas de créations simultanées.
 
 ### 41. Jetons de rafraîchissement accumulés pendant 180 jours — *lu*
 - [ ] Chaque rafraîchissement ajoute une ligne à `refresh_tokens` ; les jetons utilisés sont gardés (pour détecter le rejeu) jusqu'à la suppression de la **session**, soit 180 jours.

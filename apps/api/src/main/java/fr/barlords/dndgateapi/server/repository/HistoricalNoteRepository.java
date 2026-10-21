@@ -26,4 +26,6 @@ public interface HistoricalNoteRepository extends JpaRepository<HistoricalNoteEn
     @Query("delete from HistoricalNoteEntity e where e.adventure.id = :adventureId")
     void deleteByAdventureId(@Param("adventureId") UUID adventureId);
 
+
+    long countByAdventure_Id(UUID adventureId);
 }

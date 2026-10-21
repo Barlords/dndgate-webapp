@@ -8,4 +8,6 @@ import java.util.UUID;
 public interface SpellBookPersistenceSpi extends PersistenceSpi<SpellBook, UUID> {
 
     List<SpellBook> findByOwnerId(UUID ownerId);
+
+    long countByOwnerId(UUID ownerId);
 }

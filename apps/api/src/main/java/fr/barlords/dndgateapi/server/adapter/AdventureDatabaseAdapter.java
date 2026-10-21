@@ -129,4 +129,10 @@ public class AdventureDatabaseAdapter implements AdventurePersistenceSpi {
                 .map(AdventureEntityMapper::toDomain);
     }
 
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countActiveByOwnerId(UUID ownerId) {
+        return repository.countActiveByCreatorId(ownerId);
+    }
 }

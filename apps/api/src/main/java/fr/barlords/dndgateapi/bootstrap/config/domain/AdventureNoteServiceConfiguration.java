@@ -13,6 +13,7 @@ import fr.barlords.dndgateapi.domain.port.in.adventurenote.AdventureNoteFinderAp
 import fr.barlords.dndgateapi.domain.port.in.adventurenote.AdventureNoteUpdaterApi;
 import fr.barlords.dndgateapi.domain.port.out.AdventureNotePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureAccessVerifierApi;
+import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -22,9 +23,10 @@ public class AdventureNoteServiceConfiguration {
     @Bean
     public AdventureNoteCreatorApi adventureNoteCreatorApi(
             AdventureNotePersistenceSpi spi,
-            AdventureOwnerVerifierService adventureOwnerVerifierService
+            AdventureOwnerVerifierService adventureOwnerVerifierService,
+            QuantityLimits quantityLimits
     ) {
-        return new AdventureNoteCreatorService(spi, adventureOwnerVerifierService);
+        return new AdventureNoteCreatorService(spi, adventureOwnerVerifierService, quantityLimits);
     }
 
     @Bean

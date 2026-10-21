@@ -1,6 +1,7 @@
 package fr.barlords.dndgateapi.domain.functional.service.gamecharacter;
 
 import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
+import fr.barlords.dndgateapi.domain.functional.exception.QuantityLimitExceededException;
 import fr.barlords.dndgateapi.domain.functional.exception.InvalidPictureException;
 import fr.barlords.dndgateapi.domain.functional.model.PictureFormat;
 import fr.barlords.dndgateapi.domain.functional.model.GameCharacter;
@@ -11,6 +12,7 @@ import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureAccessVerifierAp
 import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterCreatorApi;
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
+import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,6 +33,8 @@ public class GameCharacterCreatorService implements GameCharacterCreatorApi {
 
     private final MinioSpi minioSpi;
 
+    private final QuantityLimits limits;
+
     private static final int MAX_PICTURE_BYTES = 5 * 1024 * 1024;
 
     private static byte[] readPicture(InputStream pictureInputStream) {
@@ -50,6 +54,11 @@ public class GameCharacterCreatorService implements GameCharacterCreatorApi {
         Account account = currentAccountService.getAccountById(accountId);
 
         Adventure adventure = adventureAccessVerifierApi.verifyParticipant(accountId, adventureId);
+
+        // Checked before the picture is read and stored: a refused character must not leave a file behind
+        if (spi.countByOwnerIdAndAdventureId(account.getId(), adventureId) >= limits.charactersPerPlayerAndAdventure()) {
+            throw QuantityLimitExceededException.characters(limits.charactersPerPlayerAndAdventure());
+        }
 
         // The format is recognised by the content of the file: what the client declares is not trusted
         byte[] picture = readPicture(pictureInputStream);

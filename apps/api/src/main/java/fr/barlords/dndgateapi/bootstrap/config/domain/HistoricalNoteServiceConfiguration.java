@@ -13,6 +13,7 @@ import fr.barlords.dndgateapi.domain.port.in.historicalnote.HistoricalNoteFinder
 import fr.barlords.dndgateapi.domain.port.in.historicalnote.HistoricalNoteUpdaterApi;
 import fr.barlords.dndgateapi.domain.port.out.HistoricalNotePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureAccessVerifierApi;
+import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -23,9 +24,10 @@ public class HistoricalNoteServiceConfiguration {
     @Bean
     public HistoricalNoteCreatorApi historicalNoteCreatorApi(
             HistoricalNotePersistenceSpi spi,
-            AdventureOwnerVerifierService adventureOwnerVerifierService
+            AdventureOwnerVerifierService adventureOwnerVerifierService,
+            QuantityLimits quantityLimits
     ) {
-        return new HistoricalNoteCreatorService(spi, adventureOwnerVerifierService);
+        return new HistoricalNoteCreatorService(spi, adventureOwnerVerifierService, quantityLimits);
     }
 
     @Bean

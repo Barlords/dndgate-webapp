@@ -1,6 +1,7 @@
 package fr.barlords.dndgateapi.domain.functional.service.message;
 
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureAccessDeniedException;
+import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
 import fr.barlords.dndgateapi.domain.functional.model.Message;
 import fr.barlords.dndgateapi.domain.functional.model.pagination.Page;
 import fr.barlords.dndgateapi.domain.functional.model.pagination.PageRequest;
@@ -67,7 +68,7 @@ public class MessageServicesTest {
         Message message = Message.builder().adventureId(adventureId).senderId(UUID.randomUUID()).content("hello").build();
         when(spi.save(any(Message.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
 
-        Message saved = new MessageCreatorService(spi, accessVerifier, clock).create(accountId, message);
+        Message saved = new MessageCreatorService(spi, accessVerifier, clock, QuantityLimits.defaults()).create(accountId, message);
 
         Assertions.assertEquals(accountId, saved.getSenderId());
     }
@@ -78,7 +79,7 @@ public class MessageServicesTest {
         doThrow(new AdventureAccessDeniedException()).when(accessVerifier).verifyParticipant(accountId, adventureId);
 
         Assertions.assertThrows(AdventureAccessDeniedException.class,
-                () -> new MessageCreatorService(spi, accessVerifier, clock).create(accountId, message));
+                () -> new MessageCreatorService(spi, accessVerifier, clock, QuantityLimits.defaults()).create(accountId, message));
         verify(spi, never()).save(any());
     }
 
@@ -88,7 +89,7 @@ public class MessageServicesTest {
                 .sendDate(Instant.parse("2199-12-31T00:00:00Z")).build();
         when(spi.save(any(Message.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
 
-        Message saved = new MessageCreatorService(spi, accessVerifier, clock).create(accountId, forged);
+        Message saved = new MessageCreatorService(spi, accessVerifier, clock, QuantityLimits.defaults()).create(accountId, forged);
 
         Assertions.assertEquals(NOW, saved.getSendDate());
     }
@@ -98,6 +99,6 @@ public class MessageServicesTest {
         Message message = Message.builder().adventureId(adventureId).content("hello").build();
         when(spi.save(any(Message.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
 
-        Assertions.assertEquals(NOW, new MessageCreatorService(spi, accessVerifier, clock).create(accountId, message).getSendDate());
+        Assertions.assertEquals(NOW, new MessageCreatorService(spi, accessVerifier, clock, QuantityLimits.defaults()).create(accountId, message).getSendDate());
     }
 }

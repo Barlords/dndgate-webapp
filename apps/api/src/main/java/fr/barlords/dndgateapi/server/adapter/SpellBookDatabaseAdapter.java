@@ -49,4 +49,10 @@ public class SpellBookDatabaseAdapter implements SpellBookPersistenceSpi {
         return repository.findByOwner_Id(ownerId).stream().map(SpellBookEntityMapper::toDomain).toList();
     }
 
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countByOwnerId(UUID ownerId) {
+        return repository.countByOwner_Id(ownerId);
+    }
 }

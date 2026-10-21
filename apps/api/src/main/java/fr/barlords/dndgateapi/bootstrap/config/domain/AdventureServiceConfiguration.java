@@ -21,6 +21,7 @@ import fr.barlords.dndgateapi.domain.functional.model.adventure.InvitationLimits
 import fr.barlords.dndgateapi.domain.port.in.adventure.InvitationLogCleanerApi;
 import fr.barlords.dndgateapi.domain.port.out.InvitationLogSpi;
 import org.springframework.beans.factory.annotation.Value;
+import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -41,9 +42,10 @@ public class AdventureServiceConfiguration {
     @Bean
     public AdventureCreatorApi adventureCreatorApi(
             AdventurePersistenceSpi spi,
-            CurrentAccountService currentAccountService
+            CurrentAccountService currentAccountService,
+            QuantityLimits quantityLimits
     ) {
-        return new AdventureCreatorService(spi, currentAccountService);
+        return new AdventureCreatorService(spi, currentAccountService, quantityLimits);
     }
 
     @Bean

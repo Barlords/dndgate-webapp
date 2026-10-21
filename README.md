@@ -101,6 +101,14 @@ Les listes bornées par nature (personnages d'une aventure ou d'un compte, grimo
 - **Images** : 5 Mo au plus (`413` au-delà). Seuls le **PNG** et le **JPEG** sont acceptés, reconnus par le **contenu** du fichier (signature) et non par le type annoncé par le client ; un autre contenu, un fichier vide ou tronqué répond `400`. L'extension du fichier stocké suit le format réel (`.png` ou `.jpg`).
 - **Textes obligatoires** (noms, descriptions, contenus) : non vides une fois les espaces retirés. **Textes facultatifs d'une modification** (`PATCH`) : s'ils sont présents, non vides ; **absents, ils ne changent pas**.
 - **Plannings et disponibilités** : de 1 à 100 dates. **Dates** (plannings, disponibilités, notes) : entre les années 1900 et 2200, sinon `400` (le format accepte des années que PostgreSQL ne sait pas stocker, ce qui finissait en `500`). **Signaux WebRTC** : type `offer`, `answer` ou `candidate`, contenu de 20 000 caractères au plus.
+- **Quantités** : au-delà d'un plafond, la création répond `409` (`application/problem+json`) ; les plafonds sont comptés en base par des requêtes `COUNT` et appliqués par le domaine (clés `limits.*` de `application-dev.properties` / `application-prod.properties`) :
+  - **10 personnages** par joueur et par aventure (`limits.characters-per-player-and-adventure`), vérifié avant le stockage de l'image ;
+  - **50 aventures actives** par compte comme MJ (`limits.active-adventures-per-master`) : celles dont le compte est le MJ (`creator_id`, sans MJ vacant) et dont le statut est `NOT_STARTED` ou `ONGOING` ; une aventure terminée ou abandonnée ne compte plus ;
+  - **100 grimoires** par compte (`limits.spell-books-per-account`), import compris ;
+  - **1 000 sorts** par grimoire (`limits.spells-per-spell-book`), import compris ; ajouter un sort déjà présent n'est pas une erreur ;
+  - **500 notes d'aventure** et **500 notes d'historique** par aventure (`limits.adventure-notes-per-adventure`, `limits.historical-notes-per-adventure`) ;
+  - **30 messages par compte et par minute** (`limits.messages.max`, `limits.messages.window`) : au-delà, `429` avec `Retry-After` (secondes). Les messages sont comptés en base sur la dernière minute (index `message(sender_id, send_date)`).
+  Les comptages ne sont pas verrouillés : deux créations simultanées peuvent dépasser un plafond d'une unité ou deux. Les limites de taille des images ne changent pas.
 - **WebSocket** : un client n'envoie que `CONNECT`, `SUBSCRIBE` et des battements de cœur ; toute publication est refusée. Une trame de plus de 16 Ko coupe la connexion avant d'être lue.
 - Toutes les routes qui reçoivent un corps JSON sont validées (`@Valid`).
 - **Erreurs** : chaque réponse d'erreur (`application/problem+json`) porte un `correlationId`, le même que l'en-tête `X-Request-Id` et que sur chaque ligne de log de la requête ; c'est l'identifiant à donner pour signaler un problème.

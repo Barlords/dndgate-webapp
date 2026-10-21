@@ -31,4 +31,7 @@ public interface AdventurePersistenceSpi extends PersistenceSpi<Adventure, UUID>
 
     Optional<Adventure> findByInvitationCode(String code);
 
+
+    /** Adventures the account is the game master of and that are not over (not started, or ongoing). */
+    long countActiveByOwnerId(UUID ownerId);
 }

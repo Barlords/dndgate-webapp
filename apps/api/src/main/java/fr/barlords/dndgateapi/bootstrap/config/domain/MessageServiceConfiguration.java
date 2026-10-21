@@ -6,6 +6,7 @@ import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureAccessVerifierAp
 import fr.barlords.dndgateapi.domain.port.in.message.MessageCreatorApi;
 import fr.barlords.dndgateapi.domain.port.in.message.MessageFinderApi;
 import fr.barlords.dndgateapi.domain.port.out.MessagePersistenceSpi;
+import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -18,9 +19,10 @@ public class MessageServiceConfiguration {
     public MessageCreatorApi messageCreatorApi(
             MessagePersistenceSpi spi,
             AdventureAccessVerifierApi adventureAccessVerifierApi,
-            Clock clock
+            Clock clock,
+            QuantityLimits quantityLimits
     ) {
-        return new MessageCreatorService(spi, adventureAccessVerifierApi, clock);
+        return new MessageCreatorService(spi, adventureAccessVerifierApi, clock, quantityLimits);
     }
 
     @Bean
