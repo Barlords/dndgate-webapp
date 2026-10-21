@@ -84,7 +84,7 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
 - Ne pas oublier les deux autres points d'entrée qui partagent le compteur (suppression du compte, `PATCH /accounts`).
 
 ### 28. La date d'une note du MJ ne change jamais — *vérifié*
-- [ ] `AdventureNoteEntity.date` est déclarée `updatable = false` (ligne 33). Hibernate retire la colonne de l'`UPDATE`, mais le `merge` recopie la valeur dans l'objet renvoyé.
+- [x] Corrigé : `updatable = false` retiré, test `the_date_of_an_adventure_note_can_be_patched` (rouge avant, vert après). `AdventureNoteEntity.date` était déclarée `updatable = false` (ligne 33). Hibernate retire la colonne de l'`UPDATE`, mais le `merge` recopie la valeur dans l'objet renvoyé.
 - Mesuré : `PATCH /adventure-notes/{id}` `{"date":"2027-05-05"}` répond **201 avec la nouvelle date** ; la base garde `2026-01-01`, et un `GET` juste après renvoie l'ancienne date. La perte est silencieuse.
 - `PartialUpdateIntegrationTest` ne modifie que le contenu, d'où le trou. Les notes historiques n'ont pas ce défaut.
 - Correctif : retirer `updatable = false` (aucune migration nécessaire) ; ajouter au test un `PATCH` de la date, relu en base.
