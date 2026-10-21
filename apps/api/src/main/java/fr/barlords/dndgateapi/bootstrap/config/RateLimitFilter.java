@@ -12,6 +12,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.UrlPathHelper;
 
 import java.io.IOException;
 import java.time.Clock;
@@ -32,6 +33,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private record Rule(String name, HttpMethod method, String path, int max, Duration window) {
     }
+
+    private static final UrlPathHelper PATH_HELPER = new UrlPathHelper();
 
     private final RateLimiter rateLimiter;
 
@@ -64,7 +67,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        String path = request.getRequestURI().substring(request.getContextPath().length());
+        // Decoded and normalised, like the path Spring MVC uses to choose the route
+        // (the raw URI would let "/accounts/%6Cogin" slip past the limit)
+        String path = PATH_HELPER.getPathWithinApplication(request);
 
         for (Rule rule : rules) {
             if (rule.method().matches(request.getMethod()) && rule.path().equals(path)) {
