@@ -14,6 +14,7 @@ import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureAccessVerifierAp
 import fr.barlords.dndgateapi.domain.port.in.adventure.master.MasterClaimApi;
 import fr.barlords.dndgateapi.domain.port.in.adventure.master.MasterInvitationApi;
 import fr.barlords.dndgateapi.domain.port.in.adventure.master.MasterStepDownApi;
+import fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
 import fr.barlords.dndgateapi.domain.port.out.MasterClaimPersistenceSpi;
@@ -39,9 +40,10 @@ public class MasterTransferServiceConfiguration {
             AdventurePersistenceSpi adventures,
             MasterInvitationPersistenceSpi invitations,
             AccountFinderApi accountFinderApi,
-            MasterTransferNotifier notifier
+            MasterTransferNotifier notifier,
+            AccessRevocationSpi accessRevocation
     ) {
-        return new MasterHandOverService(adventures, invitations, accountFinderApi, notifier);
+        return new MasterHandOverService(adventures, invitations, accountFinderApi, notifier, accessRevocation);
     }
 
     @Bean

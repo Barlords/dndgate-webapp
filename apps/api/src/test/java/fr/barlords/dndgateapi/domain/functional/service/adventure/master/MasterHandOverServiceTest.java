@@ -4,6 +4,7 @@ import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureStatus;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountFinderApi;
+import fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MasterInvitationPersistenceSpi;
 import io.vavr.control.Either;
@@ -22,6 +23,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,6 +41,9 @@ class MasterHandOverServiceTest {
     @Mock
     private MasterTransferNotifier notifier;
 
+    @Mock
+    private AccessRevocationSpi accessRevocation;
+
     private MasterHandOverService service;
 
     private final UUID formerMaster = UUID.randomUUID();
@@ -49,7 +54,7 @@ class MasterHandOverServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new MasterHandOverService(adventures, invitations, accountFinderApi, notifier);
+        service = new MasterHandOverService(adventures, invitations, accountFinderApi, notifier, accessRevocation);
         when(adventures.save(any(Adventure.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
     }
 
@@ -88,6 +93,7 @@ class MasterHandOverServiceTest {
 
         Assertions.assertEquals(List.of(other, formerMaster), result.getPlayers());
         Assertions.assertTrue(result.isFull());
+        verifyNoInteractions(accessRevocation);
     }
 
     @Test
@@ -98,6 +104,7 @@ class MasterHandOverServiceTest {
 
         Assertions.assertFalse(result.getPlayers().contains(formerMaster));
         Assertions.assertEquals(2, result.getPlayers().size());
+        verify(accessRevocation).participationEnded(formerMaster, result.getId());
     }
 
     @Test
@@ -107,6 +114,15 @@ class MasterHandOverServiceTest {
         Adventure result = service.handOver(adventure(4, newMaster, other), newMaster);
 
         Assertions.assertEquals(List.of(other), result.getPlayers());
+        verify(accessRevocation).participationEnded(formerMaster, result.getId());
+    }
+
+    @Test
+    void a_master_who_takes_the_seat_back_keeps_listening() {
+        Adventure result = service.handOver(adventure(2, other), formerMaster);
+
+        Assertions.assertTrue(result.isMaster(formerMaster));
+        verifyNoInteractions(accessRevocation);
     }
 
     @Test

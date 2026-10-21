@@ -8,6 +8,7 @@ import fr.barlords.dndgateapi.domain.functional.model.GameCharacter;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureStatus;
 import fr.barlords.dndgateapi.domain.functional.model.planning.Planning;
+import fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.AvailabilityPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
@@ -68,9 +69,12 @@ public class AdventureDeleterServiceTest {
     @Mock
     private AuditSpi audit;
 
+    @Mock
+    private AccessRevocationSpi accessRevocation;
+
     @BeforeEach
     void setUp() {
-        service = new AdventureDeleterService(spi, ownerVerifier, gameCharacters, messages, plannings, availabilities, minioSpi, audit);
+        service = new AdventureDeleterService(spi, ownerVerifier, gameCharacters, messages, plannings, availabilities, minioSpi, audit, accessRevocation);
     }
 
     private void ownerIsVerified() {
@@ -82,6 +86,7 @@ public class AdventureDeleterServiceTest {
         verify(messages, never()).deleteByAdventureId(any());
         verify(plannings, never()).deleteById(any());
         verify(availabilities, never()).deleteByPlanningId(any());
+        verifyNoInteractions(accessRevocation);
     }
 
     // ---- who and how ----
@@ -120,6 +125,16 @@ public class AdventureDeleterServiceTest {
                 () -> service.deleteById(accountId, adventure.getId(), "La quête du soir"));
 
         nothingWasDeleted();
+    }
+
+    @Test
+    void whoever_still_listens_to_a_deleted_adventure_is_cut() {
+        ownerIsVerified();
+        when(plannings.findByAdventureId(adventure.getId())).thenReturn(Optional.empty());
+
+        service.deleteById(accountId, adventure.getId(), "La quête du soir");
+
+        verify(accessRevocation).adventureDeleted(adventure.getId());
     }
 
     @Test

@@ -9,6 +9,7 @@ import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureDeleterApi;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureFinderApi;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureUpdaterApi;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountFinderApi;
+import fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
 import fr.barlords.dndgateapi.bootstrap.config.TransactionalAdventureDeleter;
@@ -57,10 +58,12 @@ public class AdventureServiceConfiguration {
             PlanningPersistenceSpi plannings,
             AvailabilityPersistenceSpi availabilities,
             MinioSpi minioSpi,
-            AuditSpi audit
+            AuditSpi audit,
+            AccessRevocationSpi accessRevocation
     ) {
         return new TransactionalAdventureDeleter(new AdventureDeleterService(
-                spi, adventureOwnerVerifierService, gameCharacters, messages, plannings, availabilities, minioSpi, audit));
+                spi, adventureOwnerVerifierService, gameCharacters, messages, plannings, availabilities, minioSpi, audit,
+                accessRevocation));
     }
 
     @Bean
@@ -86,10 +89,11 @@ public class AdventureServiceConfiguration {
             EmailingSpi emailingSpi,
             InvitationLogSpi invitationLog,
             Clock clock,
-            InvitationLimits invitationLimits
+            InvitationLimits invitationLimits,
+            AccessRevocationSpi accessRevocation
     ) {
         return new AdventureUpdaterService(spi, adventureFinderApi, currentAccountService, adventureOwnerVerifierService,
-                accountFinderApi, emailingSpi, invitationLog, clock, invitationLimits);
+                accountFinderApi, emailingSpi, invitationLog, clock, invitationLimits, accessRevocation);
     }
 
     @Bean

@@ -7,6 +7,7 @@ import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureStatus;
 import fr.barlords.dndgateapi.domain.functional.service.DeletionConfirmation;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureDeleterApi;
+import fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.AvailabilityPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
@@ -44,6 +45,8 @@ public class AdventureDeleterService implements AdventureDeleterApi {
 
     private final AuditSpi audit;
 
+    private final AccessRevocationSpi accessRevocation;
+
     @Override
     public void deleteById(UUID accountId, UUID id, String confirmation) {
         Adventure adventure = adventureOwnerVerifierService.verify(accountId, id);
@@ -66,6 +69,7 @@ public class AdventureDeleterService implements AdventureDeleterApi {
         messages.deleteByAdventureId(id);
         spi.deleteById(id);
         audit.deletion("adventure", accountId, id);
+        accessRevocation.adventureDeleted(id);
 
         deletePictures(pictures);
     }

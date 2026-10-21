@@ -6,6 +6,7 @@ import fr.barlords.dndgateapi.domain.functional.service.adventure.master.MasterT
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
 import fr.barlords.dndgateapi.domain.functional.service.account.*;
 import fr.barlords.dndgateapi.domain.port.in.account.*;
+import fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi;
 import fr.barlords.dndgateapi.domain.port.out.AccessTokenSpi;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
 import fr.barlords.dndgateapi.domain.port.out.LoginFailureSpi;
@@ -154,14 +155,20 @@ public class AccountServiceConfiguration {
             SessionPersistenceSpi sessions,
             OpaqueTokenSpi opaqueTokenSpi,
             SessionIssuerService sessionIssuerService,
-            Clock clock
+            Clock clock,
+            AccessRevocationSpi accessRevocation
     ) {
-        return new AccountSessionRefresherService(accounts, sessions, opaqueTokenSpi, sessionIssuerService, clock);
+        return new AccountSessionRefresherService(accounts, sessions, opaqueTokenSpi, sessionIssuerService, clock,
+                accessRevocation);
     }
 
     @Bean
-    public AccountSessionRevokerApi accountSessionRevokerApi(SessionPersistenceSpi sessions, Clock clock) {
-        return new AccountSessionRevokerService(sessions, clock);
+    public AccountSessionRevokerApi accountSessionRevokerApi(
+            SessionPersistenceSpi sessions,
+            Clock clock,
+            AccessRevocationSpi accessRevocation
+    ) {
+        return new AccountSessionRevokerService(sessions, clock, accessRevocation);
     }
 
     @Bean

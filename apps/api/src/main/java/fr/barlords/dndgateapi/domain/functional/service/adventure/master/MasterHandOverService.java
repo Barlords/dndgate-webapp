@@ -3,6 +3,7 @@ package fr.barlords.dndgateapi.domain.functional.service.adventure.master;
 import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountFinderApi;
+import fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MasterInvitationPersistenceSpi;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,8 @@ public class MasterHandOverService {
 
     private final MasterTransferNotifier notifier;
 
+    private final AccessRevocationSpi accessRevocation;
+
     public Adventure handOver(Adventure adventure, UUID newMasterId) {
         UUID formerMasterId = adventure.getOwnerId();
 
@@ -50,6 +53,11 @@ public class MasterHandOverService {
 
         Adventure saved = adventures.save(handedOver).getOrElseThrow(DataNotSaveException::new);
         notifier.masterChanged(saved, formerMasterId);
+
+        if (!saved.isParticipant(formerMasterId)) {
+            // no seat left for the former master: their chat and WebRTC signals stop with their participation
+            accessRevocation.participationEnded(formerMasterId, saved.getId());
+        }
 
         return saved;
     }

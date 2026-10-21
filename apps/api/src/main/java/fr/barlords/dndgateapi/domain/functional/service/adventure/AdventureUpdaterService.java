@@ -22,6 +22,7 @@ import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureFinderApi;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureUpdaterApi;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountFinderApi;
+import fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
 import fr.barlords.dndgateapi.domain.port.out.InvitationLogSpi;
@@ -56,6 +57,8 @@ public class AdventureUpdaterService implements AdventureUpdaterApi {
     private final Clock clock;
 
     private final InvitationLimits invitationLimits;
+
+    private final AccessRevocationSpi accessRevocation;
 
     @Override
     public Adventure update(UUID accountId, Adventure adventure) {
@@ -183,7 +186,7 @@ public class AdventureUpdaterService implements AdventureUpdaterApi {
     public Adventure quitAdventure(UUID adventureId, UUID accountId) {
         Account account = currentAccountService.getAccountById(accountId);
 
-        return retryOnConcurrentChange(() -> {
+        Adventure left = retryOnConcurrentChange(() -> {
             Adventure adventure = adventureFinderApi.findById(adventureId)
                     .orElseThrow(AdventureNotFoundException::new);
 
@@ -197,6 +200,11 @@ public class AdventureUpdaterService implements AdventureUpdaterApi {
             return spi.save(adventure.withPlayers(players))
                     .getOrElseThrow(DataNotSaveException::new);
         });
+
+        // The chat and the WebRTC signals already open for this account must stop as well
+        accessRevocation.participationEnded(account.getId(), adventureId);
+
+        return left;
     }
 
     /**

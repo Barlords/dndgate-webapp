@@ -110,7 +110,7 @@ Les listes bornées par nature (personnages d'une aventure ou d'un compte, grimo
   - **30 messages par compte et par minute** (`limits.messages.max`, `limits.messages.window`) : au-delà, `429` avec `Retry-After` (secondes). Les messages sont comptés en base sur la dernière minute (index `message(sender_id, send_date)`).
   Rouvrir une aventure terminée ou abandonnée contourne le plafond d'aventures actives, jusqu'à ce que le point 34 (machine à états du statut) interdise de quitter `FINISH` / `ABORT` ; le transfert de MJ (cession, réclamation) ne vérifie volontairement pas le plafond du nouveau MJ.
   Les comptages ne sont pas verrouillés : deux créations simultanées peuvent dépasser un plafond d'une unité ou deux. Les limites de taille des images ne changent pas.
-- **WebSocket** : un client n'envoie que `CONNECT`, `SUBSCRIBE` et des battements de cœur ; toute publication est refusée. Une trame de plus de 16 Ko coupe la connexion avant d'être lue.
+- **WebSocket** : un client n'envoie que `CONNECT`, `SUBSCRIBE` (et `UNSUBSCRIBE`) et des battements de cœur ; toute publication est refusée. Une trame de plus de 16 Ko coupe la connexion avant d'être lue. Seules les destinations exactes `/topic/adventure/chat/{id}` et `/topic/adventure/webrtc/{id}` (UUID en minuscules, rien avant ni après) sont acceptées au `SUBSCRIBE`.
 - Toutes les routes qui reçoivent un corps JSON sont validées (`@Valid`).
 - **Erreurs** : chaque réponse d'erreur (`application/problem+json`) porte un `correlationId`, le même que l'en-tête `X-Request-Id` et que sur chaque ligne de log de la requête ; c'est l'identifiant à donner pour signaler un problème.
 
@@ -320,6 +320,11 @@ Règles d'accès :
 - **Évaluations (ratings)** : on ne peut noter un compte que si l'on a joué une aventure avec lui, c'est-à-dire une aventure démarrée (`ONGOING` ou `FINISH`) dont les deux comptes sont participants. On ne peut pas se noter soi-même, ni noter deux fois le même compte (`POST` répond 409, `PUT` met à jour). La note est comprise entre 1 et 5. La moyenne d'un compte est publique ; le détail des notes reçues n'est lisible que par le compte noté.
 - Planning : lisible tant que l'aventure est visible (publique, ou participant), pour que des candidats puissent voter avant de rejoindre ; créé ou modifié par le propriétaire seulement. Les votes de tous ne sont lisibles que par les participants, et chacun ne peut voter que pour soi.
 - WebSocket : le client envoie le jeton dans l'en-tête STOMP `Authorization` au `CONNECT` ; il ne peut pas publier lui-même, seul le serveur diffuse.
+- **Fin d'accès sur une connexion WebSocket ouverte** : la règle « participant » n'est pas jugée qu'au `SUBSCRIBE`. Dès que l'opération est validée en base (rien n'est coupé pour une opération annulée) :
+  - un joueur qui **quitte l'aventure**, un **ancien MJ qui n'a pas de place** de joueur après un changement de MJ, et tous les abonnés d'une **aventure supprimée** perdent leurs abonnements à cette aventure (chat et WebRTC) ; la connexion reste ouverte pour leurs autres aventures ;
+  - une **session révoquée** (`logout`, jeton de rafraîchissement rejoué) ferme les connexions ouvertes avec ses jetons ; `logout-all`, un **changement de mot de passe** et la **suppression du compte** ferment toutes les connexions du compte (code de fermeture 1008). Les autres sessions du même compte ne sont pas touchées par un simple `logout`.
+  - En plus, le serveur ne livre une diffusion qu'aux abonnements qu'il sait encore autorisés, et une connexion révoquée ne peut plus s'abonner.
+  - L'expiration du jeton d'accès (15 min) ne ferme pas une connexion déjà ouverte : seules la révocation de la session et la fin de la participation coupent. Quitter le rôle de MJ (`step-down`) ne coupe rien : l'ancien MJ reste participant tant que le siège est vacant.
 
 Les tests d'intégration (`apps/api/src/test/.../integration`) démarrent l'application contre un vrai
 PostgreSQL via Testcontainers : Docker doit être lancé pour exécuter `./mvnw verify`.

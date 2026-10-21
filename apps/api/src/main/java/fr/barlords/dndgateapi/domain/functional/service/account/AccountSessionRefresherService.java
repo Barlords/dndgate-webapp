@@ -6,6 +6,7 @@ import fr.barlords.dndgateapi.domain.functional.model.account.AccountSession;
 import fr.barlords.dndgateapi.domain.functional.model.account.RefreshToken;
 import fr.barlords.dndgateapi.domain.functional.model.account.Session;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountSessionRefresherApi;
+import fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.OpaqueTokenSpi;
 import fr.barlords.dndgateapi.domain.port.out.SessionPersistenceSpi;
@@ -28,6 +29,8 @@ public class AccountSessionRefresherService implements AccountSessionRefresherAp
     private final SessionIssuerService sessionIssuer;
 
     private final Clock clock;
+
+    private final AccessRevocationSpi accessRevocation;
 
     @Override
     public AccountSession refresh(String refreshToken) {
@@ -63,6 +66,8 @@ public class AccountSessionRefresherService implements AccountSessionRefresherAp
     private AccountSession revokeBecauseOfReuse(Session session, Instant now) {
         log.warn("Refresh token reuse detected, revoking session {} of account {}", session.getId(), session.getAccountId());
         sessions.revokeSession(session.getId(), now);
+        // whoever holds the stolen tokens may already listen to the chat
+        accessRevocation.sessionRevoked(session.getId());
         throw new InvalidRefreshTokenException();
     }
 

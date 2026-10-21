@@ -17,7 +17,7 @@ class WebSocketConfigTest {
     void a_frame_has_a_size_limit_well_below_the_default_but_above_what_a_client_legitimately_sends() {
         Registration registration = new Registration();
 
-        new WebSocketConfig(null).configureWebSocketTransport(registration);
+        new WebSocketConfig(null, null, null).configureWebSocketTransport(registration);
 
         // the default is 64 KB; a CONNECT frame carries one JWT (about a kilobyte) and SUBSCRIBE a destination
         Assertions.assertTrue(registration.messageSizeLimit() <= 16 * 1024, "limit: " + registration.messageSizeLimit());
