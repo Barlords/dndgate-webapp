@@ -16,7 +16,7 @@ Statuts : `[ ]` à faire, `[~]` en cours, `[x]` fait.
 |---|---|---|---|
 | 25 | Limite par IP contournée en encodant une lettre du chemin | P1 | vérifié |
 | 26 | Invitations par e-mail illimitées : spam et saturation de la boîte d'envoi | P1 | lu |
-| 27 | N'importe qui peut verrouiller le compte de n'importe qui | P1 | corrigé |
+| 27 | N'importe qui peut verrouiller le compte de n'importe qui | P1 | lu |
 | 28 | La date d'une note du MJ ne change jamais, alors que l'API répond 201 | P1 | vérifié |
 | 29 | Un compte peut voter plusieurs fois au planning | P1 | vérifié |
 | 30 | La date d'un message est choisie par le client | P1 | vérifié |
@@ -64,7 +64,7 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
 - Test : la même boucle que ci-dessus doit donner `429` sur le chemin encodé.
 - Corrigé : `RateLimitFilter` compare désormais `UrlPathHelper.getPathWithinApplication` (chemin décodé et normalisé) ; `RateLimitEncodedPathIntegrationTest` couvre les six règles, contrôle par mutation fait (6 tests rouges avec l'ancien code).
 
-### 26. Invitations par e-mail illimitées — *lu*
+### 26. Invitations par e-mail illimitées — *corrigé*
 - [x] `POST /adventures/{id}/invitations/{pseudo}` (`AdventureUpdaterService.sendInvitationCode`, ligne 131) envoie un e-mail à chaque appel, sans aucune limite. Créer une aventure n'est pas limité non plus.
   Un compte peut donc écrire des centaines de fois au même joueur (les pseudos sont publics), ou à tous les joueurs.
 - Effets de bord :
@@ -184,7 +184,7 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
 - À la création, l'image est envoyée avant l'enregistrement du personnage : un enregistrement raté laisse une image orpheline.
 - Correctif : supprimer les images après le commit (le même `AfterCommit` que l'audit), en ignorant les échecs, qui sont journalisés ; supprimer l'image envoyée si l'enregistrement échoue ; à terme, un nettoyage périodique des objets orphelins.
 
-### 40. Aucune limite de quantité — *lu*
+### 40. Aucune limite de quantité — *corrigé*
 - [x] Rien ne borne le nombre de personnages (chacun avec une image de 5 Mo), d'aventures, de grimoires, de sorts par grimoire, de notes ou de messages par compte.
   Un participant peut remplir le stockage MinIO ; un compte peut créer des milliers d'aventures (et alimenter le point 26).
 - La v1 justifiait l'absence de pagination de ces listes par « bornées par nature (à revoir si on plafonne leur création) » : elles ne le sont pas.

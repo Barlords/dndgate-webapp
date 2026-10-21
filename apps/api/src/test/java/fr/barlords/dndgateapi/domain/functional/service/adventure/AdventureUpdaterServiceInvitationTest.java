@@ -232,6 +232,16 @@ class AdventureUpdaterServiceInvitationTest {
     }
 
     @Test
+    void both_invitation_windows_must_be_positive() {
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new InvitationLimits(3, null, RECIPIENT_WINDOW));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new InvitationLimits(3, Duration.ZERO, RECIPIENT_WINDOW));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new InvitationLimits(3, Duration.ofHours(-1), RECIPIENT_WINDOW));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new InvitationLimits(3, SENDER_WINDOW, null));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new InvitationLimits(3, SENDER_WINDOW, Duration.ZERO));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new InvitationLimits(3, SENDER_WINDOW, Duration.ofHours(-1)));
+    }
+
+    @Test
     void old_invitations_are_purged_after_the_longest_window() {
         new InvitationLogCleanerService(invitationLog, Clock.fixed(NOW, ZoneOffset.UTC),
                 new InvitationLimits(3, SENDER_WINDOW, RECIPIENT_WINDOW)).purgeExpired();

@@ -12,6 +12,12 @@ public record InvitationLimits(int senderMax, Duration senderWindow, Duration re
         if (senderMax < 1) {
             throw new IllegalArgumentException("The invitation limit per sender must be at least 1");
         }
+        if (senderWindow == null || senderWindow.isZero() || senderWindow.isNegative()) {
+            throw new IllegalArgumentException("The invitation window per sender must be positive");
+        }
+        if (recipientWindow == null || recipientWindow.isZero() || recipientWindow.isNegative()) {
+            throw new IllegalArgumentException("The invitation window per recipient must be positive");
+        }
     }
 
     /** Records older than this can no longer change the outcome of a limit. */

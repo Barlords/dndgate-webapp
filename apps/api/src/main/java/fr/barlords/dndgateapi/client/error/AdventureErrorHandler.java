@@ -21,12 +21,16 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import lombok.RequiredArgsConstructor;
+import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
 
 @RestControllerAdvice
 @Order(Ordered.HIGHEST_PRECEDENCE)
+@RequiredArgsConstructor
 public class AdventureErrorHandler {
+
+    private final Clock clock;
 
     @ExceptionHandler(AdventureNotFoundException.class)
     public ProblemDetail handleAdventureNotFoundException() {
@@ -65,7 +69,7 @@ public class AdventureErrorHandler {
 
     @ExceptionHandler(InvitationRateLimitException.class)
     public ResponseEntity<ProblemDetail> handleInvitationRateLimitException(InvitationRateLimitException exception) {
-        long retryAfterSeconds = Math.max(1, Duration.between(Instant.now(), exception.getRetryAt()).toSeconds());
+        long retryAfterSeconds = Math.max(1, Duration.between(clock.instant(), exception.getRetryAt()).toSeconds());
 
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                 .header(HttpHeaders.RETRY_AFTER, String.valueOf(retryAfterSeconds))
