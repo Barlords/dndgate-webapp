@@ -39,9 +39,13 @@ class ClientAddressesTest {
     }
 
     @Test
-    void something_that_is_not_an_address_is_left_alone() {
-        Assertions.assertEquals("not:an:address:at:all:zz", ClientAddresses.normalise("not:an:address:at:all:zz"));
-        Assertions.assertNull(ClientAddresses.normalise(null));
+    void anything_that_is_not_an_address_goes_to_one_fixed_bucket_without_name_resolution() {
+        String[] junk = {"abc:evil.example.com", "localhost", "evil.example.com", "", "   ", "not:an:address:at:all:zz",
+            "1.2.3", "999999999999", "a".repeat(5000), ":".repeat(5000), "::g"};
+        for (String value : junk) {
+            Assertions.assertEquals("invalid", ClientAddresses.normalise(value), value.length() > 40 ? "long value" : value);
+        }
+        Assertions.assertEquals("invalid", ClientAddresses.normalise(null));
     }
 
 }
