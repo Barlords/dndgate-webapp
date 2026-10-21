@@ -159,6 +159,46 @@ class FlywayMigrationIntegrationTest {
     }
 
     @Test
+    void duplicate_availability_votes_are_reduced_to_one_per_account_and_planning() throws Exception {
+        String url = newDatabase();
+        flyway(url, "5").migrate();
+        UUID planning = UUID.randomUUID();
+        UUID otherPlanning = UUID.randomUUID();
+        UUID account = UUID.randomUUID();
+        UUID otherAccount = UUID.randomUUID();
+        try (Connection connection = connect(url)) {
+            for (UUID[] vote : new UUID[][]{
+                    {planning, account}, {planning, account}, {planning, account},
+                    {planning, otherAccount}, {otherPlanning, account}}) {
+                UUID id = UUID.randomUUID();
+                try (PreparedStatement statement = connection.prepareStatement(
+                        "insert into availability (id, planning_id, account_id) values (?, ?, ?)")) {
+                    statement.setObject(1, id);
+                    statement.setObject(2, vote[0]);
+                    statement.setObject(3, vote[1]);
+                    statement.executeUpdate();
+                }
+                try (PreparedStatement statement = connection.prepareStatement(
+                        "insert into availability_dates (availability_id, availability_dates) values (?, '2027-01-01')")) {
+                    statement.setObject(1, id);
+                    statement.executeUpdate();
+                }
+            }
+        }
+
+        flyway(url, null).migrate();
+
+        try (Connection connection = connect(url)) {
+            Assertions.assertEquals(1, count(connection, "select count(*) from availability where planning_id = ? and account_id = ?", planning, account));
+            Assertions.assertEquals(1, count(connection, "select count(*) from availability where planning_id = ? and account_id = ?", planning, otherAccount));
+            Assertions.assertEquals(1, count(connection, "select count(*) from availability where planning_id = ? and account_id = ?", otherPlanning, account));
+            Assertions.assertEquals(3, count(connection, "select count(*) from availability"));
+            Assertions.assertEquals(3, count(connection, "select count(*) from availability_dates"), "the dates of removed votes go with them");
+            Assertions.assertEquals(0, count(connection, "select count(*) from availability_dates d where not exists (select 1 from availability a where a.id = d.availability_id)"));
+        }
+    }
+
+    @Test
     void two_pseudos_that_differ_only_by_case_stop_the_migration_and_leave_the_database_untouched() throws Exception {
         // the known risk of the case-insensitive uniqueness: it must fail loudly instead of corrupting anything
         String url = newDatabase();

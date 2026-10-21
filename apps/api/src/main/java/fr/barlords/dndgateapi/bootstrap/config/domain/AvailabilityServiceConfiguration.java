@@ -16,11 +16,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class AvailabilityServiceConfiguration {
     @Bean
-    public AvailabilityCreatorApi availabilityCreatorApi(
-            AvailabilityPersistenceSpi spi,
-            PlanningVisibilityVerifierService planningVisibilityVerifierService
-    ) {
-        return new AvailabilityCreatorService(spi, planningVisibilityVerifierService);
+    public AvailabilityCreatorApi availabilityCreatorApi(AvailabilityUpdaterApi availabilityUpdaterApi) {
+        return new AvailabilityCreatorService(availabilityUpdaterApi);
     }
 
     @Bean

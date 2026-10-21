@@ -1,27 +1,24 @@
 package fr.barlords.dndgateapi.domain.functional.service.planning;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.model.planning.Availability;
 import fr.barlords.dndgateapi.domain.port.in.planning.AvailabilityCreatorApi;
-import fr.barlords.dndgateapi.domain.port.out.AvailabilityPersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.in.planning.AvailabilityUpdaterApi;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 import java.util.UUID;
 
-@Slf4j
+/**
+ * An account has at most one vote per planning: creating a vote when one exists replaces its dates
+ * (create or replace, so the call can be repeated safely).
+ */
 @RequiredArgsConstructor
 public class AvailabilityCreatorService implements AvailabilityCreatorApi {
 
-    private final AvailabilityPersistenceSpi spi;
-
-    private final PlanningVisibilityVerifierService planningVisibilityVerifierService;
+    private final AvailabilityUpdaterApi updater;
 
     @Override
     public Availability create(UUID accountId, Availability availability) {
-        planningVisibilityVerifierService.verify(accountId, availability.getPlanningId());
-
-        return spi.save(availability.withAccountId(accountId)).getOrElseThrow(DataNotSaveException::new);
+        return updater.createOrUpdate(accountId, availability);
     }
 
 }
