@@ -155,8 +155,8 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
 - L'export envoie `Content-Disposition: form-data; name="attachment"; filename="book.json"` (`setContentDispositionFormData`, ligne 103), qui est l'en-tête d'un formulaire : il faut `ContentDisposition.attachment().filename("book.json")`.
 - Correctif : valider le DTO importé avec les mêmes contraintes que la création (via `Validator`, `@NotBlank`, `@Size`, liste ≤ N sorts de 255 caractères au plus), et répondre `400` avec la liste des erreurs.
 
-### 37. Ajout d'un sort sans identifiant — *vérifié*
-- [ ] `AddSpellToSpellBookRequest.spellIndex` n'a que `@Size` (ligne 8), sans `@NotBlank`. Mesuré : `POST /spellbooks/{id}/spells` `{}` répond **201 avec `"spellList":[null]`**, et rien n'est enregistré (Hibernate ignore l'élément nul). La réponse ment.
+### 37. Ajout d'un sort sans identifiant — *corrigé*
+- [x] Corrigé : `@NotBlank` sur `spellIndex` (400 sur `{}` ou texte blanc), pas de validation contre le SRD ; test + contrôle par mutation. Constat initial : `AddSpellToSpellBookRequest.spellIndex` n'a que `@Size` (ligne 8), sans `@NotBlank`. Mesuré : `POST /spellbooks/{id}/spells` `{}` répond **201 avec `"spellList":[null]`**, et rien n'est enregistré (Hibernate ignore l'élément nul). La réponse ment.
 - Correctif : `@NotBlank`. À décider : valider l'identifiant contre la liste des sorts du SRD (voir le point 58).
 
 ### 38. Un candidat dont le compte est supprimé peut devenir MJ — *lu*

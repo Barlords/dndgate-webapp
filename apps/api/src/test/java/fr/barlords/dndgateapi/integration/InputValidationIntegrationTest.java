@@ -99,6 +99,17 @@ class InputValidationIntegrationTest extends ApiIntegrationTestSupport {
                 Map.of("type", "candidate", "content", "x".repeat(20000), "adventureId", adventureId.toString())));
     }
 
+    @Test
+    void a_spell_needs_an_index() {
+        UUID bookId = UUID.fromString(call(HttpMethod.POST, "/spellbooks", master.token(),
+                Map.of("name", "Book", "description", "d")).getBody().toString().replaceAll(".*\"id\":\"([^\"]+)\".*", "$1"));
+        String path = "/spellbooks/" + bookId + "/spells";
+
+        Assertions.assertEquals(400, status(HttpMethod.POST, path, Map.of()));
+        Assertions.assertEquals(400, status(HttpMethod.POST, path, Map.of("spellIndex", "  ")));
+        Assertions.assertEquals(201, status(HttpMethod.POST, path, Map.of("spellIndex", "fireball")));
+    }
+
     // ---- texts made of spaces ----
 
     @Test
