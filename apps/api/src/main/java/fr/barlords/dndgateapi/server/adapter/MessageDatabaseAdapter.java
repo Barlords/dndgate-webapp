@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -66,5 +67,17 @@ public class MessageDatabaseAdapter implements MessagePersistenceSpi {
     @Transactional
     public List<Message> findBySenderId(UUID senderId) {
         return repository.findMessageEntitiesBySenderIdOrderBySendDate(senderId).stream().map(MessageEntityMapper::toDomain).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countBySenderIdSince(UUID senderId, Instant since) {
+        return repository.countBySenderIdSince(senderId, since);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Instant> findOldestSendDateBySenderIdSince(UUID senderId, Instant since) {
+        return repository.findOldestSendDateBySenderIdSince(senderId, since);
     }
 }

@@ -29,4 +29,6 @@ public interface GameCharacterRepository extends JpaRepository<GameCharacterEnti
     @Query("delete from GameCharacterEntity e where e.adventure.id = :adventureId")
     void deleteByAdventureId(@Param("adventureId") UUID adventureId);
 
+
+    long countByOwner_IdAndAdventure_Id(UUID ownerId, UUID adventureId);
 }

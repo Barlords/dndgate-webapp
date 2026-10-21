@@ -64,7 +64,10 @@ class AdventureUpdaterServiceUpdateTest {
     @BeforeEach
     void setUp() {
         service = new AdventureUpdaterService(spi, adventureFinderApi, currentAccountService,
-                adventureOwnerVerifierService, accountFinderApi, emailingSpi);
+                adventureOwnerVerifierService, accountFinderApi, emailingSpi,
+                org.mockito.Mockito.mock(fr.barlords.dndgateapi.domain.port.out.InvitationLogSpi.class), java.time.Clock.systemUTC(),
+                new fr.barlords.dndgateapi.domain.functional.model.adventure.InvitationLimits(20, java.time.Duration.ofHours(1), java.time.Duration.ofHours(24)),
+                org.mockito.Mockito.mock(fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi.class));
     }
 
     private void masterIsOwner() {

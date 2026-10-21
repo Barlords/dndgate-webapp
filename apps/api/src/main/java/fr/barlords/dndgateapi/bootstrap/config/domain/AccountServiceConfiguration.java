@@ -6,8 +6,10 @@ import fr.barlords.dndgateapi.domain.functional.service.adventure.master.MasterT
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
 import fr.barlords.dndgateapi.domain.functional.service.account.*;
 import fr.barlords.dndgateapi.domain.port.in.account.*;
+import fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi;
 import fr.barlords.dndgateapi.domain.port.out.AccessTokenSpi;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
+import fr.barlords.dndgateapi.domain.port.out.LoginFailureSpi;
 import fr.barlords.dndgateapi.domain.port.out.PasswordHasherSpi;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
 import fr.barlords.dndgateapi.bootstrap.config.TransactionalAccountAnonymizer;
@@ -70,11 +72,12 @@ public class AccountServiceConfiguration {
             AccountSessionRevokerApi accountSessionRevokerApi,
             MasterTransferNotifier masterTransferNotifier,
             Clock clock,
-            AuditSpi audit
+            AuditSpi audit,
+            LoginFailureSpi loginFailures
     ) {
         return new TransactionalAccountAnonymizer(new AccountAnonymizerService(
                 accounts, adventures, spellBooks, passwordHasher, opaqueTokenSpi, accountPasswordVerifierService,
-                accountSessionRevokerApi, masterTransferNotifier, clock, audit));
+                accountSessionRevokerApi, masterTransferNotifier, clock, audit, loginFailures));
     }
 
     @Bean
@@ -123,13 +126,15 @@ public class AccountServiceConfiguration {
 
     @Bean
     public AccountPasswordVerifierService accountPasswordVerifierService(
-            AccountPersistenceSpi spi,
+            LoginFailureSpi loginFailures,
             PasswordHasherSpi passwordHasher,
             Clock clock,
             @Value("${security.login.max-failed-attempts:5}") int maxFailedAttempts,
-            @Value("${security.login.lock-duration:PT15M}") Duration lockDuration
+            @Value("${security.login.lock-duration:PT15M}") Duration lockDuration,
+            @Value("${security.login.distinct-clients-warning-threshold:50}") int distinctClientsWarningThreshold
     ) {
-        return new AccountPasswordVerifierService(spi, passwordHasher, clock, maxFailedAttempts, lockDuration);
+        return new AccountPasswordVerifierService(loginFailures, passwordHasher, clock, maxFailedAttempts, lockDuration,
+                distinctClientsWarningThreshold);
     }
 
     @Bean
@@ -150,14 +155,20 @@ public class AccountServiceConfiguration {
             SessionPersistenceSpi sessions,
             OpaqueTokenSpi opaqueTokenSpi,
             SessionIssuerService sessionIssuerService,
-            Clock clock
+            Clock clock,
+            AccessRevocationSpi accessRevocation
     ) {
-        return new AccountSessionRefresherService(accounts, sessions, opaqueTokenSpi, sessionIssuerService, clock);
+        return new AccountSessionRefresherService(accounts, sessions, opaqueTokenSpi, sessionIssuerService, clock,
+                accessRevocation);
     }
 
     @Bean
-    public AccountSessionRevokerApi accountSessionRevokerApi(SessionPersistenceSpi sessions, Clock clock) {
-        return new AccountSessionRevokerService(sessions, clock);
+    public AccountSessionRevokerApi accountSessionRevokerApi(
+            SessionPersistenceSpi sessions,
+            Clock clock,
+            AccessRevocationSpi accessRevocation
+    ) {
+        return new AccountSessionRevokerService(sessions, clock, accessRevocation);
     }
 
     @Bean
@@ -168,6 +179,15 @@ public class AccountServiceConfiguration {
     @Bean
     public SessionCleanerApi sessionCleanerApi(SessionPersistenceSpi sessions, Clock clock) {
         return new SessionCleanerService(sessions, clock);
+    }
+
+    @Bean
+    public LoginFailureCleanerApi loginFailureCleanerApi(
+            LoginFailureSpi loginFailures,
+            Clock clock,
+            @Value("${security.login.lock-duration:PT15M}") Duration lockDuration
+    ) {
+        return new LoginFailureCleanerService(loginFailures, clock, lockDuration);
     }
 
     @Bean

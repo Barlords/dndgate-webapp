@@ -9,10 +9,8 @@ import fr.barlords.dndgateapi.server.repository.AccountRepository;
 import io.vavr.control.Either;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -75,18 +73,5 @@ public class AccountDatabaseAdapter implements AccountPersistenceSpi {
     public Account update(Account o) {
         return AccountEntityMapper.toDomain(repository.save(AccountEntityMapper.fromDomain(o)));
     }
-
-    @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void registerFailedLogin(UUID id, int maxAttempts, Instant lockedUntil) {
-        repository.registerFailedLogin(id, maxAttempts, lockedUntil);
-    }
-
-    @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void resetFailedLogins(UUID id) {
-        repository.resetFailedLogins(id);
-    }
-
 
 }

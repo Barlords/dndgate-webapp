@@ -2,7 +2,6 @@ package fr.barlords.dndgateapi.domain.port.out;
 
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,13 +21,5 @@ public interface AccountPersistenceSpi extends PersistenceSpi<Account, UUID> {
     Optional<Account> findByVerificationCode(String code);
 
     Account update(Account o);
-
-    /**
-     * Counts one more failed login, atomically, and locks the account until the given instant
-     * when the number of consecutive failures reaches the maximum.
-     */
-    void registerFailedLogin(UUID id, int maxAttempts, Instant lockedUntil);
-
-    void resetFailedLogins(UUID id);
 
 }

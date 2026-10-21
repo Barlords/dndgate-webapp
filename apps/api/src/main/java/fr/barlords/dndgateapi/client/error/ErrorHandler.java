@@ -8,7 +8,14 @@ import fr.barlords.dndgateapi.domain.functional.exception.InvalidPictureExceptio
 import fr.barlords.dndgateapi.domain.functional.exception.UuidFormatNotValidException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import fr.barlords.dndgateapi.domain.functional.exception.MessageRateLimitException;
+import fr.barlords.dndgateapi.domain.functional.exception.QuantityLimitExceededException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import lombok.RequiredArgsConstructor;
+import java.time.Clock;
+import java.time.Duration;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -21,7 +28,24 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
  */
 @RestControllerAdvice
 @Order(Ordered.HIGHEST_PRECEDENCE)
+@RequiredArgsConstructor
 public class ErrorHandler {
+
+    private final Clock clock;
+
+    @ExceptionHandler(QuantityLimitExceededException.class)
+    public ProblemDetail handleQuantityLimitExceededException(QuantityLimitExceededException exception) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+    }
+
+    @ExceptionHandler(MessageRateLimitException.class)
+    public ResponseEntity<ProblemDetail> handleMessageRateLimitException(MessageRateLimitException exception) {
+        long retryAfterSeconds = Math.max(1, Duration.between(clock.instant(), exception.getRetryAt()).toSeconds());
+
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(retryAfterSeconds))
+                .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, exception.getMessage()));
+    }
 
     @ExceptionHandler(InvalidPictureException.class)
     public ProblemDetail handleInvalidPictureException() {

@@ -56,15 +56,6 @@ public class Account {
     @With
     Instant pendingEmailExpiresAt;
 
-    /** Consecutive failed logins since the last success (or the end of the last lock). */
-    @Builder.Default
-    @With
-    int failedLoginAttempts = 0;
-
-    /** The account cannot log in until this instant, when too many logins failed. */
-    @With
-    Instant lockedUntil;
-
     /** Set when the account was anonymized: it keeps its id, but nothing identifies the person anymore. */
     @With
     Instant anonymizedAt;
@@ -93,10 +84,6 @@ public class Account {
 
     public boolean isAnonymized() {
         return anonymizedAt != null;
-    }
-
-    public boolean isLockedAt(Instant now) {
-        return lockedUntil != null && lockedUntil.isAfter(now);
     }
 
 }

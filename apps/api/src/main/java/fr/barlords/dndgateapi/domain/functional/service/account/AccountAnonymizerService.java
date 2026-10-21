@@ -1,10 +1,12 @@
 package fr.barlords.dndgateapi.domain.functional.service.account;
 
 import fr.barlords.dndgateapi.domain.port.out.AuditSpi;
+import fr.barlords.dndgateapi.domain.port.out.LoginFailureSpi;
 import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.AccountNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.WrongPasswordException;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
+import fr.barlords.dndgateapi.domain.functional.model.account.ClientAddress;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.functional.service.adventure.master.MasterTransferNotifier;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureStatus;
@@ -52,8 +54,10 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
 
     private final AuditSpi audit;
 
+    private final LoginFailureSpi loginFailures;
+
     @Override
-    public void anonymize(UUID accountId, String password) {
+    public void anonymize(UUID accountId, String password, ClientAddress client) {
         Account account = accounts.findById(accountId)
                 .orElseThrow(AccountNotFoundException::new);
 
@@ -62,7 +66,7 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
             return;
         }
 
-        passwordVerifier.verify(account, password, WrongPasswordException::new);
+        passwordVerifier.verify(account, password, client, WrongPasswordException::new);
 
         abortOwnedAdventuresThatHaveNotStarted(accountId);
         freeSeatsInAdventuresThatHaveNotStarted(accountId);
@@ -70,6 +74,8 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
 
         accounts.save(anonymousVersionOf(account))
                 .getOrElseThrow(DataNotSaveException::new);
+
+        loginFailures.deleteByAccount(accountId);
 
         sessionRevoker.logoutAll(accountId);
 
@@ -90,8 +96,6 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
                 .withPendingEmail(null)
                 .withPendingEmailCode(null)
                 .withPendingEmailExpiresAt(null)
-                .withFailedLoginAttempts(0)
-                .withLockedUntil(null)
                 .withAnonymizedAt(clock.instant());
     }
 

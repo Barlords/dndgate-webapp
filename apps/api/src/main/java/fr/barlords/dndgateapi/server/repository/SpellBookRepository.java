@@ -15,4 +15,6 @@ public interface SpellBookRepository extends JpaRepository<SpellBookEntity, UUID
 
     List<SpellBookEntity> findByOwner_Id(UUID owner_id);
 
+
+    long countByOwner_Id(UUID ownerId);
 }

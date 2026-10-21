@@ -8,6 +8,7 @@ import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountFinderApi;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureFinderApi;
+import fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
 import io.vavr.control.Either;
@@ -27,6 +28,8 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -50,6 +53,9 @@ class AdventureUpdaterServiceQuitTest {
     @Mock
     private EmailingSpi emailingSpi;
 
+    @Mock
+    private AccessRevocationSpi accessRevocation;
+
     private AdventureUpdaterService service;
 
     private final Account leaver = Account.builder().pseudo("leaver").email("leaver@test.fr").build();
@@ -59,7 +65,10 @@ class AdventureUpdaterServiceQuitTest {
     @BeforeEach
     void setUp() {
         service = new AdventureUpdaterService(spi, adventureFinderApi, currentAccountService,
-                adventureOwnerVerifierService, accountFinderApi, emailingSpi);
+                adventureOwnerVerifierService, accountFinderApi, emailingSpi,
+                org.mockito.Mockito.mock(fr.barlords.dndgateapi.domain.port.out.InvitationLogSpi.class), java.time.Clock.systemUTC(),
+                new fr.barlords.dndgateapi.domain.functional.model.adventure.InvitationLimits(20, java.time.Duration.ofHours(1), java.time.Duration.ofHours(24)),
+                accessRevocation);
         when(currentAccountService.getAccountById(leaver.getId())).thenReturn(leaver);
     }
 
@@ -82,6 +91,18 @@ class AdventureUpdaterServiceQuitTest {
     }
 
     @Test
+    void the_live_channels_of_the_player_who_leaves_are_cut_and_only_theirs() {
+        Adventure adventure = adventureWith(stayer.getId(), leaver.getId());
+        when(adventureFinderApi.findById(adventure.getId())).thenReturn(Optional.of(adventure));
+        when(spi.save(any(Adventure.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+
+        service.quitAdventure(adventure.getId(), leaver.getId());
+
+        verify(accessRevocation).participationEnded(leaver.getId(), adventure.getId());
+        verifyNoMoreInteractions(accessRevocation);
+    }
+
+    @Test
     void the_list_read_from_the_database_is_not_modified_in_place() {
         Adventure adventure = adventureWith(stayer.getId(), leaver.getId());
         when(adventureFinderApi.findById(adventure.getId())).thenReturn(Optional.of(adventure));
@@ -101,6 +122,7 @@ class AdventureUpdaterServiceQuitTest {
                 () -> service.quitAdventure(adventure.getId(), leaver.getId()));
 
         verify(spi, never()).save(any());
+        verifyNoInteractions(accessRevocation);
     }
 
     @Test
@@ -120,5 +142,6 @@ class AdventureUpdaterServiceQuitTest {
         when(spi.save(any(Adventure.class))).thenReturn(Either.left(null));
 
         Assertions.assertThrows(DataNotSaveException.class, () -> service.quitAdventure(adventure.getId(), leaver.getId()));
+        verifyNoInteractions(accessRevocation);
     }
 }

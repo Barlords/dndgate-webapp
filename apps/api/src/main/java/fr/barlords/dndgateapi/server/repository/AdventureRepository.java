@@ -38,4 +38,10 @@ public interface AdventureRepository extends JpaRepository<AdventureEntity, UUID
 
     Optional<AdventureEntity> findByInvitationCode(String invitationCode);
 
+
+    /** Adventures the account runs that are not over: the ones that count against its limit. */
+    @Query("SELECT COUNT(a) FROM AdventureEntity a WHERE a.creatorId = :ownerId AND a.masterVacantSince IS NULL "
+            + "AND a.status IN (fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureStatus.NOT_STARTED, "
+            + "fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureStatus.ONGOING)")
+    long countActiveByCreatorId(@Param("ownerId") UUID ownerId);
 }

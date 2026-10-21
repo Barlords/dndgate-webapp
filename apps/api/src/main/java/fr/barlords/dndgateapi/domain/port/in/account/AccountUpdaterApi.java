@@ -2,6 +2,7 @@ package fr.barlords.dndgateapi.domain.port.in.account;
 
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.functional.model.account.AccountChanges;
+import fr.barlords.dndgateapi.domain.functional.model.account.ClientAddress;
 
 import java.util.UUID;
 
@@ -14,6 +15,6 @@ public interface AccountUpdaterApi {
      *
      * @throws fr.barlords.dndgateapi.domain.functional.exception.account.WrongPasswordException when the current password is wrong
      */
-    Account update(UUID accountId, String currentPassword, AccountChanges changes);
+    Account update(UUID accountId, String currentPassword, AccountChanges changes, ClientAddress client);
 
 }

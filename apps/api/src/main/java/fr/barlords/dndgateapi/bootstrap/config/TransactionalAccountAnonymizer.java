@@ -1,5 +1,6 @@
 package fr.barlords.dndgateapi.bootstrap.config;
 
+import fr.barlords.dndgateapi.domain.functional.model.account.ClientAddress;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountAnonymizerApi;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,8 +18,8 @@ public class TransactionalAccountAnonymizer implements AccountAnonymizerApi {
 
     @Override
     @Transactional
-    public void anonymize(UUID accountId, String password) {
-        delegate.anonymize(accountId, password);
+    public void anonymize(UUID accountId, String password, ClientAddress client) {
+        delegate.anonymize(accountId, password, client);
     }
 
 }

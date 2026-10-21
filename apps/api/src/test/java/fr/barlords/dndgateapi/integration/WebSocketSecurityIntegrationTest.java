@@ -191,6 +191,59 @@ class WebSocketSecurityIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertThrows(TimeoutException.class, () -> received.get(1, TimeUnit.SECONDS));
     }
 
+    /** Only the exact topics of an adventure exist: anything else is refused, even to a participant. */
+    private void assertSubscriptionRefused(TestAccount participant, String destination) throws Exception {
+        Probe probe = connect(participant.token());
+        StompSession session = probe.connected.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        subscribe(session, destination);
+
+        Assertions.assertNotNull(probe.rejected.get(TIMEOUT_SECONDS, TimeUnit.SECONDS), destination);
+    }
+
+    @Test
+    void a_participant_cannot_subscribe_to_a_destination_that_is_not_exactly_an_adventure_topic() throws Exception {
+        TestAccount owner = registerAndLogin();
+        UUID adventureId = createAdventure(owner, "PUBLIC");
+
+        assertSubscriptionRefused(owner, "/topic/adventure/x/" + adventureId);
+        assertSubscriptionRefused(owner, "/topic/adventure/" + adventureId);
+        assertSubscriptionRefused(owner, "/topic/adventure/chat/" + adventureId + "/extra");
+        assertSubscriptionRefused(owner, "/topic/adventure/chat/" + adventureId + "/");
+        assertSubscriptionRefused(owner, "/topic/adventure/chat/x/" + adventureId);
+        assertSubscriptionRefused(owner, "/topic/adventure/chat/" + adventureId.toString().replace("-", ""));
+        assertSubscriptionRefused(owner, "/topic/adventure/chat/*");
+        assertSubscriptionRefused(owner, "/topic/adventure/webrtc/**");
+        assertSubscriptionRefused(owner, "/topic/other/chat/" + adventureId);
+    }
+
+    /** The server publishes to the lowercase form only: another spelling would never receive anything, it is refused. */
+    @Test
+    void an_uppercase_adventure_id_is_refused() throws Exception {
+        TestAccount owner = registerAndLogin();
+        UUID adventureId = createAdventure(owner, "PUBLIC");
+
+        assertSubscriptionRefused(owner, "/topic/adventure/chat/" + adventureId.toString().toUpperCase());
+    }
+
+    /** limits.websocket.subscriptions-per-connection, 20 by default. */
+    @Test
+    void a_connection_cannot_open_more_than_twenty_subscriptions() throws Exception {
+        TestAccount owner = registerAndLogin();
+        UUID adventureId = createAdventure(owner, "PUBLIC");
+
+        Probe probe = connect(owner.token());
+        StompSession session = probe.connected.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        for (int i = 0; i < 20; i++) {
+            subscribe(session, (i % 2 == 0 ? "/topic/adventure/chat/" : "/topic/adventure/webrtc/") + adventureId);
+        }
+        Assertions.assertThrows(TimeoutException.class, () -> probe.rejected.get(1, TimeUnit.SECONDS),
+                "twenty subscriptions are allowed");
+
+        subscribe(session, "/topic/adventure/chat/" + adventureId);
+
+        Assertions.assertNotNull(probe.rejected.get(TIMEOUT_SECONDS, TimeUnit.SECONDS), "the twenty-first is refused");
+    }
+
     @Test
     void clients_cannot_publish_messages_themselves() throws Exception {
         TestAccount owner = registerAndLogin();

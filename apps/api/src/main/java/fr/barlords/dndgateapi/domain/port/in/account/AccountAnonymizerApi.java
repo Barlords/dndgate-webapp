@@ -1,5 +1,7 @@
 package fr.barlords.dndgateapi.domain.port.in.account;
 
+import fr.barlords.dndgateapi.domain.functional.model.account.ClientAddress;
+
 import java.util.UUID;
 
 public interface AccountAnonymizerApi {
@@ -16,6 +18,6 @@ public interface AccountAnonymizerApi {
      *
      * @throws fr.barlords.dndgateapi.domain.functional.exception.account.WrongPasswordException when the password is wrong
      */
-    void anonymize(UUID accountId, String password);
+    void anonymize(UUID accountId, String password, ClientAddress client);
 
 }

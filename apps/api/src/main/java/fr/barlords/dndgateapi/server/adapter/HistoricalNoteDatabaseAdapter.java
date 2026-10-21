@@ -57,4 +57,10 @@ public class HistoricalNoteDatabaseAdapter implements HistoricalNotePersistenceS
                 HistoricalNoteEntityMapper::toDomain);
     }
 
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countByAdventureId(UUID adventureId) {
+        return repository.countByAdventure_Id(adventureId);
+    }
 }

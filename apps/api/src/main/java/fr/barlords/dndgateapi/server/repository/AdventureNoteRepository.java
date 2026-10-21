@@ -29,4 +29,6 @@ public interface AdventureNoteRepository extends JpaRepository<AdventureNoteEnti
     @Query("delete from AdventureNoteEntity e where e.adventure.id = :adventureId")
     void deleteByAdventureId(@Param("adventureId") UUID adventureId);
 
+
+    long countByAdventure_Id(UUID adventureId);
 }

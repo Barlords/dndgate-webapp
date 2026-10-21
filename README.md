@@ -101,7 +101,16 @@ Les listes bornées par nature (personnages d'une aventure ou d'un compte, grimo
 - **Images** : 5 Mo au plus (`413` au-delà). Seuls le **PNG** et le **JPEG** sont acceptés, reconnus par le **contenu** du fichier (signature) et non par le type annoncé par le client ; un autre contenu, un fichier vide ou tronqué répond `400`. L'extension du fichier stocké suit le format réel (`.png` ou `.jpg`).
 - **Textes obligatoires** (noms, descriptions, contenus) : non vides une fois les espaces retirés. **Textes facultatifs d'une modification** (`PATCH`) : s'ils sont présents, non vides ; **absents, ils ne changent pas**.
 - **Plannings et disponibilités** : de 1 à 100 dates. **Dates** (plannings, disponibilités, notes) : entre les années 1900 et 2200, sinon `400` (le format accepte des années que PostgreSQL ne sait pas stocker, ce qui finissait en `500`). **Signaux WebRTC** : type `offer`, `answer` ou `candidate`, contenu de 20 000 caractères au plus.
-- **WebSocket** : un client n'envoie que `CONNECT`, `SUBSCRIBE` et des battements de cœur ; toute publication est refusée. Une trame de plus de 16 Ko coupe la connexion avant d'être lue.
+- **Quantités** : au-delà d'un plafond, la création répond `409` (`application/problem+json`) ; les plafonds sont comptés en base par des requêtes `COUNT` et appliqués par le domaine (clés `limits.*` de `application-dev.properties` / `application-prod.properties`) :
+  - **10 personnages** par joueur et par aventure (`limits.characters-per-player-and-adventure`), vérifié avant le stockage de l'image ;
+  - **50 aventures actives** par compte comme MJ (`limits.active-adventures-per-master`) : celles dont le compte est le MJ (`creator_id`, sans MJ vacant) et dont le statut est `NOT_STARTED` ou `ONGOING` ; une aventure terminée ou abandonnée ne compte plus ;
+  - **100 grimoires** par compte (`limits.spell-books-per-account`), import compris ;
+  - **1 000 sorts** par grimoire (`limits.spells-per-spell-book`), import compris ; ajouter un sort déjà présent n'est pas une erreur ;
+  - **500 notes d'aventure** et **500 notes d'historique** par aventure (`limits.adventure-notes-per-adventure`, `limits.historical-notes-per-adventure`) ;
+  - **30 messages par compte et par minute** (`limits.messages.max`, `limits.messages.window`) : au-delà, `429` avec `Retry-After` (secondes). Les messages sont comptés en base sur la dernière minute (index `message(sender_id, send_date)`).
+  Rouvrir une aventure terminée ou abandonnée contourne le plafond d'aventures actives, jusqu'à ce que le point 34 (machine à états du statut) interdise de quitter `FINISH` / `ABORT` ; le transfert de MJ (cession, réclamation) ne vérifie volontairement pas le plafond du nouveau MJ.
+  Les comptages ne sont pas verrouillés : deux créations simultanées peuvent dépasser un plafond d'une unité ou deux. Les limites de taille des images ne changent pas.
+- **WebSocket** : un client n'envoie que `CONNECT`, `SUBSCRIBE` (et `UNSUBSCRIBE`) et des battements de cœur ; toute publication est refusée. Une trame de plus de 16 Ko coupe la connexion avant d'être lue. Seules les destinations exactes `/topic/adventure/chat/{id}` et `/topic/adventure/webrtc/{id}` (UUID en minuscules, rien avant ni après) sont acceptées au `SUBSCRIBE`. Une connexion ouvre au plus **20 abonnements** (`limits.websocket.subscriptions-per-connection`) ; un identifiant d'abonnement déjà utilisé sur la connexion est refusé, comme un second `CONNECT`. Limite connue : Spring ne garantit pas l'ordre de traitement des trames reçues d'une même connexion (pas d'option `preserveReceiveOrder` sur le canal entrant) ; un `UNSUBSCRIBE` suivi aussitôt d'un `SUBSCRIBE` avec le même identifiant peut donc être refusé si le second passe avant le premier. Le client doit attendre ou changer d'identifiant.
 - Toutes les routes qui reçoivent un corps JSON sont validées (`@Valid`).
 - **Erreurs** : chaque réponse d'erreur (`application/problem+json`) porte un `correlationId`, le même que l'en-tête `X-Request-Id` et que sur chaque ligne de log de la requête ; c'est l'identifiant à donner pour signaler un problème.
 
@@ -173,6 +182,18 @@ Un seul MJ par aventure, et lui seul a les droits de MJ (modifier, changer le st
 - Dans les deux cas : l'aventure doit être `NOT_STARTED` et avoir encore de la place (409 sinon) ; on ne la rejoint pas deux fois, et le propriétaire en est déjà participant.
 - Quand la dernière place est prise, l'aventure démarre (`ONGOING`) et devient privée.
 - Les codes d'invitation et de vérification sont générés avec `SecureRandom` (une règle ArchUnit interdit `java.util.Random`).
+
+### Inviter un joueur par e-mail
+
+`POST /adventures/{id}/invitations/{pseudo}` (le MJ seulement) envoie le code d'invitation par e-mail. Il est refusé :
+
+- `409` si l'aventure n'est plus `NOT_STARTED` (démarrée, terminée ou abandonnée) ou si le destinataire y participe déjà (joueur ou MJ) ;
+- `429` avec `Retry-After` (secondes) et un `application/problem+json` si une limite est atteinte :
+  - **par expéditeur** : 20 invitations par heure (`invitation.rate-limit.sender.max`, `invitation.rate-limit.sender.window`) ;
+  - **par destinataire** : une invitation par aventure et par 24 h (`invitation.rate-limit.recipient.window`).
+
+Contrairement aux limites par adresse IP, celles-ci sont comptées en base (table `sent_invitations`) : elles survivent à un redémarrage et valent pour toutes les instances.
+Une invitation refusée n'est pas comptée. Les lignes plus anciennes que la plus longue fenêtre sont purgées chaque nuit (même cron que les sessions, `security.session.cleanup-cron`).
 
 ### Suppression de compte
 
@@ -246,9 +267,27 @@ Seuls les champs fournis changent. Changer le mot de passe termine toutes les se
 
 ### Protection contre la force brute
 
-- **Verrouillage du compte** : après 5 échecs consécutifs (`security.login.max-failed-attempts`), le compte est verrouillé 15 min
-  (`security.login.lock-duration`) et répond `429` avec `Retry-After`, même avec le bon mot de passe. Un succès remet le compteur à zéro.
-  Le compteur est incrémenté de façon atomique en base : des tentatives parallèles ne peuvent pas le contourner.
+- **Verrouillage du compte, par couple (compte, adresse IP du client)** : après 5 échecs consécutifs depuis la même adresse (`security.login.max-failed-attempts`),
+  le compte est verrouillé 15 min **pour cette adresse** (`security.login.lock-duration`) et répond `429` avec `Retry-After`, même avec le bon mot de passe.
+  Les autres adresses ne sont pas touchées et peuvent se connecter avec le bon mot de passe. Un succès remet à zéro le compteur de cette adresse.
+  Le compteur est incrémenté de façon atomique en base, mais la vérification du verrou puis l'enregistrement de l'échec ne le sont pas :
+  une rafale de requêtes simultanées peut obtenir quelques essais de plus que 5 avant que le verrou ne s'applique (borné par la limite par IP).
+  Les trois points d'entrée qui vérifient un mot de passe (connexion, `DELETE /accounts`, `PATCH /accounts`) partagent le même compteur, avec la même règle.
+  - **Pourquoi** : les pseudos sont publics, donc un verrou partagé par toutes les adresses permettait à n'importe qui d'empêcher le titulaire de se connecter,
+    en recommençant toutes les 15 minutes (point 27 de l'audit v2).
+  - **La limite du compromis** : un attaquant qui dispose de nombreuses adresses n'est plus bloqué par le verrou (5 essais par adresse et par 15 min), il est seulement
+    ralenti par la limitation par adresse IP ci-dessous. Une défense contre la force brute distribuée repose sur la robustesse du mot de passe, pas sur ce verrou.
+  - **Alerte, sans blocage** : quand le nombre d'adresses différentes ayant échoué contre le même compte dans la fenêtre de verrouillage atteint 50
+    (`security.login.distinct-clients-warning-threshold`), l'API écrit un `WARN`, une fois au franchissement du seuil (identifiant du compte et nombre d'adresses, ni adresse ni mot de passe).
+  - **Quelle adresse** : l'adresse de la connexion (`getRemoteAddr`), jamais un en-tête lu directement. Derrière le reverse proxy, `server.forward-headers-strategy=native`
+    la remplace par celle du client, seulement si l'appel vient d'un proxy de confiance. Sans cela, toutes les requêtes auraient l'adresse du proxy et partageraient le même verrou.
+    En production, le reverse proxy doit **ajouter à** ou **écraser** `X-Forwarded-For` (jamais le transmettre tel quel), et Tomcat fait confiance par défaut à tout pair situé dans une plage interne
+    (loopback, 10.x, 172.16-31.x, 192.168.x) : `docker-compose.prod` ne publie le port de l'API que sur 127.0.0.1, ce qui doit rester vrai.
+  - **IPv6** : un client IPv6 possède en général un /64 entier et peut y changer d'adresse gratuitement. Une adresse IPv6 est donc comptée par son préfixe /64
+    (verrou et limitation par IP), et une adresse IPv4-mappée (`::ffff:a.b.c.d`) est traitée comme l'IPv4. Un attaquant qui change de /64 (ou d'adresse IPv4) échappe quand même au verrou.
+  - **Donnée personnelle** : une adresse IP en est une. Elle n'est stockée que sous forme d'un SHA-256 non salé (pseudonymisation, pas anonymisation : l'espace IPv4 se parcourt en entier)
+    dans la table `login_failures` (migration V10), avec le nombre d'échecs et la fin du verrou. Elle est gardée au plus la durée de la fenêtre de verrouillage :
+    la purge nocturne supprime les lignes dont le dernier échec est plus ancien, et la suppression du compte efface celles du compte.
 - **Limitation par adresse IP** (`429` + `Retry-After`), en mémoire donc par instance de l'API :
 
 | Endpoint | Limite par défaut |
@@ -281,6 +320,12 @@ Règles d'accès :
 - **Évaluations (ratings)** : on ne peut noter un compte que si l'on a joué une aventure avec lui, c'est-à-dire une aventure démarrée (`ONGOING` ou `FINISH`) dont les deux comptes sont participants. On ne peut pas se noter soi-même, ni noter deux fois le même compte (`POST` répond 409, `PUT` met à jour). La note est comprise entre 1 et 5. La moyenne d'un compte est publique ; le détail des notes reçues n'est lisible que par le compte noté.
 - Planning : lisible tant que l'aventure est visible (publique, ou participant), pour que des candidats puissent voter avant de rejoindre ; créé ou modifié par le propriétaire seulement. Les votes de tous ne sont lisibles que par les participants, et chacun ne peut voter que pour soi.
 - WebSocket : le client envoie le jeton dans l'en-tête STOMP `Authorization` au `CONNECT` ; il ne peut pas publier lui-même, seul le serveur diffuse.
+- **Fin d'accès sur une connexion WebSocket ouverte** : la règle « participant » n'est pas jugée qu'au `SUBSCRIBE`. Dès que l'opération est validée en base (rien n'est coupé pour une opération annulée) :
+  - un joueur qui **quitte l'aventure**, un **ancien MJ qui n'a pas de place** de joueur après un changement de MJ, et tous les abonnés d'une **aventure supprimée** perdent leurs abonnements à cette aventure (chat et WebRTC) ; la connexion reste ouverte pour leurs autres aventures ;
+  - une **session révoquée** (`logout`, jeton de rafraîchissement rejoué) ferme les connexions ouvertes avec ses jetons ; `logout-all`, un **changement de mot de passe** et la **suppression du compte** ferment toutes les connexions du compte (code de fermeture 1008). Les autres sessions du même compte ne sont pas touchées par un simple `logout`.
+  - En plus, le serveur ne livre une diffusion qu'aux abonnements qu'il sait encore autorisés, et seulement si elle concerne l'aventure pour laquelle l'abonnement a été accepté ; une connexion révoquée ne peut plus s'abonner.
+  - **Une seule instance de l'API** : les connexions et abonnements sont suivis en mémoire, avec le broker simple de Spring. Avec plusieurs instances, une révocation n'atteindrait que les connexions de l'instance qui la traite : il faudrait alors un broker externe et propager les révocations.
+  - L'expiration du jeton d'accès (15 min) ne ferme pas une connexion déjà ouverte : seules la révocation de la session et la fin de la participation coupent. Quitter le rôle de MJ (`step-down`) ne coupe rien : l'ancien MJ reste participant tant que le siège est vacant.
 
 Les tests d'intégration (`apps/api/src/test/.../integration`) démarrent l'application contre un vrai
 PostgreSQL via Testcontainers : Docker doit être lancé pour exécuter `./mvnw verify`.

@@ -1,5 +1,6 @@
 package fr.barlords.dndgateapi.bootstrap.config;
 
+import fr.barlords.dndgateapi.client.service.ClientAddresses;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -73,7 +74,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         for (Rule rule : rules) {
             if (rule.method().matches(request.getMethod()) && rule.path().equals(path)) {
-                long retryAfter = rateLimiter.tryAcquire(rule.name() + ":" + request.getRemoteAddr(), rule.max(), rule.window());
+                long retryAfter = rateLimiter.tryAcquire(rule.name() + ":" + ClientAddresses.normalise(request.getRemoteAddr()), rule.max(), rule.window());
                 if (retryAfter > 0) {
                     reject(response, retryAfter);
                     return;

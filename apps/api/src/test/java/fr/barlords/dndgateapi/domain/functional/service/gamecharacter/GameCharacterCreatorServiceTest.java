@@ -3,6 +3,7 @@ package fr.barlords.dndgateapi.domain.functional.service.gamecharacter;
 import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.InvalidPictureException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureAccessDeniedException;
+import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
 import fr.barlords.dndgateapi.domain.functional.model.GameCharacter;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
@@ -59,7 +60,7 @@ class GameCharacterCreatorServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new GameCharacterCreatorService(spi, adventureAccessVerifierApi, currentAccountService, minioSpi);
+        service = new GameCharacterCreatorService(spi, adventureAccessVerifierApi, currentAccountService, minioSpi, QuantityLimits.defaults());
         when(currentAccountService.getAccountById(player.getId())).thenReturn(player);
     }
 

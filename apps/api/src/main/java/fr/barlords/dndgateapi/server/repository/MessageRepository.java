@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -31,4 +32,10 @@ public interface MessageRepository extends JpaRepository<MessageEntity, UUID> {
     @Query("delete from MessageEntity m where m.adventureId = :adventureId")
     void deleteByAdventureId(@Param("adventureId") UUID adventureId);
 
+
+    @Query("select count(m) from MessageEntity m where m.senderId = :senderId and m.sendDate > :since")
+    long countBySenderIdSince(@Param("senderId") UUID senderId, @Param("since") Instant since);
+
+    @Query("select min(m.sendDate) from MessageEntity m where m.senderId = :senderId and m.sendDate > :since")
+    Optional<Instant> findOldestSendDateBySenderIdSince(@Param("senderId") UUID senderId, @Param("since") Instant since);
 }

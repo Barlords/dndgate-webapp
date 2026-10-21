@@ -6,8 +6,11 @@ import fr.barlords.dndgateapi.domain.functional.exception.account.AccountNotVali
 import fr.barlords.dndgateapi.domain.functional.model.account.AccessToken;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.functional.model.account.AccountSession;
+import fr.barlords.dndgateapi.domain.functional.model.account.ClientAddress;
 import fr.barlords.dndgateapi.domain.functional.model.account.IssuedRefreshToken;
+import fr.barlords.dndgateapi.domain.functional.model.account.LoginFailures;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.LoginFailureSpi;
 import fr.barlords.dndgateapi.domain.port.out.PasswordHasherSpi;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,8 +40,13 @@ public class AccountLoggerServiceTest {
 
     private static final Duration LOCK_DURATION = Duration.ofMinutes(15);
 
+    private static final ClientAddress CLIENT = new ClientAddress("203.0.113.7");
+
     @Mock
     private AccountPersistenceSpi spi;
+
+    @Mock
+    private LoginFailureSpi failures;
 
     @Mock
     private PasswordHasherSpi passwordHasher;
@@ -52,7 +60,7 @@ public class AccountLoggerServiceTest {
     void setUp() {
         when(passwordHasher.hash(any())).thenReturn("unknown-account-hash");
         AccountPasswordVerifierService passwordVerifier = new AccountPasswordVerifierService(
-                spi, passwordHasher, Clock.fixed(NOW, ZoneOffset.UTC), MAX_ATTEMPTS, LOCK_DURATION);
+                failures, passwordHasher, Clock.fixed(NOW, ZoneOffset.UTC), MAX_ATTEMPTS, LOCK_DURATION, 50);
         service = new AccountLoggerService(spi, passwordHasher, passwordVerifier, sessionIssuer, new AccountCheckerService(spi));
     }
 
@@ -64,33 +72,34 @@ public class AccountLoggerServiceTest {
     void an_unknown_pseudo_is_refused_after_a_password_comparison() {
         when(spi.findByPseudo("unknown")).thenReturn(Optional.empty());
 
-        Assertions.assertThrows(AccountCredentialNotFoundException.class, () -> service.login("unknown", "password"));
+        Assertions.assertThrows(AccountCredentialNotFoundException.class, () -> service.login("unknown", "password", CLIENT));
 
         // same work as for a known pseudo, so the response time does not reveal which pseudos exist
         verify(passwordHasher).matches("password", "unknown-account-hash");
-        verify(spi, never()).registerFailedLogin(any(), anyInt(), any());
+        verify(failures, never()).register(any(), any(), anyInt(), any(), any());
     }
 
     @Test
-    void a_wrong_password_is_counted_and_refused() {
+    void a_wrong_password_is_counted_for_the_client_and_refused() {
         Account account = account(true);
         when(spi.findByPseudo("usertest")).thenReturn(Optional.of(account));
         when(passwordHasher.matches("wrong", "hash")).thenReturn(false);
 
-        Assertions.assertThrows(AccountCredentialNotFoundException.class, () -> service.login("usertest", "wrong"));
+        Assertions.assertThrows(AccountCredentialNotFoundException.class, () -> service.login("usertest", "wrong", CLIENT));
 
-        verify(spi).registerFailedLogin(account.getId(), MAX_ATTEMPTS, NOW.plus(LOCK_DURATION));
+        verify(failures).register(account.getId(), CLIENT, MAX_ATTEMPTS, NOW.plus(LOCK_DURATION), NOW);
         verify(sessionIssuer, never()).openSession(any());
     }
 
     @Test
-    void a_locked_account_is_refused_even_with_the_right_password() {
+    void a_client_that_is_locked_is_refused_even_with_the_right_password() {
+        Account account = account(true);
         Instant lockedUntil = NOW.plusSeconds(300);
-        Account locked = account(true).withFailedLoginAttempts(MAX_ATTEMPTS).withLockedUntil(lockedUntil);
-        when(spi.findByPseudo("usertest")).thenReturn(Optional.of(locked));
+        when(spi.findByPseudo("usertest")).thenReturn(Optional.of(account));
+        when(failures.find(account.getId(), CLIENT)).thenReturn(Optional.of(new LoginFailures(MAX_ATTEMPTS, lockedUntil)));
 
         AccountLockedException exception = Assertions.assertThrows(AccountLockedException.class,
-                () -> service.login("usertest", "right-password"));
+                () -> service.login("usertest", "right-password", CLIENT));
 
         Assertions.assertEquals(lockedUntil, exception.getLockedUntil());
         verify(passwordHasher, never()).matches("right-password", "hash");
@@ -98,50 +107,28 @@ public class AccountLoggerServiceTest {
     }
 
     @Test
-    void once_the_lock_has_expired_the_counter_starts_from_zero() {
-        Account expired = account(true).withFailedLoginAttempts(MAX_ATTEMPTS).withLockedUntil(NOW.minusSeconds(1));
-        AccountSession session = new AccountSession(expired, new AccessToken("jwt", NOW), new IssuedRefreshToken("rt", NOW));
-        when(spi.findByPseudo("usertest")).thenReturn(Optional.of(expired));
-        when(passwordHasher.matches("password", "hash")).thenReturn(true);
-        when(sessionIssuer.openSession(any())).thenReturn(session);
-
-        Assertions.assertEquals(session, service.login("usertest", "password"));
-
-        verify(spi).resetFailedLogins(expired.getId());
-    }
-
-    @Test
     void a_right_password_on_a_not_activated_account_is_refused_without_counting() {
         when(spi.findByPseudo("usertest")).thenReturn(Optional.of(account(false)));
         when(passwordHasher.matches("password", "hash")).thenReturn(true);
 
-        Assertions.assertThrows(AccountNotValidatedException.class, () -> service.login("usertest", "password"));
+        Assertions.assertThrows(AccountNotValidatedException.class, () -> service.login("usertest", "password", CLIENT));
 
-        verify(spi, never()).registerFailedLogin(any(), anyInt(), any());
+        verify(failures, never()).register(any(), any(), anyInt(), any(), any());
         verify(sessionIssuer, never()).openSession(any());
     }
 
     @Test
-    void a_successful_login_opens_a_session_and_clears_previous_failures() {
-        Account account = account(true).withFailedLoginAttempts(3);
+    void a_successful_login_opens_a_session_and_clears_the_previous_failures_of_the_client() {
+        Account account = account(true);
         AccountSession session = new AccountSession(account, new AccessToken("jwt", NOW), new IssuedRefreshToken("rt", NOW));
         when(spi.findByPseudo("usertest")).thenReturn(Optional.of(account));
+        when(failures.find(account.getId(), CLIENT)).thenReturn(Optional.of(new LoginFailures(3, null)));
         when(passwordHasher.matches("password", "hash")).thenReturn(true);
-        when(sessionIssuer.openSession(account.withFailedLoginAttempts(0))).thenReturn(session);
+        when(sessionIssuer.openSession(account)).thenReturn(session);
 
-        Assertions.assertEquals(session, service.login("usertest", "password"));
+        Assertions.assertEquals(session, service.login("usertest", "password", CLIENT));
 
-        verify(spi).resetFailedLogins(account.getId());
+        verify(failures).clear(account.getId(), CLIENT);
     }
 
-    @Test
-    void a_clean_successful_login_does_not_touch_the_counter() {
-        Account account = account(true);
-        when(spi.findByPseudo("usertest")).thenReturn(Optional.of(account));
-        when(passwordHasher.matches("password", "hash")).thenReturn(true);
-
-        service.login("usertest", "password");
-
-        verify(spi, never()).resetFailedLogins(any());
-    }
 }

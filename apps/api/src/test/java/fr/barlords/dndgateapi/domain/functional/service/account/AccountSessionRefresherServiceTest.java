@@ -7,6 +7,7 @@ import fr.barlords.dndgateapi.domain.functional.model.account.AccountSession;
 import fr.barlords.dndgateapi.domain.functional.model.account.IssuedRefreshToken;
 import fr.barlords.dndgateapi.domain.functional.model.account.RefreshToken;
 import fr.barlords.dndgateapi.domain.functional.model.account.Session;
+import fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.OpaqueTokenSpi;
 import fr.barlords.dndgateapi.domain.port.out.SessionPersistenceSpi;
@@ -44,6 +45,9 @@ public class AccountSessionRefresherServiceTest {
     @Mock
     private SessionIssuerService sessionIssuer;
 
+    @Mock
+    private AccessRevocationSpi accessRevocation;
+
     private AccountSessionRefresherService service;
 
     private final Account account = Account.builder().pseudo("usertest").email("test@test.fr").activated(true).build();
@@ -58,7 +62,7 @@ public class AccountSessionRefresherServiceTest {
     @BeforeEach
     void setUp() {
         service = new AccountSessionRefresherService(accounts, sessions, opaqueTokens, sessionIssuer,
-                Clock.fixed(NOW, ZoneOffset.UTC));
+                Clock.fixed(NOW, ZoneOffset.UTC), accessRevocation);
         when(opaqueTokens.hash("secret")).thenReturn("hashed");
     }
 
@@ -102,6 +106,7 @@ public class AccountSessionRefresherServiceTest {
         Assertions.assertThrows(InvalidRefreshTokenException.class, () -> service.refresh("secret"));
 
         verify(sessions).revokeSession(session.getId(), NOW);
+        verify(accessRevocation).sessionRevoked(session.getId());
         verify(sessionIssuer, never()).issueTokens(any(), any());
     }
 
@@ -116,6 +121,7 @@ public class AccountSessionRefresherServiceTest {
         Assertions.assertThrows(InvalidRefreshTokenException.class, () -> service.refresh("secret"));
 
         verify(sessions).revokeSession(session.getId(), NOW);
+        verify(accessRevocation).sessionRevoked(session.getId());
         verify(sessionIssuer, never()).issueTokens(any(), any());
     }
 

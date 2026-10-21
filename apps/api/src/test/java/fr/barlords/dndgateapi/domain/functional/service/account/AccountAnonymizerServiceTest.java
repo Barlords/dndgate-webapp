@@ -1,12 +1,14 @@
 package fr.barlords.dndgateapi.domain.functional.service.account;
 
 import fr.barlords.dndgateapi.domain.port.out.AuditSpi;
+import fr.barlords.dndgateapi.domain.port.out.LoginFailureSpi;
 import fr.barlords.dndgateapi.domain.functional.service.adventure.master.MasterTransferNotifier;
 
 import fr.barlords.dndgateapi.domain.functional.exception.account.AccountNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.WrongPasswordException;
 import fr.barlords.dndgateapi.domain.functional.model.SpellBook;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
+import fr.barlords.dndgateapi.domain.functional.model.account.ClientAddress;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureStatus;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureVisibility;
@@ -42,6 +44,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class AccountAnonymizerServiceTest {
+    private static final ClientAddress CLIENT = new ClientAddress("203.0.113.7");
+
 
     private static final Instant NOW = Instant.parse("2026-01-01T10:00:00Z");
 
@@ -73,15 +77,18 @@ public class AccountAnonymizerServiceTest {
 
     private final Account account = Account.builder()
             .pseudo("gandalf").email("gandalf@middle.earth").password("hash").activated(true)
-            .failedLoginAttempts(2).lockedUntil(NOW.plusSeconds(60)).build();
+            .build();
 
     @Mock
     private AuditSpi audit;
 
+    @Mock
+    private LoginFailureSpi loginFailures;
+
     @BeforeEach
     void setUp() {
         service = new AccountAnonymizerService(accounts, adventures, spellBooks, passwordHasher, opaqueTokens,
-                passwordVerifier, sessionRevoker, notifier, Clock.fixed(NOW, ZoneOffset.UTC), audit);
+                passwordVerifier, sessionRevoker, notifier, Clock.fixed(NOW, ZoneOffset.UTC), audit, loginFailures);
         lenient().when(accounts.findById(account.getId())).thenReturn(Optional.of(account));
         lenient().when(opaqueTokens.generate()).thenReturn("random-secret");
         lenient().when(passwordHasher.hash("random-secret")).thenReturn("unusable-hash");
@@ -110,13 +117,13 @@ public class AccountAnonymizerServiceTest {
         UUID unknown = UUID.randomUUID();
         when(accounts.findById(unknown)).thenReturn(Optional.empty());
 
-        Assertions.assertThrows(AccountNotFoundException.class, () -> service.anonymize(unknown, "password"));
+        Assertions.assertThrows(AccountNotFoundException.class, () -> service.anonymize(unknown, "password", CLIENT));
         verify(accounts, never()).save(any());
     }
 
     @Test
     void nothing_that_identifies_the_person_is_kept() {
-        service.anonymize(account.getId(), "password");
+        service.anonymize(account.getId(), "password", CLIENT);
 
         Account anonymous = savedAccount();
         Assertions.assertEquals(account.getId(), anonymous.getId());
@@ -127,8 +134,6 @@ public class AccountAnonymizerServiceTest {
         Assertions.assertEquals("unusable-hash", anonymous.getPassword());
         Assertions.assertFalse(anonymous.isActivated());
         Assertions.assertNull(anonymous.getVerificationCode());
-        Assertions.assertEquals(0, anonymous.getFailedLoginAttempts());
-        Assertions.assertNull(anonymous.getLockedUntil());
         Assertions.assertEquals(NOW, anonymous.getAnonymizedAt());
         Assertions.assertTrue(anonymous.isAnonymized());
     }
@@ -140,7 +145,7 @@ public class AccountAnonymizerServiceTest {
                 .withPendingEmailCode("secretcode")
                 .withPendingEmailExpiresAt(NOW.plusSeconds(60))));
 
-        service.anonymize(account.getId(), "password");
+        service.anonymize(account.getId(), "password", CLIENT);
 
         Account anonymous = savedAccount();
         Assertions.assertNull(anonymous.getPendingEmail());
@@ -153,8 +158,8 @@ public class AccountAnonymizerServiceTest {
         Account other = Account.builder().pseudo("saruman").email("saruman@middle.earth").password("hash").build();
         when(accounts.findById(other.getId())).thenReturn(Optional.of(other));
 
-        service.anonymize(account.getId(), "password");
-        service.anonymize(other.getId(), "password");
+        service.anonymize(account.getId(), "password", CLIENT);
+        service.anonymize(other.getId(), "password", CLIENT);
 
         ArgumentCaptor<Account> saved = ArgumentCaptor.forClass(Account.class);
         verify(accounts, org.mockito.Mockito.times(2)).save(saved.capture());
@@ -164,7 +169,7 @@ public class AccountAnonymizerServiceTest {
 
     @Test
     void every_session_is_ended() {
-        service.anonymize(account.getId(), "password");
+        service.anonymize(account.getId(), "password", CLIENT);
 
         verify(sessionRevoker).logoutAll(account.getId());
     }
@@ -174,7 +179,7 @@ public class AccountAnonymizerServiceTest {
         Account already = account.withAnonymizedAt(NOW.minusSeconds(3600));
         when(accounts.findById(account.getId())).thenReturn(Optional.of(already));
 
-        service.anonymize(account.getId(), "password");
+        service.anonymize(account.getId(), "password", CLIENT);
 
         verify(accounts, never()).save(any());
         verify(sessionRevoker).logoutAll(account.getId());
@@ -183,10 +188,17 @@ public class AccountAnonymizerServiceTest {
     // ---- the password is asked again ----
 
     @Test
-    void a_wrong_password_deletes_nothing() {
-        doThrow(new WrongPasswordException()).when(passwordVerifier).verify(any(), any(), any());
+    void the_login_failures_of_the_account_are_forgotten() {
+        service.anonymize(account.getId(), "password", CLIENT);
 
-        Assertions.assertThrows(WrongPasswordException.class, () -> service.anonymize(account.getId(), "wrong"));
+        verify(loginFailures).deleteByAccount(account.getId());
+    }
+
+    @Test
+    void a_wrong_password_deletes_nothing() {
+        doThrow(new WrongPasswordException()).when(passwordVerifier).verify(any(), any(), any(), any());
+
+        Assertions.assertThrows(WrongPasswordException.class, () -> service.anonymize(account.getId(), "wrong", CLIENT));
 
         verify(accounts, never()).save(any());
         verify(adventures, never()).save(any());
@@ -196,9 +208,9 @@ public class AccountAnonymizerServiceTest {
 
     @Test
     void the_password_given_is_the_one_that_is_checked() {
-        service.anonymize(account.getId(), "my-password");
+        service.anonymize(account.getId(), "my-password", CLIENT);
 
-        verify(passwordVerifier).verify(org.mockito.ArgumentMatchers.eq(account), org.mockito.ArgumentMatchers.eq("my-password"), any());
+        verify(passwordVerifier).verify(org.mockito.ArgumentMatchers.eq(account), org.mockito.ArgumentMatchers.eq("my-password"), org.mockito.ArgumentMatchers.eq(CLIENT), any());
     }
 
     // ---- spell books ----
@@ -209,7 +221,7 @@ public class AccountAnonymizerServiceTest {
         SpellBook second = SpellBook.builder().owner(account).name("two").build();
         when(spellBooks.findByOwnerId(account.getId())).thenReturn(List.of(first, second));
 
-        service.anonymize(account.getId(), "password");
+        service.anonymize(account.getId(), "password", CLIENT);
 
         verify(spellBooks).deleteById(first.getId());
         verify(spellBooks).deleteById(second.getId());
@@ -222,7 +234,7 @@ public class AccountAnonymizerServiceTest {
         Adventure open = adventure(AdventureStatus.NOT_STARTED, account.getId(), UUID.randomUUID());
         when(adventures.findAllByCreatorId(account.getId())).thenReturn(List.of(open));
 
-        service.anonymize(account.getId(), "password");
+        service.anonymize(account.getId(), "password", CLIENT);
 
         ArgumentCaptor<Adventure> saved = ArgumentCaptor.forClass(Adventure.class);
         verify(adventures).save(saved.capture());
@@ -237,7 +249,7 @@ public class AccountAnonymizerServiceTest {
                 adventure(AdventureStatus.FINISH, account.getId()),
                 adventure(AdventureStatus.ABORT, account.getId())));
 
-        service.anonymize(account.getId(), "password");
+        service.anonymize(account.getId(), "password", CLIENT);
 
         verify(adventures, never()).save(any());
         verify(notifier, never()).masterAccountDeleted(any());
@@ -248,7 +260,7 @@ public class AccountAnonymizerServiceTest {
         Adventure ongoing = adventure(AdventureStatus.ONGOING, account.getId(), UUID.randomUUID());
         when(adventures.findAllByCreatorId(account.getId())).thenReturn(List.of(ongoing));
 
-        service.anonymize(account.getId(), "password");
+        service.anonymize(account.getId(), "password", CLIENT);
 
         ArgumentCaptor<Adventure> saved = ArgumentCaptor.forClass(Adventure.class);
         verify(adventures).save(saved.capture());
@@ -266,7 +278,7 @@ public class AccountAnonymizerServiceTest {
         Adventure open = adventure(AdventureStatus.NOT_STARTED, UUID.randomUUID(), account.getId(), other);
         when(adventures.findAllByPlayersId(account.getId())).thenReturn(List.of(open));
 
-        service.anonymize(account.getId(), "password");
+        service.anonymize(account.getId(), "password", CLIENT);
 
         ArgumentCaptor<Adventure> saved = ArgumentCaptor.forClass(Adventure.class);
         verify(adventures).save(saved.capture());
@@ -279,7 +291,7 @@ public class AccountAnonymizerServiceTest {
                 adventure(AdventureStatus.ONGOING, UUID.randomUUID(), account.getId()),
                 adventure(AdventureStatus.FINISH, UUID.randomUUID(), account.getId())));
 
-        service.anonymize(account.getId(), "password");
+        service.anonymize(account.getId(), "password", CLIENT);
 
         verify(adventures, never()).save(any());
     }

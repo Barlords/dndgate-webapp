@@ -9,6 +9,7 @@ import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureDeleterApi;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureFinderApi;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureUpdaterApi;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountFinderApi;
+import fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
 import fr.barlords.dndgateapi.bootstrap.config.TransactionalAdventureDeleter;
@@ -17,8 +18,16 @@ import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MessagePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
 import fr.barlords.dndgateapi.domain.port.out.PlanningPersistenceSpi;
+import fr.barlords.dndgateapi.domain.functional.model.adventure.InvitationLimits;
+import fr.barlords.dndgateapi.domain.port.in.adventure.InvitationLogCleanerApi;
+import fr.barlords.dndgateapi.domain.port.out.InvitationLogSpi;
+import org.springframework.beans.factory.annotation.Value;
+import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.time.Clock;
+import java.time.Duration;
 
 @Configuration
 public class AdventureServiceConfiguration {
@@ -34,9 +43,10 @@ public class AdventureServiceConfiguration {
     @Bean
     public AdventureCreatorApi adventureCreatorApi(
             AdventurePersistenceSpi spi,
-            CurrentAccountService currentAccountService
+            CurrentAccountService currentAccountService,
+            QuantityLimits quantityLimits
     ) {
-        return new AdventureCreatorService(spi, currentAccountService);
+        return new AdventureCreatorService(spi, currentAccountService, quantityLimits);
     }
 
     @Bean
@@ -48,10 +58,12 @@ public class AdventureServiceConfiguration {
             PlanningPersistenceSpi plannings,
             AvailabilityPersistenceSpi availabilities,
             MinioSpi minioSpi,
-            AuditSpi audit
+            AuditSpi audit,
+            AccessRevocationSpi accessRevocation
     ) {
         return new TransactionalAdventureDeleter(new AdventureDeleterService(
-                spi, adventureOwnerVerifierService, gameCharacters, messages, plannings, availabilities, minioSpi, audit));
+                spi, adventureOwnerVerifierService, gameCharacters, messages, plannings, availabilities, minioSpi, audit,
+                accessRevocation));
     }
 
     @Bean
@@ -74,9 +86,28 @@ public class AdventureServiceConfiguration {
             CurrentAccountService currentAccountService,
             AdventureOwnerVerifierService adventureOwnerVerifierService,
             AccountFinderApi accountFinderApi,
-            EmailingSpi emailingSpi
+            EmailingSpi emailingSpi,
+            InvitationLogSpi invitationLog,
+            Clock clock,
+            InvitationLimits invitationLimits,
+            AccessRevocationSpi accessRevocation
     ) {
-        return new AdventureUpdaterService(spi, adventureFinderApi, currentAccountService, adventureOwnerVerifierService, accountFinderApi, emailingSpi);
+        return new AdventureUpdaterService(spi, adventureFinderApi, currentAccountService, adventureOwnerVerifierService,
+                accountFinderApi, emailingSpi, invitationLog, clock, invitationLimits, accessRevocation);
+    }
+
+    @Bean
+    public InvitationLimits invitationLimits(
+            @Value("${invitation.rate-limit.sender.max:20}") int senderMax,
+            @Value("${invitation.rate-limit.sender.window:PT1H}") Duration senderWindow,
+            @Value("${invitation.rate-limit.recipient.window:PT24H}") Duration recipientWindow
+    ) {
+        return new InvitationLimits(senderMax, senderWindow, recipientWindow);
+    }
+
+    @Bean
+    public InvitationLogCleanerApi invitationLogCleanerApi(InvitationLogSpi invitationLog, Clock clock, InvitationLimits invitationLimits) {
+        return new InvitationLogCleanerService(invitationLog, clock, invitationLimits);
     }
 
 }

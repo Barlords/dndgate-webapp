@@ -9,6 +9,7 @@ import fr.barlords.dndgateapi.domain.port.in.spellbook.*;
 import fr.barlords.dndgateapi.domain.port.in.spellbook.spell.SpellDeleterApi;
 import fr.barlords.dndgateapi.domain.port.in.spellbook.spell.SpellWriterApi;
 import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
+import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -18,9 +19,10 @@ public class SpellBookServiceConfiguration {
     @Bean
     public SpellBookCreatorApi spellBookCreatorApi(
             SpellBookPersistenceSpi spi,
-            CurrentAccountService currentAccountService
+            CurrentAccountService currentAccountService,
+            QuantityLimits quantityLimits
     ) {
-        return new SpellBookCreatorService(spi, currentAccountService);
+        return new SpellBookCreatorService(spi, currentAccountService, quantityLimits);
     }
 
     @Bean
@@ -50,9 +52,10 @@ public class SpellBookServiceConfiguration {
     @Bean
     public SpellBookImporterApi spellBookImporterApi(
             SpellBookPersistenceSpi spi,
-            CurrentAccountService currentAccountService
+            CurrentAccountService currentAccountService,
+            QuantityLimits quantityLimits
     ) {
-        return new SpellBookImporterService(spi, currentAccountService);
+        return new SpellBookImporterService(spi, currentAccountService, quantityLimits);
     }
 
     @Bean
@@ -65,9 +68,10 @@ public class SpellBookServiceConfiguration {
     @Bean
     public SpellWriterApi spellWriterApi(
             SpellBookPersistenceSpi spi,
-            SpellBookOwnerVerifierService spellBookOwnerVerifierService
+            SpellBookOwnerVerifierService spellBookOwnerVerifierService,
+            QuantityLimits quantityLimits
     ) {
-        return new SpellWriterService(spi, spellBookOwnerVerifierService);
+        return new SpellWriterService(spi, spellBookOwnerVerifierService, quantityLimits);
     }
 
     @Bean
