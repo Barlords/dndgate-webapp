@@ -1,0 +1,26 @@
+name: Dependency review
+
+# Une pull request qui ajoute ou met à jour une dépendance avec une faille connue est refusée.
+# Dependabot propose les mises à jour ; ceci empêche d'introduire une faille entre deux de ses passages.
+# Demande le graphe de dépendances du dépôt (Settings > Advanced Security) ; sur un dépôt privé, GitHub Advanced Security.
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'apps/**/pom.xml'
+      - 'apps/**/Dockerfile'
+      - '.github/workflows/**'
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Review the dependencies changed by the pull request
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high

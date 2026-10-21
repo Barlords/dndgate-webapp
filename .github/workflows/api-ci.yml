@@ -1,0 +1,46 @@
+name: API - CI
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'apps/api/**'
+      - 'contracts/**'
+      - '.github/workflows/api-ci.yml'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+
+      - name: Build and test with Maven
+        run: ./mvnw -B clean verify
+
+      # JaCoCo writes its report during `verify`: the totals go to the summary of the run
+      - name: Coverage summary
+        if: always()
+        run: |
+          if [ -f target/site/jacoco/jacoco.csv ]; then
+            awk -F, 'NR>1 { im+=$4; ic+=$5; bm+=$6; bc+=$7; lm+=$8; lc+=$9 }
+              END { printf "### Test coverage\n\n| | covered | total | rate |\n|---|---|---|---|\n| Lines | %d | %d | %.1f%% |\n| Branches | %d | %d | %.1f%% |\n| Instructions | %d | %d | %.1f%% |\n", lc, lc+lm, 100*lc/(lc+lm), bc, bc+bm, 100*bc/(bc+bm), ic, ic+im, 100*ic/(ic+im) }' \
+              target/site/jacoco/jacoco.csv >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: apps/api/target/site/jacoco
+          if-no-files-found: ignore

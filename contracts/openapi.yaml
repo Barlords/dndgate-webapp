@@ -1,0 +1,3004 @@
+openapi: 3.1.0
+info:
+  title: DnDGate API
+  description: "Organise tabletop role-playing games: adventures, characters, notes,\
+    \ planning."
+  version: 1.0.0
+servers:
+- url: /dndgate-api
+security:
+- bearerAuth: []
+paths:
+  /ratings:
+    get:
+      tags:
+      - Ratings
+      summary: Get ratings by account
+      operationId: getRatingsByAccount
+      parameters:
+      - name: targetedAccountId
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageDtoRatingDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    put:
+      tags:
+      - Ratings
+      summary: Put rating
+      operationId: putRating
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RatingCreationRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RatingDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    post:
+      tags:
+      - Ratings
+      summary: Create rating
+      operationId: createRating
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RatingCreationRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RatingDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /planning:
+    get:
+      tags:
+      - Planning
+      summary: Get planning by adventure id
+      operationId: getPlanningByAdventureId
+      parameters:
+      - name: adventureId
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanningDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    put:
+      tags:
+      - Planning
+      summary: Put planning
+      operationId: putPlanning
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlanningCreationRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanningDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    post:
+      tags:
+      - Planning
+      summary: Create planning
+      operationId: createPlanning
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlanningCreationRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanningDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /planning/availability:
+    put:
+      tags:
+      - Planning
+      summary: Put availability
+      operationId: putAvailability
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AvailabilityCreationRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvailabilityDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    post:
+      tags:
+      - Planning
+      summary: Create availability
+      operationId: createAvailability
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AvailabilityCreationRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvailabilityDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /adventures/{id}/visibility:
+    put:
+      tags:
+      - Adventures
+      summary: Update adventure visibility
+      operationId: updateAdventureVisibility
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdventureSetVisibilityRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdventureDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /adventures/{id}/status:
+    put:
+      tags:
+      - Adventures
+      summary: Update adventure status
+      operationId: updateAdventureStatus
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdventureSetStatusRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdventureDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /adventures/{id}/master/claim/vote:
+    put:
+      tags:
+      - Game master
+      summary: Vote on master claim
+      operationId: voteOnMasterClaim
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MasterVoteRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MasterClaimDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /webrtc/offer:
+    post:
+      tags:
+      - WebRTC
+      summary: Send offer
+      operationId: sendOffer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebRTCMessage"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /webrtc/candidate:
+    post:
+      tags:
+      - WebRTC
+      summary: Send candidate
+      operationId: sendCandidate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebRTCMessage"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /webrtc/answer:
+    post:
+      tags:
+      - WebRTC
+      summary: Send answer
+      operationId: sendAnswer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebRTCMessage"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /spellbooks:
+    get:
+      tags:
+      - Spell books
+      summary: Get spell books by owner id
+      operationId: getSpellBooksByOwnerId
+      parameters:
+      - name: ownerId
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SpellBookDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    post:
+      tags:
+      - Spell books
+      summary: Create spell book
+      operationId: createSpellBook
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpellBookCreationRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpellBookDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /spellbooks/{id}/spells:
+    post:
+      tags:
+      - Spell books
+      summary: Add spell to book
+      operationId: addSpellToBook
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddSpellToSpellBookRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpellBookDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /spellbooks/import-file:
+    post:
+      tags:
+      - Spell books
+      summary: Import spell book file
+      operationId: importSpellBookFile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpellBookDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /messages:
+    get:
+      tags:
+      - Messages
+      summary: Get message by adventure id
+      operationId: getMessageByAdventureId
+      parameters:
+      - name: adventureId
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageDtoMessageDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    post:
+      tags:
+      - Messages
+      summary: Send message
+      operationId: sendMessage
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageCreationRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /historical-notes:
+    get:
+      tags:
+      - Historical notes
+      summary: Get historical notes by adventure id
+      operationId: getHistoricalNotesByAdventureId
+      parameters:
+      - name: adventureId
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageDtoHistoricalNoteDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    post:
+      tags:
+      - Historical notes
+      summary: Create historical note
+      operationId: createHistoricalNote
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HistoricalNoteCreationRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoricalNoteDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /game-characters:
+    get:
+      tags:
+      - Game characters
+      summary: Get game characters by owner id
+      operationId: getGameCharactersByOwnerId
+      parameters:
+      - name: ownerId
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: adventureId
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GameCharacterDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    post:
+      tags:
+      - Game characters
+      summary: Create game character
+      operationId: createGameCharacter
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                picturePresentation:
+                  type: string
+                  format: binary
+                createGameCharacterRequest:
+                  $ref: "#/components/schemas/GameCharacterCreationRequest"
+              required:
+              - createGameCharacterRequest
+              - picturePresentation
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameCharacterDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /adventures:
+    get:
+      tags:
+      - Adventures
+      summary: Get adventures
+      operationId: getAdventures
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageDtoAdventureDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    post:
+      tags:
+      - Adventures
+      summary: Create adventure
+      operationId: createAdventure
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdventureCreationRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdventureDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /adventures/{id}/master/step-down:
+    post:
+      tags:
+      - Game master
+      summary: Step down as master
+      operationId: stepDownAsMaster
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeletionConfirmationRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdventureDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /adventures/{id}/master/invitation:
+    post:
+      tags:
+      - Game master
+      summary: Invite master
+      operationId: inviteMaster
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MasterInvitationDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      tags:
+      - Game master
+      summary: Revoke master invitation
+      operationId: revokeMasterInvitation
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No Content
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /adventures/{id}/master/claim:
+    get:
+      tags:
+      - Game master
+      summary: Get master claim
+      operationId: getMasterClaim
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MasterClaimDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    post:
+      tags:
+      - Game master
+      summary: Claim master role
+      operationId: claimMasterRole
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MasterClaimDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      tags:
+      - Game master
+      summary: Cancel master claim
+      operationId: cancelMasterClaim
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No Content
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /adventures/{id}/join:
+    post:
+      tags:
+      - Adventures
+      summary: Join adventure
+      operationId: joinAdventure
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdventureDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /adventures/{id}/invitations/{pseudo}:
+    post:
+      tags:
+      - Adventures
+      summary: Invite player
+      operationId: invitePlayer
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: pseudo
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /adventures/master/accept:
+    post:
+      tags:
+      - Game master
+      summary: Accept master invitation
+      operationId: acceptMasterInvitation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcceptMasterInvitationRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdventureDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /adventures/invitations/accept:
+    post:
+      tags:
+      - Adventures
+      summary: Accept player invitation
+      operationId: acceptPlayerInvitation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinAdventureByCodeRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdventureDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /adventure-notes:
+    get:
+      tags:
+      - Adventure notes
+      summary: Get adventure notes by adventure id
+      operationId: getAdventureNotesByAdventureId
+      parameters:
+      - name: adventureId
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageDtoAdventureNoteDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    post:
+      tags:
+      - Adventure notes
+      summary: Create adventure note
+      operationId: createAdventureNote
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdventureNoteCreationRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdventureNoteDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /accounts:
+    post:
+      tags:
+      - Accounts
+      summary: Create account
+      operationId: createAccount
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountCreationRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+      security: []
+    delete:
+      tags:
+      - Accounts
+      summary: Delete my account
+      operationId: deleteMyAccount
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeletionConfirmationRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    patch:
+      tags:
+      - Accounts
+      summary: Patch account
+      operationId: patchAccount
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountUpdateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /accounts/verify:
+    post:
+      tags:
+      - Accounts
+      summary: Verify email
+      operationId: verifyEmail
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerificationRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+      security: []
+  /accounts/verification-email:
+    post:
+      tags:
+      - Accounts
+      summary: Resend verification email
+      operationId: resendVerificationEmail
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerificationEmailRequest"
+        required: true
+      responses:
+        "202":
+          description: Accepted
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+      security: []
+  /accounts/refresh:
+    post:
+      tags:
+      - Accounts
+      summary: Refresh
+      operationId: refresh
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+      security: []
+  /accounts/logout:
+    post:
+      tags:
+      - Accounts
+      summary: Logout
+      operationId: logout
+      responses:
+        "204":
+          description: No Content
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /accounts/logout-all:
+    post:
+      tags:
+      - Accounts
+      summary: Logout all
+      operationId: logoutAll
+      responses:
+        "204":
+          description: No Content
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /accounts/login:
+    post:
+      tags:
+      - Accounts
+      summary: Login
+      operationId: login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountLogRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+      security: []
+  /accounts/email/confirm:
+    post:
+      tags:
+      - Accounts
+      summary: Confirm email change
+      operationId: confirmEmailChange
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerificationRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+      security: []
+  /spellbooks/{id}:
+    get:
+      tags:
+      - Spell books
+      summary: Get spell book by id
+      operationId: getSpellBookById
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpellBookDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      tags:
+      - Spell books
+      summary: Delete spell book by id
+      operationId: deleteSpellBookById
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeletionConfirmationRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    patch:
+      tags:
+      - Spell books
+      summary: Patch spell book
+      operationId: patchSpellBook
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpellBookPatchRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpellBookDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /ratings/{id}:
+    patch:
+      tags:
+      - Ratings
+      summary: Patch rate
+      operationId: patchRate
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RatingPatchRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RatingDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /historical-notes/{id}:
+    get:
+      tags:
+      - Historical notes
+      summary: Get historical note by id
+      operationId: getHistoricalNoteById
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoricalNoteDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      tags:
+      - Historical notes
+      summary: Delete historical note
+      operationId: deleteHistoricalNote
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExplicitDeletionRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    patch:
+      tags:
+      - Historical notes
+      summary: Patch historical note
+      operationId: patchHistoricalNote
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HistoricalNotePatchRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoricalNoteDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /game-characters/{id}:
+    get:
+      tags:
+      - Game characters
+      summary: Get game character by id
+      operationId: getGameCharacterById
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameCharacterDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      tags:
+      - Game characters
+      summary: Delete game character by id
+      operationId: deleteGameCharacterById
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeletionConfirmationRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    patch:
+      tags:
+      - Game characters
+      summary: Patch game character
+      operationId: patchGameCharacter
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GameCharacterPatchRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameCharacterDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /adventures/{id}:
+    get:
+      tags:
+      - Adventures
+      summary: Get adventure by id
+      operationId: getAdventureById
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdventureDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      tags:
+      - Adventures
+      summary: Delete adventure by id
+      operationId: deleteAdventureById
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeletionConfirmationRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    patch:
+      tags:
+      - Adventures
+      summary: Update adventure
+      operationId: updateAdventure
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdventurePatchRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdventureDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /adventure-notes/{id}:
+    get:
+      tags:
+      - Adventure notes
+      summary: Get adventure note by id
+      operationId: getAdventureNoteById
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdventureNoteDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      tags:
+      - Adventure notes
+      summary: Delete adventure note
+      operationId: deleteAdventureNote
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExplicitDeletionRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    patch:
+      tags:
+      - Adventure notes
+      summary: Patch adventure note
+      operationId: patchAdventureNote
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdventureNotePatchRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdventureNoteDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /spellbooks/{id}/export-file:
+    get:
+      tags:
+      - Spell books
+      summary: Export spell book file
+      operationId: exportSpellBookFile
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+                format: byte
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /spellbooks/mine:
+    get:
+      tags:
+      - Spell books
+      summary: Get my spell books
+      operationId: getMySpellBooks
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SpellBookDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /ratings/mean:
+    get:
+      tags:
+      - Ratings
+      summary: Get mean rate of account
+      operationId: getMeanRateOfAccount
+      parameters:
+      - name: accountId
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: number
+                format: double
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /ratings/between:
+    get:
+      tags:
+      - Ratings
+      summary: Get rating between
+      operationId: getRatingBetween
+      parameters:
+      - name: emitterId
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: targetedAccountId
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RatingDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /planning/{planningId}/availability:
+    get:
+      tags:
+      - Planning
+      summary: Get availabilities by planning id
+      operationId: getAvailabilitiesByPlanningId
+      parameters:
+      - name: planningId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AvailabilityDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /planning/{id}:
+    get:
+      tags:
+      - Planning
+      summary: Get planning by id
+      operationId: getPlanningById
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanningDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /game-characters/{id}/picture:
+    get:
+      tags:
+      - Game characters
+      summary: Get game character picture
+      operationId: getGameCharacterPicture
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+                format: byte
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /game-characters/mine:
+    get:
+      tags:
+      - Game characters
+      summary: Get my game characters
+      operationId: getMyGameCharacters
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GameCharacterDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /adventures/available:
+    get:
+      tags:
+      - Adventures
+      summary: Get available adventures
+      operationId: getAvailableAdventures
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageDtoAdventureDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /adventures/as-player:
+    get:
+      tags:
+      - Adventures
+      summary: Get adventures as player
+      operationId: getAdventuresAsPlayer
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageDtoAdventureDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /adventures/as-master:
+    get:
+      tags:
+      - Adventures
+      summary: Get adventures as master
+      operationId: getAdventuresAsMaster
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageDtoAdventureDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /accounts/pseudo/{pseudo}:
+    get:
+      tags:
+      - Accounts
+      summary: Get account by pseudo
+      operationId: getAccountByPseudo
+      parameters:
+      - name: pseudo
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAccountDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /accounts/me:
+    get:
+      tags:
+      - Accounts
+      summary: Get my profile
+      operationId: getMyProfile
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /accounts/id/{id}:
+    get:
+      tags:
+      - Accounts
+      summary: Get account by id
+      operationId: getAccountById
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAccountDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /spellbooks/{id}/spells/{spellIndex}:
+    delete:
+      tags:
+      - Spell books
+      summary: Remove spell from book
+      operationId: removeSpellFromBook
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: spellIndex
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No Content
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /adventures/{id}/players/me:
+    delete:
+      tags:
+      - Adventures
+      summary: Quit adventure
+      operationId: quitAdventure
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdventureDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+components:
+  schemas:
+    Problem:
+      type: object
+      description: An error (RFC 9457 problem details). correlationId is the identifier
+        to quote when reporting it.
+      properties:
+        type:
+          type: string
+          example: about:blank
+        title:
+          type: string
+          example: Not Found
+        status:
+          type: integer
+          format: int32
+          example: 404
+        detail:
+          type: string
+          description: "What went wrong, in English."
+        instance:
+          type: string
+          description: The path of the request.
+        correlationId:
+          type: string
+          description: Same value as the X-Request-Id header.
+        errors:
+          type: array
+          description: "Only for a request that is not valid: one entry per field."
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+    RatingCreationRequest:
+      type: object
+      properties:
+        accountTargetedId:
+          type: string
+          format: uuid
+        rate:
+          type: integer
+          format: int32
+          maximum: 5
+          minimum: 1
+      required:
+      - accountTargetedId
+      - rate
+    RatingDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        emitterId:
+          type: string
+          format: uuid
+        targetId:
+          type: string
+          format: uuid
+        rate:
+          type: integer
+          format: int32
+    PlanningCreationRequest:
+      type: object
+      properties:
+        adventureId:
+          type: string
+          format: uuid
+        propositionDates:
+          type: array
+          items:
+            type: string
+            format: date
+          maxItems: 100
+          minItems: 1
+      required:
+      - adventureId
+      - propositionDates
+    PlanningDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        adventureId:
+          type: string
+          format: uuid
+        propositionDates:
+          type: array
+          items:
+            type: string
+            format: date
+    AvailabilityCreationRequest:
+      type: object
+      properties:
+        planningId:
+          type: string
+          format: uuid
+        propositionDates:
+          type: array
+          items:
+            type: string
+            format: date
+          maxItems: 100
+          minItems: 1
+      required:
+      - planningId
+      - propositionDates
+    AvailabilityDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        planningId:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+          format: uuid
+        availabilityDates:
+          type: array
+          items:
+            type: string
+            format: date
+    AdventureSetVisibilityRequest:
+      type: object
+      properties:
+        visibility:
+          type: string
+          enum:
+          - PRIVATE
+          - PUBLIC
+      required:
+      - visibility
+    AdventureDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        creatorId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        maxPlayer:
+          type: integer
+          format: int32
+        players:
+          type: array
+          items:
+            type: string
+            format: uuid
+        status:
+          type: string
+          enum:
+          - NOT_STARTED
+          - ONGOING
+          - ABORT
+          - FINISH
+        visibility:
+          type: string
+          enum:
+          - PRIVATE
+          - PUBLIC
+        postalCode:
+          type: string
+        city:
+          type: string
+        masterVacant:
+          type: boolean
+    AdventureSetStatusRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - NOT_STARTED
+          - ONGOING
+          - ABORT
+          - FINISH
+      required:
+      - status
+    MasterVoteRequest:
+      type: object
+      properties:
+        approve:
+          type: boolean
+      required:
+      - approve
+    MasterClaimDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        adventureId:
+          type: string
+          format: uuid
+        candidateId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - OPEN
+          - ACCEPTED
+          - REJECTED
+          - EXPIRED
+          - CANCELLED
+        expiresAt:
+          type: string
+          format: date-time
+        voters:
+          type: array
+          items:
+            $ref: "#/components/schemas/Voter"
+    Voter:
+      type: object
+      properties:
+        accountId:
+          type: string
+          format: uuid
+        approved:
+          type: boolean
+    WebRTCMessage:
+      type: object
+      properties:
+        type:
+          type: string
+          pattern: offer|answer|candidate
+        content:
+          type: string
+          maxLength: 20000
+          minLength: 0
+        adventureId:
+          type: string
+          maxLength: 36
+          minLength: 0
+        accountId:
+          type: string
+          maxLength: 36
+          minLength: 0
+      required:
+      - adventureId
+      - content
+      - type
+    SpellBookCreationRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          minLength: 1
+        description:
+          type: string
+          maxLength: 5000
+          minLength: 1
+      required:
+      - description
+      - name
+    SpellBookDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        spellList:
+          type: array
+          items:
+            type: string
+          uniqueItems: true
+    AddSpellToSpellBookRequest:
+      type: object
+      properties:
+        spellIndex:
+          type: string
+          maxLength: 255
+          minLength: 1
+    MessageCreationRequest:
+      type: object
+      properties:
+        adventureId:
+          type: string
+        content:
+          type: string
+          maxLength: 5000
+          minLength: 1
+        sendDate:
+          type: string
+          format: date-time
+      required:
+      - adventureId
+      - content
+      - sendDate
+    HistoricalNoteCreationRequest:
+      type: object
+      properties:
+        adventureId:
+          type: string
+          format: uuid
+        content:
+          type: string
+          maxLength: 5000
+          minLength: 1
+        date:
+          type: string
+          format: date
+      required:
+      - adventureId
+      - content
+      - date
+    HistoricalNoteDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        content:
+          type: string
+        date:
+          type: string
+          format: date
+      required:
+      - content
+      - date
+      - id
+    GameCharacterCreationRequest:
+      type: object
+      properties:
+        adventureId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 50
+          minLength: 3
+        race:
+          type: string
+          maxLength: 255
+          minLength: 3
+        martialClass:
+          type: string
+          maxLength: 255
+          minLength: 1
+        personality:
+          type: string
+          maxLength: 5000
+          minLength: 1
+        background:
+          type: string
+          maxLength: 80000
+          minLength: 1
+      required:
+      - adventureId
+      - background
+      - martialClass
+      - name
+      - personality
+      - race
+    GameCharacterDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        race:
+          type: string
+        martialClass:
+          type: string
+        personality:
+          type: string
+        background:
+          type: string
+        pictureUrl:
+          type: string
+        ownerId:
+          type: string
+          format: uuid
+    AdventureCreationRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          minLength: 1
+        description:
+          type: string
+          maxLength: 5000
+          minLength: 1
+        maxPlayer:
+          type: integer
+          format: int32
+          maximum: 100
+          minimum: 1
+        visibility:
+          type: string
+          enum:
+          - PRIVATE
+          - PUBLIC
+        postalCode:
+          type: string
+          maxLength: 255
+          minLength: 1
+        city:
+          type: string
+          maxLength: 255
+          minLength: 1
+      required:
+      - city
+      - description
+      - maxPlayer
+      - name
+      - postalCode
+      - visibility
+    DeletionConfirmationRequest:
+      type: object
+      properties:
+        confirmation:
+          type: string
+          maxLength: 300
+          minLength: 0
+      required:
+      - confirmation
+    MasterInvitationDto:
+      type: object
+      properties:
+        code:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+    AcceptMasterInvitationRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          maxLength: 200
+          minLength: 0
+      required:
+      - code
+    JoinAdventureByCodeRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          maxLength: 50
+          minLength: 0
+      required:
+      - code
+    AdventureNoteCreationRequest:
+      type: object
+      properties:
+        adventureId:
+          type: string
+          format: uuid
+        content:
+          type: string
+          maxLength: 5000
+          minLength: 1
+        date:
+          type: string
+          format: date
+        visibility:
+          type: string
+          enum:
+          - PRIVATE
+          - PUBLIC
+      required:
+      - adventureId
+      - content
+      - date
+      - visibility
+    AdventureNoteDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        content:
+          type: string
+        date:
+          type: string
+          format: date
+        noteVisibility:
+          type: string
+          enum:
+          - PRIVATE
+          - PUBLIC
+      required:
+      - content
+      - date
+      - id
+      - noteVisibility
+    AccountCreationRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 50
+          minLength: 5
+        password:
+          type: string
+        pseudo:
+          type: string
+          maxLength: 60
+          minLength: 0
+          pattern: "^\\s*[\\p{L}\\p{N}_.\\-]{3,30}\\s*$"
+      required:
+      - email
+      - password
+      - pseudo
+    AccountDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        pseudo:
+          type: string
+        pendingEmail:
+          type: string
+    VerificationRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          maxLength: 100
+          minLength: 0
+        code:
+          type: string
+          maxLength: 100
+          minLength: 0
+      required:
+      - code
+      - email
+    VerificationEmailRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 100
+          minLength: 0
+      required:
+      - email
+    RefreshRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          maxLength: 200
+          minLength: 0
+      required:
+      - refreshToken
+    AuthDto:
+      type: object
+      properties:
+        accountId:
+          type: string
+          format: uuid
+        token:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        refreshToken:
+          type: string
+        refreshTokenExpiresAt:
+          type: string
+          format: date-time
+    AccountLogRequest:
+      type: object
+      properties:
+        pseudo:
+          type: string
+          maxLength: 100
+          minLength: 0
+        password:
+          type: string
+          maxLength: 200
+          minLength: 0
+      required:
+      - password
+      - pseudo
+    SpellBookPatchRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          minLength: 1
+        description:
+          type: string
+          maxLength: 5000
+          minLength: 1
+      required:
+      - description
+      - name
+    RatingPatchRequest:
+      type: object
+      properties:
+        rate:
+          type: integer
+          format: int32
+          maximum: 5
+          minimum: 1
+      required:
+      - rate
+    HistoricalNotePatchRequest:
+      type: object
+      properties:
+        adventureId:
+          type: string
+          format: uuid
+        content:
+          type: string
+          maxLength: 5000
+          minLength: 0
+          pattern: (?s).*\S.*
+        date:
+          type: string
+          format: date
+    GameCharacterPatchRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 50
+          minLength: 0
+          pattern: (?s).*\S.*
+        race:
+          type: string
+          maxLength: 255
+          minLength: 0
+          pattern: (?s).*\S.*
+        martialClass:
+          type: string
+          maxLength: 255
+          minLength: 0
+          pattern: (?s).*\S.*
+        personality:
+          type: string
+          maxLength: 5000
+          minLength: 0
+          pattern: (?s).*\S.*
+        background:
+          type: string
+          maxLength: 80000
+          minLength: 0
+          pattern: (?s).*\S.*
+    AdventurePatchRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          minLength: 0
+          pattern: (?s).*\S.*
+        description:
+          type: string
+          maxLength: 5000
+          minLength: 0
+          pattern: (?s).*\S.*
+        maxPlayer:
+          type: integer
+          format: int32
+          maximum: 100
+          minimum: 1
+        visibility:
+          type: string
+          enum:
+          - PRIVATE
+          - PUBLIC
+        status:
+          type: string
+          enum:
+          - NOT_STARTED
+          - ONGOING
+          - ABORT
+          - FINISH
+        postalCode:
+          type: string
+          maxLength: 255
+          minLength: 0
+          pattern: (?s).*\S.*
+        city:
+          type: string
+          maxLength: 255
+          minLength: 0
+          pattern: (?s).*\S.*
+    AdventureNotePatchRequest:
+      type: object
+      properties:
+        adventureId:
+          type: string
+          format: uuid
+        content:
+          type: string
+          maxLength: 5000
+          minLength: 0
+          pattern: (?s).*\S.*
+        date:
+          type: string
+          format: date
+        visibility:
+          type: string
+          enum:
+          - PRIVATE
+          - PUBLIC
+    AccountUpdateRequest:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          maxLength: 200
+          minLength: 0
+        email:
+          type: string
+          format: email
+          maxLength: 50
+          minLength: 5
+        pseudo:
+          type: string
+          maxLength: 60
+          minLength: 0
+          pattern: "^\\s*[\\p{L}\\p{N}_.\\-]{3,30}\\s*$"
+        newPassword:
+          type: string
+      required:
+      - currentPassword
+    PageDtoRatingDto:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/RatingDto"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    MessageDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        adventureId:
+          type: string
+          format: uuid
+        senderId:
+          type: string
+          format: uuid
+        content:
+          type: string
+        sendDate:
+          type: string
+          format: date-time
+      required:
+      - adventureId
+      - content
+      - id
+      - sendDate
+      - senderId
+    PageDtoMessageDto:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageDto"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    PageDtoHistoricalNoteDto:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/HistoricalNoteDto"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    PageDtoAdventureDto:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdventureDto"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    PageDtoAdventureNoteDto:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdventureNoteDto"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    PublicAccountDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        pseudo:
+          type: string
+        anonymized:
+          type: boolean
+    ExplicitDeletionRequest:
+      type: object
+      properties:
+        confirm:
+          type: boolean
+      required:
+      - confirm
+  securitySchemes:
+    bearerAuth:
+      type: http
+      description: "The access token from POST /accounts/login, renewed with POST\
+        \ /accounts/refresh."
+      scheme: bearer
+      bearerFormat: JWT

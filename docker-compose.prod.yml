@@ -1,0 +1,57 @@
+# Production : l'API et sa base. Les variables viennent du fichier .env (voir .env.example) ; sans valeur, le
+# démarrage échoue plutôt que de lancer l'API avec un secret vide.
+#
+# Hors de ce fichier : le reverse proxy (TLS), MinIO (`minio.url` pointe vers l'instance partagée) et le serveur de mail.
+#
+#   docker compose -f docker-compose.prod.yml up -d
+services:
+
+  dndgate-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-dndgate}
+      POSTGRES_USER: ${DB_USER:-dndgate}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes:
+      - db_storage:/var/lib/postgresql/data
+    # Pas de port publié : seule l'API parle à la base, par le réseau interne
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-dndgate} -d ${DB_NAME:-dndgate}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  dndgate-api:
+    image: ${DOCKER_USERNAME:?DOCKER_USERNAME is required}/dndgate-api:${API_VERSION:-latest}
+    restart: unless-stopped
+    depends_on:
+      dndgate-db:
+        condition: service_healthy
+    environment:
+      DB_SERVICE_NAME: dndgate-db
+      DB_NAME: ${DB_NAME:-dndgate}
+      DB_USER: ${DB_USER:-dndgate}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
+      MAIL_USERNAME: ${MAIL_USERNAME:?MAIL_USERNAME is required}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:?MAIL_PASSWORD is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
+      WEB_BASE_URL: ${WEB_BASE_URL:?WEB_BASE_URL is required}
+    # Le reverse proxy est sur la machine : l'API n'écoute pas sur les autres interfaces.
+    # Le port de gestion (4001 : sondes et métriques) n'est JAMAIS publié ; un collecteur le lit par le réseau interne.
+    ports:
+      - "127.0.0.1:4000:4000"
+    # Même sonde que celle du Dockerfile : la vivacité seulement. Une panne de base ne doit pas faire redémarrer l'API
+    # (la disponibilité, `readiness`, est pour l'orchestrateur et le reverse proxy).
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:4001/actuator/health/liveness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 90s
+      retries: 3
+
+volumes:
+  db_storage: {}

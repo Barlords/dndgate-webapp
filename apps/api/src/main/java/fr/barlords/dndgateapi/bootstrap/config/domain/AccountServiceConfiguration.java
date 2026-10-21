@@ -1,0 +1,191 @@
+package fr.barlords.dndgateapi.bootstrap.config.domain;
+
+import fr.barlords.dndgateapi.domain.port.out.AuditSpi;
+import fr.barlords.dndgateapi.domain.functional.service.adventure.master.MasterTransferNotifier;
+
+import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
+import fr.barlords.dndgateapi.domain.functional.service.account.*;
+import fr.barlords.dndgateapi.domain.port.in.account.*;
+import fr.barlords.dndgateapi.domain.port.out.AccessTokenSpi;
+import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
+import fr.barlords.dndgateapi.domain.port.out.PasswordHasherSpi;
+import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
+import fr.barlords.dndgateapi.bootstrap.config.TransactionalAccountAnonymizer;
+import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.OpaqueTokenSpi;
+import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.SessionPersistenceSpi;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import java.time.Clock;
+import java.time.Duration;
+
+@Configuration
+public class AccountServiceConfiguration {
+
+    @Bean
+    public CurrentAccountService currentAccountService(
+            AccountPersistenceSpi spi
+    ) {
+        return new CurrentAccountService(spi);
+    }
+
+    @Bean
+    public AccountCheckerService accountCheckerService(
+            AccountPersistenceSpi spi
+    ) {
+        return new AccountCheckerService(spi);
+    }
+
+    @Bean
+    public AccountModifierService accountModifierService(
+            PasswordHasherSpi passwordHasher
+    ) {
+        return new AccountModifierService(passwordHasher);
+    }
+
+    @Bean
+    public AccountCreatorApi accountCreatorApi(
+            AccountPersistenceSpi spi,
+            AccountCheckerService accountCheckerService,
+            AccountModifierService accountModifierService,
+            EmailingSpi emailingSpi,
+            Clock clock,
+            @Value("${security.verification.ttl:PT24H}") Duration verificationCodeTtl
+    ) {
+        return new AccountCreatorService(spi, accountCheckerService, accountModifierService, emailingSpi,
+                clock, verificationCodeTtl);
+    }
+
+    @Bean
+    public AccountAnonymizerApi accountAnonymizerApi(
+            AccountPersistenceSpi accounts,
+            AdventurePersistenceSpi adventures,
+            SpellBookPersistenceSpi spellBooks,
+            PasswordHasherSpi passwordHasher,
+            OpaqueTokenSpi opaqueTokenSpi,
+            AccountPasswordVerifierService accountPasswordVerifierService,
+            AccountSessionRevokerApi accountSessionRevokerApi,
+            MasterTransferNotifier masterTransferNotifier,
+            Clock clock,
+            AuditSpi audit
+    ) {
+        return new TransactionalAccountAnonymizer(new AccountAnonymizerService(
+                accounts, adventures, spellBooks, passwordHasher, opaqueTokenSpi, accountPasswordVerifierService,
+                accountSessionRevokerApi, masterTransferNotifier, clock, audit));
+    }
+
+    @Bean
+    public AccountFinderApi accountFinderApi(
+            AccountPersistenceSpi spi
+    ) {
+        return new AccountFinderService(spi);
+    }
+
+    @Bean
+    public AccountUpdaterApi accountUpdaterApi(
+            AccountPersistenceSpi spi,
+            CurrentAccountService currentAccountService,
+            AccountCheckerService accountCheckerService,
+            AccountModifierService accountModifierService,
+            AccountPasswordVerifierService accountPasswordVerifierService,
+            AccountSessionRevokerApi accountSessionRevokerApi,
+            EmailingSpi emailingSpi,
+            Clock clock,
+            @Value("${security.verification.ttl:PT24H}") Duration emailChangeCodeTtl
+    ) {
+        return new AccountUpdaterService(spi, currentAccountService, accountCheckerService, accountModifierService,
+                accountPasswordVerifierService, accountSessionRevokerApi, emailingSpi, clock, emailChangeCodeTtl);
+    }
+
+    @Bean
+    public AccountEmailChangeConfirmerApi accountEmailChangeConfirmerApi(
+            AccountPersistenceSpi spi,
+            AccountCheckerService accountCheckerService,
+            Clock clock
+    ) {
+        return new AccountEmailChangeConfirmerService(spi, accountCheckerService, clock);
+    }
+
+    @Bean
+    public AccountLoggerApi accountLoggerApi(
+            AccountPersistenceSpi spi,
+            PasswordHasherSpi passwordHasher,
+            AccountPasswordVerifierService accountPasswordVerifierService,
+            SessionIssuerService sessionIssuerService,
+            AccountCheckerService accountCheckerService
+    ) {
+        return new AccountLoggerService(spi, passwordHasher, accountPasswordVerifierService, sessionIssuerService,
+                accountCheckerService);
+    }
+
+    @Bean
+    public AccountPasswordVerifierService accountPasswordVerifierService(
+            AccountPersistenceSpi spi,
+            PasswordHasherSpi passwordHasher,
+            Clock clock,
+            @Value("${security.login.max-failed-attempts:5}") int maxFailedAttempts,
+            @Value("${security.login.lock-duration:PT15M}") Duration lockDuration
+    ) {
+        return new AccountPasswordVerifierService(spi, passwordHasher, clock, maxFailedAttempts, lockDuration);
+    }
+
+    @Bean
+    public SessionIssuerService sessionIssuerService(
+            SessionPersistenceSpi sessions,
+            AccessTokenSpi accessTokenSpi,
+            OpaqueTokenSpi opaqueTokenSpi,
+            Clock clock,
+            @Value("${security.refresh.ttl:P60D}") Duration refreshTokenTtl,
+            @Value("${security.session.max-lifetime:P180D}") Duration sessionMaxLifetime
+    ) {
+        return new SessionIssuerService(sessions, accessTokenSpi, opaqueTokenSpi, clock, refreshTokenTtl, sessionMaxLifetime);
+    }
+
+    @Bean
+    public AccountSessionRefresherApi accountSessionRefresherApi(
+            AccountPersistenceSpi accounts,
+            SessionPersistenceSpi sessions,
+            OpaqueTokenSpi opaqueTokenSpi,
+            SessionIssuerService sessionIssuerService,
+            Clock clock
+    ) {
+        return new AccountSessionRefresherService(accounts, sessions, opaqueTokenSpi, sessionIssuerService, clock);
+    }
+
+    @Bean
+    public AccountSessionRevokerApi accountSessionRevokerApi(SessionPersistenceSpi sessions, Clock clock) {
+        return new AccountSessionRevokerService(sessions, clock);
+    }
+
+    @Bean
+    public SessionVerifierApi sessionVerifierApi(SessionPersistenceSpi sessions, Clock clock) {
+        return new SessionVerifierService(sessions, clock);
+    }
+
+    @Bean
+    public SessionCleanerApi sessionCleanerApi(SessionPersistenceSpi sessions, Clock clock) {
+        return new SessionCleanerService(sessions, clock);
+    }
+
+    @Bean
+    public AccountVerifierApi accountVerifierApi(
+            AccountPersistenceSpi spi,
+            Clock clock
+    ) {
+        return new AccountVerifierService(spi, clock);
+    }
+
+    @Bean
+    public AccountVerificationResenderApi accountVerificationResenderApi(
+            AccountPersistenceSpi spi,
+            EmailingSpi emailingSpi,
+            Clock clock,
+            @Value("${security.verification.ttl:PT24H}") Duration verificationCodeTtl,
+            @Value("${security.verification.resend-cooldown:PT1M}") Duration resendCooldown
+    ) {
+        return new AccountVerificationResenderService(spi, emailingSpi, clock, verificationCodeTtl, resendCooldown);
+    }
+}
