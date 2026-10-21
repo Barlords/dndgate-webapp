@@ -7,16 +7,22 @@ import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureInP
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureNotJoinableException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureOwnerException;
+import fr.barlords.dndgateapi.domain.functional.exception.adventure.InvitationRateLimitException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.PlayerNotInAdventureException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.PlayersAlreadyInAdventureException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.note.AdventureNoteNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.note.HistoricalNoteNotFoundException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.time.Duration;
+import java.time.Instant;
 
 @RestControllerAdvice
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -55,6 +61,15 @@ public class AdventureErrorHandler {
     @ExceptionHandler(PlayersAlreadyInAdventureException.class)
     public ProblemDetail handlePlayersAlreadyInAdventureException() {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, PlayersAlreadyInAdventureException.EXCEPTION_MESSAGE);
+    }
+
+    @ExceptionHandler(InvitationRateLimitException.class)
+    public ResponseEntity<ProblemDetail> handleInvitationRateLimitException(InvitationRateLimitException exception) {
+        long retryAfterSeconds = Math.max(1, Duration.between(Instant.now(), exception.getRetryAt()).toSeconds());
+
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(retryAfterSeconds))
+                .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, exception.getMessage()));
     }
 
     @ExceptionHandler(AdventureAccessDeniedException.class)

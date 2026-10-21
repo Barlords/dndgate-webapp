@@ -65,13 +65,14 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
 - Corrigé : `RateLimitFilter` compare désormais `UrlPathHelper.getPathWithinApplication` (chemin décodé et normalisé) ; `RateLimitEncodedPathIntegrationTest` couvre les six règles, contrôle par mutation fait (6 tests rouges avec l'ancien code).
 
 ### 26. Invitations par e-mail illimitées — *lu*
-- [ ] `POST /adventures/{id}/invitations/{pseudo}` (`AdventureUpdaterService.sendInvitationCode`, ligne 131) envoie un e-mail à chaque appel, sans aucune limite. Créer une aventure n'est pas limité non plus.
+- [x] `POST /adventures/{id}/invitations/{pseudo}` (`AdventureUpdaterService.sendInvitationCode`, ligne 131) envoie un e-mail à chaque appel, sans aucune limite. Créer une aventure n'est pas limité non plus.
   Un compte peut donc écrire des centaines de fois au même joueur (les pseudos sont publics), ou à tous les joueurs.
 - Effets de bord :
   - la boîte d'envoi (`MailExecutorConfig` : file de 100) se remplit, et les e-mails suivants sont **abandonnés**, y compris les e-mails de vérification et de changement d'adresse des autres personnes ;
   - le compte SMTP (OVH) risque d'être bloqué pour envoi massif.
 - L'invitation part aussi pour une aventure terminée ou abandonnée, et vers quelqu'un qui est déjà participant.
 - Correctif : limite par expéditeur (par exemple 20 par heure) et par destinataire (une invitation par aventure et par 24 h) ; refuser si l'aventure n'est pas `NOT_STARTED` ou si le destinataire participe déjà (`409`) ; à plus long terme, une file d'attente séparée par priorité (les e-mails de sécurité ne doivent jamais attendre derrière des invitations).
+- Corrigé (hors file prioritaire, qui reste à faire) : `409` si l'aventure n'est pas `NOT_STARTED` ou si le destinataire participe déjà ; `429` + `Retry-After` à 20 invitations par heure et par expéditeur (`invitation.rate-limit.sender.*`) et à une invitation par aventure et par 24 h et par destinataire (`invitation.rate-limit.recipient.window`). Comptage en base (`sent_invitations`, migration V8, purge nocturne), horloge injectée. Tests : `AdventureUpdaterServiceInvitationTest`, `InvitationLimitIntegrationTest` ; contrôle par mutation fait.
 
 ### 27. N'importe qui peut verrouiller le compte de n'importe qui — *lu*
 - [ ] Le verrouillage (5 échecs, 15 minutes, `AccountPasswordVerifierService`) compte par **compte**, quelle que soit l'adresse IP. Les pseudos sont publics (`GET /accounts/pseudo/{pseudo}`) et 5 essais tiennent sous la limite par IP (10 par minute).

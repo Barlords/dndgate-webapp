@@ -1,6 +1,7 @@
 package fr.barlords.dndgateapi.bootstrap.config;
 
 import fr.barlords.dndgateapi.domain.port.in.account.SessionCleanerApi;
+import fr.barlords.dndgateapi.domain.port.in.adventure.InvitationLogCleanerApi;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -13,9 +14,16 @@ public class SessionCleanupScheduler {
 
     private final SessionCleanerApi sessionCleanerApi;
 
+    private final InvitationLogCleanerApi invitationLogCleanerApi;
+
     @Scheduled(cron = "${security.session.cleanup-cron:0 30 3 * * *}")
     public void purgeExpiredSessions() {
         sessionCleanerApi.purgeExpired();
+    }
+
+    @Scheduled(cron = "${security.session.cleanup-cron:0 30 3 * * *}")
+    public void purgeOldInvitations() {
+        invitationLogCleanerApi.purgeExpired();
     }
 
 }

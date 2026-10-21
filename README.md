@@ -174,6 +174,18 @@ Un seul MJ par aventure, et lui seul a les droits de MJ (modifier, changer le st
 - Quand la dernière place est prise, l'aventure démarre (`ONGOING`) et devient privée.
 - Les codes d'invitation et de vérification sont générés avec `SecureRandom` (une règle ArchUnit interdit `java.util.Random`).
 
+### Inviter un joueur par e-mail
+
+`POST /adventures/{id}/invitations/{pseudo}` (le MJ seulement) envoie le code d'invitation par e-mail. Il est refusé :
+
+- `409` si l'aventure n'est plus `NOT_STARTED` (démarrée, terminée ou abandonnée) ou si le destinataire y participe déjà (joueur ou MJ) ;
+- `429` avec `Retry-After` (secondes) et un `application/problem+json` si une limite est atteinte :
+  - **par expéditeur** : 20 invitations par heure (`invitation.rate-limit.sender.max`, `invitation.rate-limit.sender.window`) ;
+  - **par destinataire** : une invitation par aventure et par 24 h (`invitation.rate-limit.recipient.window`).
+
+Contrairement aux limites par adresse IP, celles-ci sont comptées en base (table `sent_invitations`) : elles survivent à un redémarrage et valent pour toutes les instances.
+Une invitation refusée n'est pas comptée. Les lignes plus anciennes que la plus longue fenêtre sont purgées chaque nuit (même cron que les sessions, `security.session.cleanup-cron`).
+
 ### Suppression de compte
 
 `DELETE /accounts` (avec le mot de passe, voir plus haut) **anonymise** le compte au lieu de le supprimer :

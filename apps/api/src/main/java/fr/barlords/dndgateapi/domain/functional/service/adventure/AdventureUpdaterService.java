@@ -1,5 +1,7 @@
 package fr.barlords.dndgateapi.domain.functional.service.adventure;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.util.Objects;
 
 import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
@@ -7,12 +9,14 @@ import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureCon
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureNotJoinableException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureFullException;
+import fr.barlords.dndgateapi.domain.functional.exception.adventure.InvitationRateLimitException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.PlayerNotInAdventureException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.PlayersAlreadyInAdventureException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.AccountNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureStatus;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureVisibility;
+import fr.barlords.dndgateapi.domain.functional.model.adventure.InvitationLimits;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureFinderApi;
@@ -20,6 +24,7 @@ import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureUpdaterApi;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountFinderApi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
+import fr.barlords.dndgateapi.domain.port.out.InvitationLogSpi;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -45,6 +50,12 @@ public class AdventureUpdaterService implements AdventureUpdaterApi {
     private final AccountFinderApi accountFinderApi;
 
     private final EmailingSpi emailingSpi;
+
+    private final InvitationLogSpi invitationLog;
+
+    private final Clock clock;
+
+    private final InvitationLimits invitationLimits;
 
     @Override
     public Adventure update(UUID accountId, Adventure adventure) {
@@ -137,7 +148,35 @@ public class AdventureUpdaterService implements AdventureUpdaterApi {
                 .filter(found -> !found.isAnonymized())
                 .orElseThrow(AccountNotFoundException::new);
 
+        // An invitation only makes sense while the adventure accepts players, and for someone who is not in it yet
+        if (!adventure.isOpenToNewPlayers()) {
+            throw new AdventureNotJoinableException();
+        }
+
+        if (adventure.isParticipant(targetedAccount.getId())) {
+            throw new PlayersAlreadyInAdventureException();
+        }
+
+        Instant now = clock.instant();
+        checkInvitationLimits(accountId, targetedAccount.getId(), adventureId, now);
+
+        invitationLog.record(accountId, targetedAccount.getId(), adventureId, now);
         emailingSpi.sendInvitationCodeEmail(senderAccount, targetedAccount, adventure.getInvitationCode());
+    }
+
+    /** An invitation is an e-mail sent in the name of the application: neither one sender nor one recipient may be flooded. */
+    private void checkInvitationLimits(UUID senderId, UUID recipientId, UUID adventureId, Instant now) {
+        invitationLog.findLastSentToRecipientSince(recipientId, adventureId, now.minus(invitationLimits.recipientWindow()))
+                .ifPresent(last -> {
+                    throw InvitationRateLimitException.recipientLimit(last.plus(invitationLimits.recipientWindow()));
+                });
+
+        List<Instant> sent = invitationLog.findSentAtBySenderSince(senderId, now.minus(invitationLimits.senderWindow()));
+        if (sent.size() >= invitationLimits.senderMax()) {
+            // The limit is free again when enough of the oldest invitations have left the window
+            Instant oldestToExpire = sent.get(sent.size() - invitationLimits.senderMax());
+            throw InvitationRateLimitException.senderLimit(oldestToExpire.plus(invitationLimits.senderWindow()));
+        }
     }
 
     @Override
