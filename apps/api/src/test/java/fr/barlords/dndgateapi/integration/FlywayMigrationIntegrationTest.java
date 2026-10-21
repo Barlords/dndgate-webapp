@@ -159,6 +159,46 @@ class FlywayMigrationIntegrationTest {
     }
 
     @Test
+    void duplicate_availability_votes_are_reduced_to_one_per_account_and_planning() throws Exception {
+        String url = newDatabase();
+        flyway(url, "5").migrate();
+        UUID planning = UUID.randomUUID();
+        UUID otherPlanning = UUID.randomUUID();
+        UUID account = UUID.randomUUID();
+        UUID otherAccount = UUID.randomUUID();
+        try (Connection connection = connect(url)) {
+            for (UUID[] vote : new UUID[][]{
+                    {planning, account}, {planning, account}, {planning, account},
+                    {planning, otherAccount}, {otherPlanning, account}}) {
+                UUID id = UUID.randomUUID();
+                try (PreparedStatement statement = connection.prepareStatement(
+                        "insert into availability (id, planning_id, account_id) values (?, ?, ?)")) {
+                    statement.setObject(1, id);
+                    statement.setObject(2, vote[0]);
+                    statement.setObject(3, vote[1]);
+                    statement.executeUpdate();
+                }
+                try (PreparedStatement statement = connection.prepareStatement(
+                        "insert into availability_dates (availability_id, availability_dates) values (?, '2027-01-01')")) {
+                    statement.setObject(1, id);
+                    statement.executeUpdate();
+                }
+            }
+        }
+
+        flyway(url, null).migrate();
+
+        try (Connection connection = connect(url)) {
+            Assertions.assertEquals(1, count(connection, "select count(*) from availability where planning_id = ? and account_id = ?", planning, account));
+            Assertions.assertEquals(1, count(connection, "select count(*) from availability where planning_id = ? and account_id = ?", planning, otherAccount));
+            Assertions.assertEquals(1, count(connection, "select count(*) from availability where planning_id = ? and account_id = ?", otherPlanning, account));
+            Assertions.assertEquals(3, count(connection, "select count(*) from availability"));
+            Assertions.assertEquals(3, count(connection, "select count(*) from availability_dates"), "the dates of removed votes go with them");
+            Assertions.assertEquals(0, count(connection, "select count(*) from availability_dates d where not exists (select 1 from availability a where a.id = d.availability_id)"));
+        }
+    }
+
+    @Test
     void two_pseudos_that_differ_only_by_case_stop_the_migration_and_leave_the_database_untouched() throws Exception {
         // the known risk of the case-insensitive uniqueness: it must fail loudly instead of corrupting anything
         String url = newDatabase();
@@ -177,5 +217,48 @@ class FlywayMigrationIntegrationTest {
         }
         Assertions.assertEquals("1", flyway(url, null).info().current().getVersion().getVersion(),
                 "the database stays on the last version that worked");
+    }
+
+    @Test
+    void message_dates_are_read_as_utc_when_the_column_becomes_a_timestamp_with_time_zone() throws Exception {
+        String url = newDatabase();
+        flyway(url, "6").migrate();
+        UUID sender = UUID.randomUUID();
+        UUID adventure = UUID.randomUUID();
+        UUID message = UUID.randomUUID();
+        try (Connection connection = connect(url)) {
+            insertAccount(connection, sender, "Sender");
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "insert into message (id, adventure_id, sender_id, content, send_date) values (?, ?, ?, 'hi', '2026-03-01 10:30:00')")) {
+                statement.setObject(1, message);
+                statement.setObject(2, adventure);
+                statement.setObject(3, sender);
+                statement.executeUpdate();
+            }
+            // a session in another time zone must not change how the old value is read
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("set time zone 'Asia/Tokyo'");
+            }
+        }
+
+        flyway(url, null).migrate();
+
+        try (Connection connection = connect(url)) {
+            Assertions.assertEquals(1, count(connection,
+                    "select count(*) from message where id = ? and send_date = timestamptz '2026-03-01 10:30:00+00'", message));
+            Assertions.assertEquals("timestamp with time zone", stringValue(connection,
+                    "select data_type from information_schema.columns where table_name = 'message' and column_name = 'send_date'"));
+            Assertions.assertEquals(1, count(connection,
+                    "select count(*) from pg_indexes where tablename = 'message' and indexname = 'message_adventure_send_date_idx'"));
+            Assertions.assertEquals(0, count(connection, "select count(*) from pg_indexes where indexname = 'idx_message_adventure'"),
+                    "the old single-column index is covered by the composite one");
+        }
+    }
+
+    private static String stringValue(Connection connection, String sql) throws SQLException {
+        try (Statement statement = connection.createStatement(); ResultSet rows = statement.executeQuery(sql)) {
+            rows.next();
+            return rows.getString(1);
+        }
     }
 }

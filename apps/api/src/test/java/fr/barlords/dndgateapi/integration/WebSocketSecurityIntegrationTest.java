@@ -13,7 +13,6 @@ import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import java.lang.reflect.Type;
-import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -152,7 +151,7 @@ class WebSocketSecurityIntegrationTest extends ApiIntegrationTestSupport {
         TimeUnit.MILLISECONDS.sleep(500);
 
         var sent = call(HttpMethod.POST, "/messages", owner.token(), Map.of("adventureId", adventureId.toString(),
-                "content", "hello table", "sendDate", LocalDateTime.now().withNano(0).toString()));
+                "content", "hello table"));
         Assertions.assertEquals(200, sent.getStatusCode().value(), sent.getBody());
 
         String payload = received.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);

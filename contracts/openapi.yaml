@@ -2412,13 +2412,9 @@ components:
           type: string
           maxLength: 5000
           minLength: 1
-        sendDate:
-          type: string
-          format: date-time
       required:
       - adventureId
       - content
-      - sendDate
     HistoricalNoteCreationRequest:
       type: object
       properties:

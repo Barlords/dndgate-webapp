@@ -194,7 +194,7 @@ class AccountAnonymizationIntegrationTest extends ApiIntegrationTestSupport {
         UUID adventureId = createAdventure(master, "PUBLIC");
         join(player, adventureId);
         call(HttpMethod.POST, "/messages", player.token(), Map.of("adventureId", adventureId.toString(),
-                "content", "hello table", "sendDate", "2026-01-01T10:00:00"));
+                "content", "hello table"));
 
         deleteAccount(player);
 

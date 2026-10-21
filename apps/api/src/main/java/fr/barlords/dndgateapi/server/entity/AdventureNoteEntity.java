@@ -30,7 +30,7 @@ public class AdventureNoteEntity implements Serializable {
     @Column(name = "content", nullable = false, length = 5000)
     private String content;
 
-    @Column(name = "date", updatable = false, nullable = false)
+    @Column(name = "date", nullable = false)
     private LocalDate date;
 
     @Column(name = "visibility", nullable = false)

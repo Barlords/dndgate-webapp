@@ -1,5 +1,7 @@
 package fr.barlords.dndgateapi.bootstrap.config.domain;
 
+import fr.barlords.dndgateapi.bootstrap.config.RetryingTransaction;
+import fr.barlords.dndgateapi.bootstrap.config.TransactionalAvailabilityVote;
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
 import fr.barlords.dndgateapi.domain.functional.service.planning.AvailabilityCreatorService;
 import fr.barlords.dndgateapi.domain.functional.service.planning.AvailabilityFinderService;
@@ -16,11 +18,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class AvailabilityServiceConfiguration {
     @Bean
-    public AvailabilityCreatorApi availabilityCreatorApi(
-            AvailabilityPersistenceSpi spi,
-            PlanningVisibilityVerifierService planningVisibilityVerifierService
-    ) {
-        return new AvailabilityCreatorService(spi, planningVisibilityVerifierService);
+    public AvailabilityCreatorApi availabilityCreatorApi(AvailabilityUpdaterApi availabilityUpdaterApi) {
+        return new AvailabilityCreatorService(availabilityUpdaterApi);
     }
 
     @Bean
@@ -35,8 +34,10 @@ public class AvailabilityServiceConfiguration {
     @Bean
     public AvailabilityUpdaterApi availabilityUpdaterApi(
             AvailabilityPersistenceSpi spi,
-            PlanningVisibilityVerifierService planningVisibilityVerifierService
+            PlanningVisibilityVerifierService planningVisibilityVerifierService,
+            RetryingTransaction transaction
     ) {
-        return new AvailabilityUpdaterService(spi, planningVisibilityVerifierService);
+        return new TransactionalAvailabilityVote(
+                new AvailabilityUpdaterService(spi, planningVisibilityVerifierService), transaction);
     }
 }

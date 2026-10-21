@@ -84,6 +84,16 @@ class PartialUpdateIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals("2026-01-01", string("select date::text from historical_note where id = ?", historyId));
     }
 
+    @Test
+    void the_date_of_an_adventure_note_can_be_patched() {
+        UUID noteId = insertAdventureNote(adventureId, "first", "PRIVATE");
+
+        Assertions.assertEquals(201, patch(master, "/adventure-notes/" + noteId, Map.of("date", "2027-05-05")));
+
+        Assertions.assertEquals("2027-05-05", string("select date::text from adventure_note where id = ?", noteId));
+        Assertions.assertEquals("first", string("select content from adventure_note where id = ?", noteId));
+    }
+
     // ---- a note is changed with the right of the adventure it belongs to ----
 
     @Test

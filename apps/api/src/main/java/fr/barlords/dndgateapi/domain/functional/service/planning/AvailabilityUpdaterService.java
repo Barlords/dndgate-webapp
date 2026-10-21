@@ -31,12 +31,9 @@ public class AvailabilityUpdaterService implements AvailabilityUpdaterApi {
             return spi.save(own).getOrElseThrow(DataNotSaveException::new);
         }
 
-        for (Availability previous : existing) {
-            spi.save(previous.withAvailabilityDates(own.getAvailabilityDates()))
-                    .getOrElseThrow(DataNotSaveException::new);
-        }
-
-        return own;
+        // At most one vote exists per (planning, account): it keeps its id and gets the new dates
+        return spi.save(existing.get(0).withAvailabilityDates(own.getAvailabilityDates()))
+                .getOrElseThrow(DataNotSaveException::new);
     }
 
 }

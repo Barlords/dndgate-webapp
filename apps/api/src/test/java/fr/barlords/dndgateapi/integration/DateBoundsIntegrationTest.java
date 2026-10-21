@@ -69,12 +69,4 @@ class DateBoundsIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(400, status(HttpMethod.PATCH, "/historical-notes/" + noteId, Map.of("date", TOO_FAR)));
         Assertions.assertEquals(201, status(HttpMethod.PATCH, "/historical-notes/" + noteId, Map.of("date", "2026-06-01")));
     }
-
-    @Test
-    void the_send_date_of_a_message_is_bounded() {
-        Assertions.assertEquals(400, status(HttpMethod.POST, "/messages",
-                Map.of("adventureId", adventureId.toString(), "content", "hello", "sendDate", "+999999999-12-31T00:00:00")));
-        Assertions.assertEquals(400, status(HttpMethod.POST, "/messages",
-                Map.of("adventureId", adventureId.toString(), "content", "hello", "sendDate", "1800-01-01T00:00:00")));
-    }
 }

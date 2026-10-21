@@ -9,15 +9,18 @@ import fr.barlords.dndgateapi.domain.port.out.MessagePersistenceSpi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.Clock;
+
 @Configuration
 public class MessageServiceConfiguration {
 
     @Bean
     public MessageCreatorApi messageCreatorApi(
             MessagePersistenceSpi spi,
-            AdventureAccessVerifierApi adventureAccessVerifierApi
+            AdventureAccessVerifierApi adventureAccessVerifierApi,
+            Clock clock
     ) {
-        return new MessageCreatorService(spi, adventureAccessVerifierApi);
+        return new MessageCreatorService(spi, adventureAccessVerifierApi, clock);
     }
 
     @Bean

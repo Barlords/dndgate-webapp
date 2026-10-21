@@ -24,10 +24,21 @@ public class RetryingTransaction {
     }
 
     public <T> T execute(Supplier<T> operation) {
+        return execute(operation, AdventureConcurrentModificationException.class);
+    }
+
+    /**
+     * Same, replaying when the given kind of exception is raised (for instance a unique index violation met at
+     * commit, when two requests create the same row at the same moment).
+     */
+    public <T> T execute(Supplier<T> operation, Class<? extends RuntimeException> retryOn) {
         for (int remaining = MAX_ATTEMPTS - 1; ; remaining--) {
             try {
                 return template.execute(status -> operation.get());
-            } catch (AdventureConcurrentModificationException e) {
+            } catch (RuntimeException e) {
+                if (!retryOn.isInstance(e)) {
+                    throw e;
+                }
                 if (remaining == 0) {
                     throw e;
                 }

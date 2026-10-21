@@ -7,7 +7,7 @@ import jakarta.persistence.Table;
 import lombok.*;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -34,6 +34,6 @@ public class MessageEntity implements Serializable {
     private String content;
 
     @Column(name = "send_date", updatable = false, nullable = false)
-    private LocalDateTime sendDate;
+    private Instant sendDate;
 
 }

@@ -6,7 +6,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import tools.jackson.databind.JsonNode;
 
-import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 
@@ -156,8 +155,7 @@ class SecurityIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount owner = registerAndLogin();
         TestAccount stranger = registerAndLogin();
         UUID adventureId = createAdventure(owner, "PUBLIC");
-        Map<String, Object> message = Map.of("adventureId", adventureId.toString(), "content", "hello",
-                "sendDate", LocalDateTime.now().withNano(0).toString());
+        Map<String, Object> message = Map.of("adventureId", adventureId.toString(), "content", "hello");
 
         Assertions.assertEquals(403, call(HttpMethod.POST, "/messages", stranger.token(), message).getStatusCode().value());
         Assertions.assertEquals(403,
