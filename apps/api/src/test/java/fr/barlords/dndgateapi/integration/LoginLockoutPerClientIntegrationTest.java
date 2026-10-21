@@ -159,8 +159,53 @@ class LoginLockoutPerClientIntegrationTest extends ApiIntegrationTestSupport {
 
         String stored = jdbc.queryForObject("select client_hash from login_failures where account_id = ?", String.class, account.id());
 
-        Assertions.assertEquals(64, stored.length());
+        Assertions.assertEquals(sha256Hex(ADDRESS_A), stored, "the hash of the address under test, not the one of the proxy");
         Assertions.assertFalse(stored.contains(ADDRESS_A));
+    }
+
+    @Test
+    void an_expired_lock_restarts_the_count_from_one() {
+        TestAccount account = registerAndLogin();
+        jdbc.update("insert into login_failures (id, account_id, client_hash, failed_attempts, locked_until, last_failed_at) "
+                + "values (?, ?, ?, 5, now() - interval '1 minute', now() - interval '16 minutes')",
+                UUID.randomUUID(), account.id(), sha256Hex(ADDRESS_A));
+
+        Assertions.assertEquals(404, login(ADDRESS_A, account, "wrong"), "the lock is over: the password is examined, not refused with 429");
+        Assertions.assertEquals(1, jdbc.queryForObject("select failed_attempts from login_failures where account_id = ?", Integer.class, account.id()));
+        Assertions.assertNull(jdbc.queryForObject("select locked_until from login_failures where account_id = ?", Object.class, account.id()));
+        Assertions.assertEquals(200, login(ADDRESS_A, account, account.password()));
+    }
+
+    @Test
+    void ipv6_addresses_of_the_same_64_share_one_counter_and_other_prefixes_are_free() {
+        TestAccount account = registerAndLogin();
+
+        for (int i = 0; i < 5; i++) {
+            Assertions.assertEquals(404, login("2001:db8:1:2::" + (i + 1), account, "wrong-" + i));
+        }
+
+        Assertions.assertEquals(429, login("2001:db8:1:2:ffff:ffff:ffff:ffff", account, account.password()), "rotating inside the /64 does not help");
+        Assertions.assertEquals(200, login("2001:db8:1:3::1", account, account.password()), "another /64 is not concerned");
+    }
+
+    @Test
+    void deleting_the_account_forgets_its_login_failures() {
+        TestAccount account = registerAndLogin();
+        login(ADDRESS_A, account, "wrong");
+        Assertions.assertEquals(1, jdbc.queryForObject("select count(*) from login_failures where account_id = ?", Integer.class, account.id()));
+
+        Assertions.assertEquals(204, delete(ADDRESS_B, account, account.password()));
+
+        Assertions.assertEquals(0, jdbc.queryForObject("select count(*) from login_failures where account_id = ?", Integer.class, account.id()));
+    }
+
+    private static String sha256Hex(String value) {
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     @Test
@@ -196,7 +241,9 @@ class LoginLockoutPerClientIntegrationTest extends ApiIntegrationTestSupport {
             Assertions.assertTrue(logs.list.stream().filter(e -> e.getLevel() == Level.WARN)
                     .allMatch(e -> e.getFormattedMessage().contains(account.id().toString())
                             && !e.getFormattedMessage().contains("192.0.2.")));
-            Assertions.assertEquals(200, login("192.0.2.4", account, account.password()), "nothing is blocked");
+            login("192.0.2.4", account, "wrong");
+            Assertions.assertEquals(1, logs.list.stream().filter(e -> e.getLevel() == Level.WARN).count(), "once per crossing, not on every failure");
+            Assertions.assertEquals(200, login("192.0.2.5", account, account.password()), "nothing is blocked");
         } finally {
             logger.detachAppender(logs);
         }

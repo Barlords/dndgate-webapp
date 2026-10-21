@@ -25,6 +25,9 @@ public interface LoginFailureSpi {
     /** How many different clients failed against this account since the given instant. */
     int countClientsFailingSince(UUID accountId, Instant since);
 
+    /** Forgets every failure recorded against this account (it is being deleted). */
+    void deleteByAccount(UUID accountId);
+
     /** Forgets the failures older than this instant. */
     void deleteFailedBefore(Instant before);
 

@@ -152,7 +152,7 @@ public class AccountPasswordVerifierServiceTest {
     @Test
     void failures_from_many_different_clients_are_logged_as_a_warning_but_nothing_is_blocked() {
         when(passwordHasher.matches("wrong", "hash")).thenReturn(false);
-        when(failures.countClientsFailingSince(account.getId(), NOW.minus(LOCK_DURATION))).thenReturn(WARNING_THRESHOLD);
+        when(failures.countClientsFailingSince(account.getId(), NOW.minus(LOCK_DURATION))).thenReturn(WARNING_THRESHOLD - 1, WARNING_THRESHOLD);
 
         Assertions.assertThrows(WrongPasswordException.class, () -> service.verify(account, "wrong", CLIENT_A, WrongPasswordException::new));
 
@@ -163,6 +163,16 @@ public class AccountPasswordVerifierServiceTest {
         Assertions.assertTrue(message.contains(String.valueOf(WARNING_THRESHOLD)));
         Assertions.assertFalse(message.contains(CLIENT_A.value()), "the address is personal data and stays out of the logs");
         Assertions.assertFalse(message.contains("wrong"), "no secret in the logs");
+    }
+
+    @Test
+    void the_warning_is_logged_once_when_the_threshold_is_crossed_not_on_every_later_failure() {
+        when(passwordHasher.matches("wrong", "hash")).thenReturn(false);
+        when(failures.countClientsFailingSince(account.getId(), NOW.minus(LOCK_DURATION))).thenReturn(WARNING_THRESHOLD);
+
+        Assertions.assertThrows(WrongPasswordException.class, () -> service.verify(account, "wrong", CLIENT_A, WrongPasswordException::new));
+
+        Assertions.assertTrue(logs.list.stream().noneMatch(e -> e.getLevel() == Level.WARN), "already warned for this window");
     }
 
     @Test

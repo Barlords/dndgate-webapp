@@ -55,6 +55,12 @@ public class LoginFailureDatabaseAdapter implements LoginFailureSpi {
 
     @Override
     @Transactional
+    public void deleteByAccount(UUID accountId) {
+        repository.deleteByAccount(accountId);
+    }
+
+    @Override
+    @Transactional
     public void deleteFailedBefore(Instant before) {
         repository.deleteFailedBefore(before);
     }

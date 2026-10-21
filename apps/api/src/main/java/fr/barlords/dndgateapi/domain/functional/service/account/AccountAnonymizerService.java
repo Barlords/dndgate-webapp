@@ -1,6 +1,7 @@
 package fr.barlords.dndgateapi.domain.functional.service.account;
 
 import fr.barlords.dndgateapi.domain.port.out.AuditSpi;
+import fr.barlords.dndgateapi.domain.port.out.LoginFailureSpi;
 import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.AccountNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.WrongPasswordException;
@@ -53,6 +54,8 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
 
     private final AuditSpi audit;
 
+    private final LoginFailureSpi loginFailures;
+
     @Override
     public void anonymize(UUID accountId, String password, ClientAddress client) {
         Account account = accounts.findById(accountId)
@@ -71,6 +74,8 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
 
         accounts.save(anonymousVersionOf(account))
                 .getOrElseThrow(DataNotSaveException::new);
+
+        loginFailures.deleteByAccount(accountId);
 
         sessionRevoker.logoutAll(accountId);
 

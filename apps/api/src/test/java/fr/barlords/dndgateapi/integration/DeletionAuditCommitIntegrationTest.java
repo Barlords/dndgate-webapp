@@ -3,6 +3,7 @@ package fr.barlords.dndgateapi.integration;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import fr.barlords.dndgateapi.domain.functional.model.account.ClientAddress;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountAnonymizerApi;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureDeleterApi;
 import org.junit.jupiter.api.AfterEach;
@@ -96,7 +97,7 @@ class DeletionAuditCommitIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount account = registerAndLogin();
 
         Assertions.assertThrows(IllegalStateException.class, () -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            accountAnonymizer.anonymize(account.id(), account.password(), new fr.barlords.dndgateapi.domain.functional.model.account.ClientAddress("203.0.113.7"));
+            accountAnonymizer.anonymize(account.id(), account.password(), new ClientAddress("203.0.113.7"));
             throw new IllegalStateException("something fails before the commit");
         }));
 
@@ -110,7 +111,7 @@ class DeletionAuditCommitIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount account = registerAndLogin();
 
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            accountAnonymizer.anonymize(account.id(), account.password(), new fr.barlords.dndgateapi.domain.functional.model.account.ClientAddress("203.0.113.7"));
+            accountAnonymizer.anonymize(account.id(), account.password(), new ClientAddress("203.0.113.7"));
             Assertions.assertTrue(linesAbout(account.id()).isEmpty(), "nothing is committed yet");
         });
 

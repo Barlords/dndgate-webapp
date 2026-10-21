@@ -58,8 +58,10 @@ public class AccountPasswordVerifierService {
         }
 
         if (!passwordHasher.matches(rawPassword, account.getPassword())) {
+            Instant windowStart = now.minus(lockDuration);
+            int clientsBefore = failures.countClientsFailingSince(account.getId(), windowStart);
             failures.register(account.getId(), client, maxFailedAttempts, now.plus(lockDuration), now);
-            warnWhenManyClientsFail(account, now);
+            warnWhenManyClientsFail(account, clientsBefore, windowStart);
             throw onWrongPassword.get();
         }
 
@@ -70,8 +72,12 @@ public class AccountPasswordVerifierService {
         return account;
     }
 
-    private void warnWhenManyClientsFail(Account account, Instant now) {
-        int clients = failures.countClientsFailingSince(account.getId(), now.minus(lockDuration));
+    /** Only when the count crosses the threshold, not on every failure after that. */
+    private void warnWhenManyClientsFail(Account account, int clientsBefore, Instant windowStart) {
+        if (clientsBefore >= distinctClientsWarningThreshold) {
+            return;
+        }
+        int clients = failures.countClientsFailingSince(account.getId(), windowStart);
         if (clients >= distinctClientsWarningThreshold) {
             log.warn("Possible distributed password guessing: account {} had failed logins from {} different clients in the last {}",
                     account.getId(), clients, lockDuration);

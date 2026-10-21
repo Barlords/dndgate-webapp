@@ -1,6 +1,7 @@
 package fr.barlords.dndgateapi.domain.functional.service.account;
 
 import fr.barlords.dndgateapi.domain.port.out.AuditSpi;
+import fr.barlords.dndgateapi.domain.port.out.LoginFailureSpi;
 import fr.barlords.dndgateapi.domain.functional.service.adventure.master.MasterTransferNotifier;
 
 import fr.barlords.dndgateapi.domain.functional.exception.account.AccountNotFoundException;
@@ -81,10 +82,13 @@ public class AccountAnonymizerServiceTest {
     @Mock
     private AuditSpi audit;
 
+    @Mock
+    private LoginFailureSpi loginFailures;
+
     @BeforeEach
     void setUp() {
         service = new AccountAnonymizerService(accounts, adventures, spellBooks, passwordHasher, opaqueTokens,
-                passwordVerifier, sessionRevoker, notifier, Clock.fixed(NOW, ZoneOffset.UTC), audit);
+                passwordVerifier, sessionRevoker, notifier, Clock.fixed(NOW, ZoneOffset.UTC), audit, loginFailures);
         lenient().when(accounts.findById(account.getId())).thenReturn(Optional.of(account));
         lenient().when(opaqueTokens.generate()).thenReturn("random-secret");
         lenient().when(passwordHasher.hash("random-secret")).thenReturn("unusable-hash");
@@ -182,6 +186,13 @@ public class AccountAnonymizerServiceTest {
     }
 
     // ---- the password is asked again ----
+
+    @Test
+    void the_login_failures_of_the_account_are_forgotten() {
+        service.anonymize(account.getId(), "password", CLIENT);
+
+        verify(loginFailures).deleteByAccount(account.getId());
+    }
 
     @Test
     void a_wrong_password_deletes_nothing() {

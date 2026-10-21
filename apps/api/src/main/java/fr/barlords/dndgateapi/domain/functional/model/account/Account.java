@@ -6,8 +6,8 @@ import lombok.Value;
 import lombok.With;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.security.MessageDigest;
+import java.time.Instant;
 import java.util.UUID;
 
 @Value
@@ -85,6 +85,5 @@ public class Account {
     public boolean isAnonymized() {
         return anonymizedAt != null;
     }
-
 
 }

@@ -55,6 +55,10 @@ public interface LoginFailureRepository extends JpaRepository<LoginFailureEntity
     int countClientsFailingSince(@Param("accountId") UUID accountId, @Param("since") Instant since);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("delete from LoginFailureEntity f where f.accountId = :accountId")
+    int deleteByAccount(@Param("accountId") UUID accountId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("delete from LoginFailureEntity f where f.lastFailedAt < :before")
     int deleteFailedBefore(@Param("before") Instant before);
 }

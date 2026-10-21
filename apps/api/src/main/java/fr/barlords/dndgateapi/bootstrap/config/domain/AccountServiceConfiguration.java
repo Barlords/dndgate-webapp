@@ -71,11 +71,12 @@ public class AccountServiceConfiguration {
             AccountSessionRevokerApi accountSessionRevokerApi,
             MasterTransferNotifier masterTransferNotifier,
             Clock clock,
-            AuditSpi audit
+            AuditSpi audit,
+            LoginFailureSpi loginFailures
     ) {
         return new TransactionalAccountAnonymizer(new AccountAnonymizerService(
                 accounts, adventures, spellBooks, passwordHasher, opaqueTokenSpi, accountPasswordVerifierService,
-                accountSessionRevokerApi, masterTransferNotifier, clock, audit));
+                accountSessionRevokerApi, masterTransferNotifier, clock, audit, loginFailures));
     }
 
     @Bean
