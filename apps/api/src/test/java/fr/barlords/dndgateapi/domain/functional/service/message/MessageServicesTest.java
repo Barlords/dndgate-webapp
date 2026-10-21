@@ -13,6 +13,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,6 +37,10 @@ public class MessageServicesTest {
     private final UUID accountId = UUID.randomUUID();
 
     private final UUID adventureId = UUID.randomUUID();
+
+    private static final Instant NOW = Instant.parse("2026-05-01T10:15:30Z");
+
+    private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
 
     private final PageRequest request = new PageRequest(0, 20);
 
@@ -60,7 +67,7 @@ public class MessageServicesTest {
         Message message = Message.builder().adventureId(adventureId).senderId(UUID.randomUUID()).content("hello").build();
         when(spi.save(any(Message.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
 
-        Message saved = new MessageCreatorService(spi, accessVerifier).create(accountId, message);
+        Message saved = new MessageCreatorService(spi, accessVerifier, clock).create(accountId, message);
 
         Assertions.assertEquals(accountId, saved.getSenderId());
     }
@@ -71,7 +78,26 @@ public class MessageServicesTest {
         doThrow(new AdventureAccessDeniedException()).when(accessVerifier).verifyParticipant(accountId, adventureId);
 
         Assertions.assertThrows(AdventureAccessDeniedException.class,
-                () -> new MessageCreatorService(spi, accessVerifier).create(accountId, message));
+                () -> new MessageCreatorService(spi, accessVerifier, clock).create(accountId, message));
         verify(spi, never()).save(any());
+    }
+
+    @Test
+    void the_send_date_is_fixed_by_the_server_clock_whatever_the_message_carries() {
+        Message forged = Message.builder().adventureId(adventureId).content("hello")
+                .sendDate(Instant.parse("2199-12-31T00:00:00Z")).build();
+        when(spi.save(any(Message.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+
+        Message saved = new MessageCreatorService(spi, accessVerifier, clock).create(accountId, forged);
+
+        Assertions.assertEquals(NOW, saved.getSendDate());
+    }
+
+    @Test
+    void the_send_date_is_set_when_the_message_carries_none() {
+        Message message = Message.builder().adventureId(adventureId).content("hello").build();
+        when(spi.save(any(Message.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+
+        Assertions.assertEquals(NOW, new MessageCreatorService(spi, accessVerifier, clock).create(accountId, message).getSendDate());
     }
 }

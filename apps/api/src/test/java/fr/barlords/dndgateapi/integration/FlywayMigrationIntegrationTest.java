@@ -218,4 +218,45 @@ class FlywayMigrationIntegrationTest {
         Assertions.assertEquals("1", flyway(url, null).info().current().getVersion().getVersion(),
                 "the database stays on the last version that worked");
     }
+
+    @Test
+    void message_dates_are_read_as_utc_when_the_column_becomes_a_timestamp_with_time_zone() throws Exception {
+        String url = newDatabase();
+        flyway(url, "6").migrate();
+        UUID sender = UUID.randomUUID();
+        UUID adventure = UUID.randomUUID();
+        UUID message = UUID.randomUUID();
+        try (Connection connection = connect(url)) {
+            insertAccount(connection, sender, "Sender");
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "insert into message (id, adventure_id, sender_id, content, send_date) values (?, ?, ?, 'hi', '2026-03-01 10:30:00')")) {
+                statement.setObject(1, message);
+                statement.setObject(2, adventure);
+                statement.setObject(3, sender);
+                statement.executeUpdate();
+            }
+            // a session in another time zone must not change how the old value is read
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("set time zone 'Asia/Tokyo'");
+            }
+        }
+
+        flyway(url, null).migrate();
+
+        try (Connection connection = connect(url)) {
+            Assertions.assertEquals(1, count(connection,
+                    "select count(*) from message where id = ? and send_date = timestamptz '2026-03-01 10:30:00+00'", message));
+            Assertions.assertEquals("timestamp with time zone", stringValue(connection,
+                    "select data_type from information_schema.columns where table_name = 'message' and column_name = 'send_date'"));
+            Assertions.assertEquals(1, count(connection,
+                    "select count(*) from pg_indexes where tablename = 'message' and indexname = 'message_adventure_send_date_idx'"));
+        }
+    }
+
+    private static String stringValue(Connection connection, String sql) throws SQLException {
+        try (Statement statement = connection.createStatement(); ResultSet rows = statement.executeQuery(sql)) {
+            rows.next();
+            return rows.getString(1);
+        }
+    }
 }

@@ -8,6 +8,8 @@ import fr.barlords.dndgateapi.domain.port.out.MessagePersistenceSpi;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.util.UUID;
 
 @Slf4j
@@ -18,11 +20,13 @@ public class MessageCreatorService implements MessageCreatorApi {
 
     private final AdventureAccessVerifierApi adventureAccessVerifierApi;
 
+    private final Clock clock;
+
     @Override
     public Message create(UUID accountId, Message message) {
         adventureAccessVerifierApi.verifyParticipant(accountId, message.getAdventureId());
 
-        return spi.save(message.withSenderId(accountId))
+        return spi.save(message.withSenderId(accountId).withSendDate(Instant.now(clock)))
                 .getOrElseThrow(DataNotSaveException::new);
     }
 

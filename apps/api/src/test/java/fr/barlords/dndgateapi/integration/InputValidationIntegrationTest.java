@@ -173,7 +173,7 @@ class InputValidationIntegrationTest extends ApiIntegrationTestSupport {
         String huge = "x".repeat(600 * 1024);
 
         Assertions.assertEquals(413, status(HttpMethod.POST, "/messages",
-                Map.of("adventureId", adventureId.toString(), "content", huge, "sendDate", "2027-01-01T10:00:00")));
+                Map.of("adventureId", adventureId.toString(), "content", huge)));
         Assertions.assertEquals(413, call(HttpMethod.POST, "/accounts/login", null, Map.of("pseudo", "x", "password", huge)).getStatusCode().value());
     }
 

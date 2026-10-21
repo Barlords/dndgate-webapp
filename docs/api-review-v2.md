@@ -97,7 +97,7 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
 - Correctif : faire de `POST` un alias de « créer ou remplacer », ou répondre `409` s'il existe déjà un vote ; migration qui dédoublonne puis crée l'index unique `(planning_id, account_id)` ; renvoyer le vote enregistré.
 
 ### 30. La date d'un message est choisie par le client — *vérifié*
-- [ ] `MessageCreationRequest.sendDate` vient du client, et la liste est triée par cette date. Mesuré : un message daté du `2199-12-31` reste **en tête du chat pour toujours**.
+- [x] **Corrigé** (date fixée par le serveur via `Clock` en `Instant`, `message.send_date` en `timestamptz` + index `(adventure_id, send_date desc)` en V7 ; **rupture de contrat** : `sendDate` retiré de `MessageCreationRequest`). `MessageCreationRequest.sendDate` vient du client, et la liste est triée par cette date. Mesuré : un message daté du `2199-12-31` reste **en tête du chat pour toujours**.
   On peut aussi antidater un message pour le glisser dans l'historique.
 - La colonne est un `timestamp without time zone` (`LocalDateTime`) : deux clients dans deux fuseaux horaires produisent un ordre faux, même de bonne foi.
 - Correctif : date fixée par le serveur (`Clock`), en `Instant` ; migration de `message.send_date` en `timestamptz` ; retirer `sendDate` de la requête (**rupture de contrat**) ; ajouter un index `(adventure_id, send_date desc)`.

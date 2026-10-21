@@ -152,7 +152,7 @@ class DeletionConfirmationIntegrationTest extends ApiIntegrationTestSupport {
         call(HttpMethod.POST, "/historical-notes", master.token(), Map.of(
                 "adventureId", adventureId.toString(), "content", "history", "date", "2026-01-01"));
         call(HttpMethod.POST, "/messages", player.token(), Map.of(
-                "adventureId", adventureId.toString(), "content", "hello", "sendDate", "2026-01-01T10:00:00"));
+                "adventureId", adventureId.toString(), "content", "hello"));
         UUID planningId = UUID.fromString(body(call(HttpMethod.POST, "/planning", master.token(), Map.of(
                 "adventureId", adventureId.toString(), "propositionDates", List.of("2026-02-01", "2026-02-08")))).get("id").asString());
         call(HttpMethod.PUT, "/planning/availability", player.token(), Map.of(
@@ -190,7 +190,7 @@ class DeletionConfirmationIntegrationTest extends ApiIntegrationTestSupport {
         UUID doomed = createAdventure(master, "PUBLIC");
         UUID kept = createAdventure(master, "PUBLIC");
         call(HttpMethod.POST, "/messages", master.token(), Map.of(
-                "adventureId", kept.toString(), "content", "stay", "sendDate", "2026-01-01T10:00:00"));
+                "adventureId", kept.toString(), "content", "stay"));
 
         Assertions.assertEquals(204, delete("/adventures/" + doomed, master, confirmation("Quest")));
 

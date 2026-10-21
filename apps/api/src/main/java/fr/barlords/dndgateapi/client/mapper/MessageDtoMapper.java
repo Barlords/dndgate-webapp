@@ -23,7 +23,6 @@ public interface MessageDtoMapper {
         return Message.builder()
                 .adventureId(UuidValidator.validate(request.adventureId()))
                 .content(request.content().trim())
-                .sendDate(request.sendDate())
                 .build();
     }
 
