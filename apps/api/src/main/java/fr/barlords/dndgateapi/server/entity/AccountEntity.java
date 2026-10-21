@@ -50,13 +50,6 @@ public class AccountEntity implements Serializable {
     @Column(name = "pending_email_expires_at")
     private Instant pendingEmailExpiresAt;
 
-    @Column(name = "failed_login_attempts", nullable = false)
-    @Builder.Default
-    private int failedLoginAttempts = 0;
-
-    @Column(name = "locked_until")
-    private Instant lockedUntil;
-
     @Column(name = "anonymized_at")
     private Instant anonymizedAt;
 

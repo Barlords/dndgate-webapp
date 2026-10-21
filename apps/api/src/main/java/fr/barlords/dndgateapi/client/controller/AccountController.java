@@ -14,10 +14,12 @@ import fr.barlords.dndgateapi.client.dto.account.AccountLogRequest;
 import fr.barlords.dndgateapi.client.mapper.AuthDtoMapper;
 import fr.barlords.dndgateapi.client.mapper.AccountDtoMapper;
 import fr.barlords.dndgateapi.client.service.AuthVerifierService;
+import fr.barlords.dndgateapi.client.service.ClientAddresses;
 import fr.barlords.dndgateapi.client.validator.UuidValidator;
 import fr.barlords.dndgateapi.domain.functional.exception.account.TokenNotValidException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.AccountNotFoundException;
 import fr.barlords.dndgateapi.domain.port.in.account.*;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -88,29 +90,31 @@ public class AccountController {
 
     @PatchMapping
     @ResponseStatus(OK)
-    public AccountDto patchAccount(@Valid @RequestBody AccountUpdateRequest request) {
+    public AccountDto patchAccount(@Valid @RequestBody AccountUpdateRequest request, HttpServletRequest httpRequest) {
         return AccountDtoMapper.toDto(
                 accountUpdaterApi.update(
                         authVerifierService.currentAccountId(),
                         request.currentPassword(),
-                        AccountDtoMapper.toChanges(request)
+                        AccountDtoMapper.toChanges(request),
+                        ClientAddresses.of(httpRequest)
                 )
         );
     }
 
     @DeleteMapping
     @ResponseStatus(NO_CONTENT)
-    public void deleteMyAccount(@Valid @RequestBody DeletionConfirmationRequest request) {
-        accountAnonymizerApi.anonymize(authVerifierService.currentAccountId(), request.confirmation());
+    public void deleteMyAccount(@Valid @RequestBody DeletionConfirmationRequest request, HttpServletRequest httpRequest) {
+        accountAnonymizerApi.anonymize(authVerifierService.currentAccountId(), request.confirmation(), ClientAddresses.of(httpRequest));
     }
 
     @PostMapping(path = "/login")
     @ResponseStatus(OK)
-    public AuthDto login(@Valid @RequestBody AccountLogRequest log) {
+    public AuthDto login(@Valid @RequestBody AccountLogRequest log, HttpServletRequest httpRequest) {
         return AuthDtoMapper.toDto(
                 accountLoggerApi.login(
                         log.pseudo().trim(),
-                        log.password()));
+                        log.password(),
+                        ClientAddresses.of(httpRequest)));
     }
 
     @PostMapping(path = "/refresh")

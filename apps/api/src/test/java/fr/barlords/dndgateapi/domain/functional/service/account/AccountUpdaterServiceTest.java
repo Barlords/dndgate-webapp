@@ -5,6 +5,7 @@ import fr.barlords.dndgateapi.domain.functional.exception.account.PseudoAlreadyU
 import fr.barlords.dndgateapi.domain.functional.exception.account.TokenNotValidException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.WrongPasswordException;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
+import fr.barlords.dndgateapi.domain.functional.model.account.ClientAddress;
 import fr.barlords.dndgateapi.domain.functional.model.account.AccountChanges;
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountSessionRevokerApi;
@@ -34,6 +35,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class AccountUpdaterServiceTest {
+    private static final ClientAddress CLIENT = new ClientAddress("203.0.113.7");
+
 
     @Mock
     private AccountPersistenceSpi spi;
@@ -66,7 +69,7 @@ public class AccountUpdaterServiceTest {
                 new AccountModifierService(passwordHasher), passwordVerifier, sessionRevoker,
                 emailingSpi, Clock.fixed(Instant.parse("2026-01-01T10:00:00Z"), ZoneOffset.UTC), Duration.ofHours(24));
         lenient().when(currentAccountService.getAccountById(existing.getId())).thenReturn(existing);
-        lenient().when(passwordVerifier.verify(any(), any(), any())).thenAnswer(i -> i.getArguments()[0]);
+        lenient().when(passwordVerifier.verify(any(), any(), any(), any())).thenAnswer(i -> i.getArguments()[0]);
         lenient().when(spi.save(any(Account.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
     }
 
@@ -76,7 +79,7 @@ public class AccountUpdaterServiceTest {
         when(currentAccountService.getAccountById(accountId)).thenThrow(new TokenNotValidException());
 
         Assertions.assertThrows(TokenNotValidException.class,
-                () -> service.update(accountId, "password", new AccountChanges("new@test.fr", null, null)));
+                () -> service.update(accountId, "password", new AccountChanges("new@test.fr", null, null), CLIENT));
         verify(spi, never()).save(any());
     }
 
@@ -84,10 +87,10 @@ public class AccountUpdaterServiceTest {
 
     @Test
     void a_wrong_current_password_changes_nothing() {
-        when(passwordVerifier.verify(any(), any(), any())).thenThrow(new WrongPasswordException());
+        when(passwordVerifier.verify(any(), any(), any(), any())).thenThrow(new WrongPasswordException());
 
         Assertions.assertThrows(WrongPasswordException.class,
-                () -> service.update(existing.getId(), "wrong", new AccountChanges("new@test.fr", "new", "newpassword")));
+                () -> service.update(existing.getId(), "wrong", new AccountChanges("new@test.fr", "new", "newpassword"), CLIENT));
 
         verify(spi, never()).save(any());
         verify(sessionRevoker, never()).logoutAll(any());
@@ -95,16 +98,16 @@ public class AccountUpdaterServiceTest {
 
     @Test
     void the_current_password_is_checked_with_a_wrong_password_error() {
-        service.update(existing.getId(), "oldpassword", new AccountChanges(null, "new", null));
+        service.update(existing.getId(), "oldpassword", new AccountChanges(null, "new", null), CLIENT);
 
-        verify(passwordVerifier).verify(org.mockito.ArgumentMatchers.eq(existing), org.mockito.ArgumentMatchers.eq("oldpassword"), any());
+        verify(passwordVerifier).verify(org.mockito.ArgumentMatchers.eq(existing), org.mockito.ArgumentMatchers.eq("oldpassword"), org.mockito.ArgumentMatchers.eq(CLIENT), any());
     }
 
     // ---- partial update ----
 
     @Test
     void only_the_given_fields_change() {
-        Account updated = service.update(existing.getId(), "oldpassword", new AccountChanges(null, "newpseudo", null));
+        Account updated = service.update(existing.getId(), "oldpassword", new AccountChanges(null, "newpseudo", null), CLIENT);
 
         Assertions.assertEquals("newpseudo", updated.getPseudo());
         Assertions.assertEquals("test@test.fr", updated.getEmail());
@@ -115,7 +118,7 @@ public class AccountUpdaterServiceTest {
     @Test
     void keeping_the_same_email_and_pseudo_is_not_a_conflict_with_oneself() {
         Assertions.assertDoesNotThrow(() -> service.update(existing.getId(), "oldpassword",
-                new AccountChanges("test@test.fr", "usertest", null)));
+                new AccountChanges("test@test.fr", "usertest", null), CLIENT));
 
         // the account would find itself as the owner of that e-mail and pseudo: nothing is looked up
         verify(accountCheckerService, never()).emailIsAvailable(any());
@@ -127,7 +130,7 @@ public class AccountUpdaterServiceTest {
         doThrow(new EmailAlreadyUsedException()).when(accountCheckerService).emailIsAvailable(existing.withEmail("taken@test.fr"));
 
         Assertions.assertThrows(EmailAlreadyUsedException.class,
-                () -> service.update(existing.getId(), "oldpassword", new AccountChanges("taken@test.fr", null, null)));
+                () -> service.update(existing.getId(), "oldpassword", new AccountChanges("taken@test.fr", null, null), CLIENT));
         verify(spi, never()).save(any());
     }
 
@@ -136,7 +139,7 @@ public class AccountUpdaterServiceTest {
         doThrow(new PseudoAlreadyUsedException()).when(accountCheckerService).pseudoIsAvailable(existing.withPseudo("taken"));
 
         Assertions.assertThrows(PseudoAlreadyUsedException.class,
-                () -> service.update(existing.getId(), "oldpassword", new AccountChanges(null, "taken", null)));
+                () -> service.update(existing.getId(), "oldpassword", new AccountChanges(null, "taken", null), CLIENT));
         verify(spi, never()).save(any());
     }
 
@@ -146,7 +149,7 @@ public class AccountUpdaterServiceTest {
     void a_new_password_is_hashed_and_ends_every_session() {
         when(passwordHasher.hash("newpassword")).thenReturn("newhash");
 
-        Account updated = service.update(existing.getId(), "oldpassword", new AccountChanges(null, null, "newpassword"));
+        Account updated = service.update(existing.getId(), "oldpassword", new AccountChanges(null, null, "newpassword"), CLIENT);
 
         Assertions.assertEquals("newhash", updated.getPassword());
         verify(sessionRevoker).logoutAll(existing.getId());
@@ -154,7 +157,7 @@ public class AccountUpdaterServiceTest {
 
     @Test
     void sending_the_current_password_as_the_new_one_changes_nothing_and_keeps_the_sessions() {
-        Account updated = service.update(existing.getId(), "oldpassword", new AccountChanges(null, null, "oldpassword"));
+        Account updated = service.update(existing.getId(), "oldpassword", new AccountChanges(null, null, "oldpassword"), CLIENT);
 
         Assertions.assertEquals("oldhash", updated.getPassword());
         verify(sessionRevoker, never()).logoutAll(any());

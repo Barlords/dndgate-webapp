@@ -5,6 +5,7 @@ import fr.barlords.dndgateapi.domain.functional.exception.EmailNotSendException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.WrongPasswordException;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.functional.model.account.AccountChanges;
+import fr.barlords.dndgateapi.domain.functional.model.account.ClientAddress;
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
 import fr.barlords.dndgateapi.domain.functional.service.RandomStringGenerator;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountSessionRevokerApi;
@@ -42,9 +43,9 @@ public class AccountUpdaterService implements AccountUpdaterApi {
     private final Duration emailChangeCodeTtl;
 
     @Override
-    public Account update(UUID accountId, String currentPassword, AccountChanges changes) {
+    public Account update(UUID accountId, String currentPassword, AccountChanges changes, ClientAddress client) {
         Account previous = passwordVerifier.verify(
-                currentAccountService.getAccountById(accountId), currentPassword, WrongPasswordException::new);
+                currentAccountService.getAccountById(accountId), currentPassword, client, WrongPasswordException::new);
 
         Account patched = previous;
         boolean emailChangeRequested = false;

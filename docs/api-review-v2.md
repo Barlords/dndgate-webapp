@@ -16,7 +16,7 @@ Statuts : `[ ]` à faire, `[~]` en cours, `[x]` fait.
 |---|---|---|---|
 | 25 | Limite par IP contournée en encodant une lettre du chemin | P1 | vérifié |
 | 26 | Invitations par e-mail illimitées : spam et saturation de la boîte d'envoi | P1 | lu |
-| 27 | N'importe qui peut verrouiller le compte de n'importe qui | P1 | lu |
+| 27 | N'importe qui peut verrouiller le compte de n'importe qui | P1 | corrigé |
 | 28 | La date d'une note du MJ ne change jamais, alors que l'API répond 201 | P1 | vérifié |
 | 29 | Un compte peut voter plusieurs fois au planning | P1 | vérifié |
 | 30 | La date d'un message est choisie par le client | P1 | vérifié |
@@ -74,8 +74,8 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
 - Correctif : limite par expéditeur (par exemple 20 par heure) et par destinataire (une invitation par aventure et par 24 h) ; refuser si l'aventure n'est pas `NOT_STARTED` ou si le destinataire participe déjà (`409`) ; à plus long terme, une file d'attente séparée par priorité (les e-mails de sécurité ne doivent jamais attendre derrière des invitations).
 - Corrigé (hors file prioritaire, qui reste à faire) : `409` si l'aventure n'est pas `NOT_STARTED` ou si le destinataire participe déjà ; `429` + `Retry-After` à 20 invitations par heure et par expéditeur (`invitation.rate-limit.sender.*`) et à une invitation par aventure et par 24 h et par destinataire (`invitation.rate-limit.recipient.window`). Comptage en base (`sent_invitations`, migration V8, purge nocturne), horloge injectée. Tests : `AdventureUpdaterServiceInvitationTest`, `InvitationLimitIntegrationTest` ; contrôle par mutation fait.
 
-### 27. N'importe qui peut verrouiller le compte de n'importe qui — *lu*
-- [ ] Le verrouillage (5 échecs, 15 minutes, `AccountPasswordVerifierService`) compte par **compte**, quelle que soit l'adresse IP. Les pseudos sont publics (`GET /accounts/pseudo/{pseudo}`) et 5 essais tiennent sous la limite par IP (10 par minute).
+### 27. N'importe qui peut verrouiller le compte de n'importe qui — *corrigé*
+- [x] Le verrouillage (5 échecs, 15 minutes, `AccountPasswordVerifierService`) compte par **compte**, quelle que soit l'adresse IP. Les pseudos sont publics (`GET /accounts/pseudo/{pseudo}`) et 5 essais tiennent sous la limite par IP (10 par minute).
   Recommencer toutes les 15 minutes suffit à empêcher un joueur ou un MJ de se connecter indéfiniment.
 - Ce n'est pas un bug d'implémentation, c'est le compromis du verrouillage strict : **décision à prendre**. Pistes, de la plus simple à la plus complète :
   1. compter les échecs par couple (compte, IP) pour le verrouillage, et garder un compteur global par compte seulement pour journaliser ou alerter ;
@@ -83,6 +83,7 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
   3. ne pas appliquer le verrou à un appareil qui s'est déjà connecté avec succès (cookie ou jeton d'appareil) ;
   4. prévenir le titulaire par e-mail quand son compte est verrouillé.
 - Ne pas oublier les deux autres points d'entrée qui partagent le compteur (suppression du compte, `PATCH /accounts`).
+- **Corrigé, piste 1 retenue** : le verrouillage compte les échecs par couple (compte, adresse IP du client) : 5 échecs depuis la même adresse verrouillent le compte 15 min pour cette adresse seulement (mêmes seuils et clés `security.login.*`, même `429` + `Retry-After`) ; les autres adresses se connectent normalement. Les trois points d'entrée (connexion, `DELETE /accounts`, `PATCH /accounts`) appliquent la même règle via `AccountPasswordVerifierService`. L'adresse (`ClientAddress`, valeur opaque pour le domaine) est celle de la connexion (`getRemoteAddr`, remplacée par celle du client derrière le proxy de confiance avec `server.forward-headers-strategy=native`), jamais un en-tête lu à la main. Table `login_failures` (migration V10, hachage SHA-256 de l'adresse, purge nocturne), colonnes `accounts.failed_login_attempts` et `locked_until` supprimées. Un `WARN` (sans adresse ni secret) est écrit quand au moins 50 adresses différentes échouent contre un compte dans la fenêtre (`security.login.distinct-clients-warning-threshold`), sans bloquer. Limite : un attaquant distribué n'est que ralenti par la limitation par IP. Tests : `AccountPasswordVerifierServiceTest`, `AccountLoggerServiceTest`, `LoginLockoutPerClientIntegrationTest` ; contrôle par mutation fait (verrou ignoré, compteur non remis à zéro, seuil d'alerte, adresse unique pour tous, adresse figée sur la suppression : tests rouges).
 
 ### 28. La date d'une note du MJ ne change jamais — *vérifié*
 - [x] Corrigé : `updatable = false` retiré, test `the_date_of_an_adventure_note_can_be_patched` (rouge avant, vert après). `AdventureNoteEntity.date` était déclarée `updatable = false` (ligne 33). Hibernate retire la colonne de l'`UPDATE`, mais le `merge` recopie la valeur dans l'objet renvoyé.
@@ -310,7 +311,7 @@ Une aventure `NOT_STARTED` publique dont le MJ a quitté le rôle reste joignabl
 Pistes : refuser les nouveaux joueurs tant qu'il n'y a pas de MJ ; ou réserver la demande aux joueurs présents avant la vacance.
 
 ### 58. Autres questions fonctionnelles
-- **Verrouillage** (point 27) et **énumération par l'inscription** (point 31) : choisir le compromis.
+- **Verrouillage** (point 27) : tranché et corrigé. **Énumération par l'inscription** (point 31) : choisir le compromis.
 - **Code d'invitation permanent** : le même code de 10 caractères sert pour toute la vie de l'aventure, n'expire pas et ne peut pas être révoqué (stocké en clair). Toute personne qui l'a reçu une fois peut revenir. Ajouter une rotation (`POST /adventures/{id}/invitation-code`), voire des codes par invitation.
 - **Retirer un joueur** : le MJ n'a aucun moyen d'exclure un joueur.
 - **Évaluations** : la personne notée voit qui l'a noté et combien (`emitterId`). Est-ce voulu, ou les évaluations reçues doivent-elles être anonymes ?

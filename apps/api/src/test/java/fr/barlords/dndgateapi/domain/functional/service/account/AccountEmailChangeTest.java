@@ -4,6 +4,7 @@ import fr.barlords.dndgateapi.domain.functional.exception.EmailNotSendException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.EmailAlreadyUsedException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.InvalidVerificationCodeException;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
+import fr.barlords.dndgateapi.domain.functional.model.account.ClientAddress;
 import fr.barlords.dndgateapi.domain.functional.model.account.AccountChanges;
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountSessionRevokerApi;
@@ -40,6 +41,8 @@ import static org.mockito.Mockito.when;
  */
 @ExtendWith(MockitoExtension.class)
 public class AccountEmailChangeTest {
+    private static final ClientAddress CLIENT = new ClientAddress("203.0.113.7");
+
 
     private static final Instant NOW = Instant.parse("2026-01-01T10:00:00Z");
 
@@ -125,13 +128,13 @@ public class AccountEmailChangeTest {
             service = new AccountUpdaterService(spi, currentAccountService, accountCheckerService,
                     new AccountModifierService(passwordHasher), passwordVerifier, sessionRevoker, emailingSpi, clock, TTL);
             lenient().when(currentAccountService.getAccountById(existing.getId())).thenReturn(existing);
-            lenient().when(passwordVerifier.verify(any(), any(), any())).thenAnswer(i -> i.getArguments()[0]);
+            lenient().when(passwordVerifier.verify(any(), any(), any(), any())).thenAnswer(i -> i.getArguments()[0]);
             lenient().when(spi.save(any(Account.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
         }
 
         @Test
         void a_new_address_waits_for_its_confirmation_and_the_account_keeps_the_old_one() {
-            Account updated = service.update(existing.getId(), "password", new AccountChanges("new@test.fr", null, null));
+            Account updated = service.update(existing.getId(), "password", new AccountChanges("new@test.fr", null, null), CLIENT);
 
             Assertions.assertEquals("old@test.fr", updated.getEmail());
             Assertions.assertEquals("new@test.fr", updated.getPendingEmail());
@@ -142,7 +145,7 @@ public class AccountEmailChangeTest {
 
         @Test
         void the_link_is_mailed_to_the_new_address_with_the_code() {
-            service.update(existing.getId(), "password", new AccountChanges("new@test.fr", null, null));
+            service.update(existing.getId(), "password", new AccountChanges("new@test.fr", null, null), CLIENT);
 
             ArgumentCaptor<Account> mailed = ArgumentCaptor.forClass(Account.class);
             verify(emailingSpi).sendEmailChangeEmail(mailed.capture());
@@ -155,7 +158,7 @@ public class AccountEmailChangeTest {
             doThrow(new EmailAlreadyUsedException()).when(accountCheckerService).emailIsAvailable(existing.withEmail("taken@test.fr"));
 
             Assertions.assertThrows(EmailAlreadyUsedException.class,
-                    () -> service.update(existing.getId(), "password", new AccountChanges("taken@test.fr", null, null)));
+                    () -> service.update(existing.getId(), "password", new AccountChanges("taken@test.fr", null, null), CLIENT));
 
             verify(spi, never()).save(any());
             verify(emailingSpi, never()).sendEmailChangeEmail(any());
@@ -163,10 +166,10 @@ public class AccountEmailChangeTest {
 
         @Test
         void asking_again_replaces_the_previous_request() {
-            Account first = service.update(existing.getId(), "password", new AccountChanges("first@test.fr", null, null));
+            Account first = service.update(existing.getId(), "password", new AccountChanges("first@test.fr", null, null), CLIENT);
             when(currentAccountService.getAccountById(existing.getId())).thenReturn(first);
 
-            Account second = service.update(existing.getId(), "password", new AccountChanges("second@test.fr", null, null));
+            Account second = service.update(existing.getId(), "password", new AccountChanges("second@test.fr", null, null), CLIENT);
 
             Assertions.assertEquals("second@test.fr", second.getPendingEmail());
             Assertions.assertNotEquals(first.getPendingEmailCode(), second.getPendingEmailCode());
@@ -178,7 +181,7 @@ public class AccountEmailChangeTest {
             Account waiting = waitingFor("new@test.fr", "secretcode", NOW.plus(TTL));
             when(currentAccountService.getAccountById(existing.getId())).thenReturn(waiting);
 
-            Account updated = service.update(existing.getId(), "password", new AccountChanges("old@test.fr", null, null));
+            Account updated = service.update(existing.getId(), "password", new AccountChanges("old@test.fr", null, null), CLIENT);
 
             Assertions.assertEquals("new@test.fr", updated.getPendingEmail());
             verify(emailingSpi, never()).sendEmailChangeEmail(any());
@@ -186,7 +189,7 @@ public class AccountEmailChangeTest {
 
         @Test
         void the_other_changes_of_the_same_request_apply_at_once() {
-            Account updated = service.update(existing.getId(), "password", new AccountChanges("new@test.fr", "newpseudo", null));
+            Account updated = service.update(existing.getId(), "password", new AccountChanges("new@test.fr", "newpseudo", null), CLIENT);
 
             Assertions.assertEquals("newpseudo", updated.getPseudo());
             Assertions.assertEquals("old@test.fr", updated.getEmail());
@@ -197,7 +200,7 @@ public class AccountEmailChangeTest {
             doThrow(new EmailNotSendException(new RuntimeException())).when(emailingSpi).sendEmailChangeEmail(any());
 
             Account updated = Assertions.assertDoesNotThrow(
-                    () -> service.update(existing.getId(), "password", new AccountChanges("new@test.fr", null, null)));
+                    () -> service.update(existing.getId(), "password", new AccountChanges("new@test.fr", null, null), CLIENT));
 
             Assertions.assertEquals("new@test.fr", updated.getPendingEmail());
         }

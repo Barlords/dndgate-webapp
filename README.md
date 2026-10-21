@@ -267,9 +267,21 @@ Seuls les champs fournis changent. Changer le mot de passe termine toutes les se
 
 ### Protection contre la force brute
 
-- **Verrouillage du compte** : après 5 échecs consécutifs (`security.login.max-failed-attempts`), le compte est verrouillé 15 min
-  (`security.login.lock-duration`) et répond `429` avec `Retry-After`, même avec le bon mot de passe. Un succès remet le compteur à zéro.
+- **Verrouillage du compte, par couple (compte, adresse IP du client)** : après 5 échecs consécutifs depuis la même adresse (`security.login.max-failed-attempts`),
+  le compte est verrouillé 15 min **pour cette adresse** (`security.login.lock-duration`) et répond `429` avec `Retry-After`, même avec le bon mot de passe.
+  Les autres adresses ne sont pas touchées et peuvent se connecter avec le bon mot de passe. Un succès remet à zéro le compteur de cette adresse.
   Le compteur est incrémenté de façon atomique en base : des tentatives parallèles ne peuvent pas le contourner.
+  Les trois points d'entrée qui vérifient un mot de passe (connexion, `DELETE /accounts`, `PATCH /accounts`) partagent le même compteur, avec la même règle.
+  - **Pourquoi** : les pseudos sont publics, donc un verrou partagé par toutes les adresses permettait à n'importe qui d'empêcher le titulaire de se connecter,
+    en recommençant toutes les 15 minutes (point 27 de l'audit v2).
+  - **La limite du compromis** : un attaquant qui dispose de nombreuses adresses n'est plus bloqué par le verrou (5 essais par adresse et par 15 min), il est seulement
+    ralenti par la limitation par adresse IP ci-dessous. Une défense contre la force brute distribuée repose sur la robustesse du mot de passe, pas sur ce verrou.
+  - **Alerte, sans blocage** : quand au moins 50 adresses différentes échouent contre le même compte dans la fenêtre de verrouillage
+    (`security.login.distinct-clients-warning-threshold`), l'API écrit un `WARN` (identifiant du compte et nombre d'adresses, ni adresse ni mot de passe).
+  - **Quelle adresse** : l'adresse de la connexion (`getRemoteAddr`), jamais un en-tête lu directement. Derrière le reverse proxy, `server.forward-headers-strategy=native`
+    la remplace par celle du client, seulement si l'appel vient d'un proxy de confiance. Sans cela, toutes les requêtes auraient l'adresse du proxy et partageraient le même verrou.
+  - **Donnée personnelle** : une adresse IP en est une. Elle n'est jamais stockée en clair : la table `login_failures` (migration V10) garde un hachage SHA-256 de l'adresse,
+    le nombre d'échecs et la fin du verrou. La purge nocturne supprime les lignes dont le dernier échec date de plus de la durée de verrouillage.
 - **Limitation par adresse IP** (`429` + `Retry-After`), en mémoire donc par instance de l'API :
 
 | Endpoint | Limite par défaut |

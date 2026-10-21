@@ -17,8 +17,6 @@ public interface AccountEntityMapper {
                 .pendingEmail(entity.getPendingEmail())
                 .pendingEmailCode(entity.getPendingEmailCode())
                 .pendingEmailExpiresAt(entity.getPendingEmailExpiresAt())
-                .failedLoginAttempts(entity.getFailedLoginAttempts())
-                .lockedUntil(entity.getLockedUntil())
                 .anonymizedAt(entity.getAnonymizedAt())
                 .build();
     }
@@ -35,8 +33,6 @@ public interface AccountEntityMapper {
                 .pendingEmail(domain.getPendingEmail())
                 .pendingEmailCode(domain.getPendingEmailCode())
                 .pendingEmailExpiresAt(domain.getPendingEmailExpiresAt())
-                .failedLoginAttempts(domain.getFailedLoginAttempts())
-                .lockedUntil(domain.getLockedUntil())
                 .anonymizedAt(domain.getAnonymizedAt())
                 .build();
     }
