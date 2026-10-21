@@ -217,8 +217,8 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
 
 ## P3 — Contrat de l'API et qualité du code
 
-### 45. WebRTC répond du texte là où le contrat annonce du JSON — *vérifié*
-- [ ] Les trois routes `/webrtc/*` renvoient `"Offer received and broadcasted"` (`WebRTCController`, lignes 32, 38, 44) avec `Content-Type: application/json`, et le contrat déclare une `string` JSON.
+### 45. WebRTC répond du texte là où le contrat annonce du JSON — *corrigé*
+- [x] Corrigé : les trois routes répondent `204 No Content` (`@ResponseStatus`), contrat régénéré, diffusion WebSocket couverte par un test (mutation vérifiée). Constat initial : les trois routes `/webrtc/*` renvoient `"Offer received and broadcasted"` (`WebRTCController`, lignes 32, 38, 44) avec `Content-Type: application/json`, et le contrat déclare une `string` JSON.
   Mesuré : le corps n'est pas du JSON valide. Le client Angular généré échouera à le lire.
 - Correctif : `204 No Content`, et régénérer le contrat.
 

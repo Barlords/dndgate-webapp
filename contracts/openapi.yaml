@@ -322,12 +322,8 @@ paths:
               $ref: "#/components/schemas/WebRTCMessage"
         required: true
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: string
+        "204":
+          description: No Content
         default:
           description: "The error, in the same shape whatever produced it (RFC 9457)."
           content:
@@ -347,12 +343,8 @@ paths:
               $ref: "#/components/schemas/WebRTCMessage"
         required: true
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: string
+        "204":
+          description: No Content
         default:
           description: "The error, in the same shape whatever produced it (RFC 9457)."
           content:
@@ -372,12 +364,8 @@ paths:
               $ref: "#/components/schemas/WebRTCMessage"
         required: true
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: string
+        "204":
+          description: No Content
         default:
           description: "The error, in the same shape whatever produced it (RFC 9457)."
           content:

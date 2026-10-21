@@ -159,6 +159,25 @@ class WebSocketSecurityIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     @Test
+    void a_webrtc_signal_answers_no_content_and_is_still_broadcast_to_the_participants() throws Exception {
+        TestAccount owner = registerAndLogin();
+        UUID adventureId = createAdventure(owner, "PUBLIC");
+
+        StompSession session = connectAuthenticated(owner.token());
+        CompletableFuture<String> received = subscribe(session, "/topic/adventure/webrtc/" + adventureId);
+        TimeUnit.MILLISECONDS.sleep(500);
+
+        var sent = call(HttpMethod.POST, "/webrtc/offer", owner.token(),
+                Map.of("type", "offer", "content", "sdp-body", "adventureId", adventureId.toString()));
+        Assertions.assertEquals(204, sent.getStatusCode().value(), sent.getBody());
+        Assertions.assertNull(sent.getBody());
+
+        String payload = received.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        Assertions.assertTrue(payload.contains("sdp-body"), payload);
+        Assertions.assertTrue(payload.contains(owner.id().toString()), payload);
+    }
+
+    @Test
     void a_stranger_cannot_subscribe_to_the_adventure_topics() throws Exception {
         TestAccount owner = registerAndLogin();
         TestAccount stranger = registerAndLogin();

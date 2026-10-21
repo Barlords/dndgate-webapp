@@ -88,14 +88,14 @@ class InputValidationIntegrationTest extends ApiIntegrationTestSupport {
     void a_webrtc_signal_has_a_known_type_and_a_bounded_content() {
         Map<String, Object> valid = Map.of("type", "offer", "content", "sdp", "adventureId", adventureId.toString());
 
-        Assertions.assertEquals(200, status(HttpMethod.POST, "/webrtc/offer", valid));
+        Assertions.assertEquals(204, status(HttpMethod.POST, "/webrtc/offer", valid));
         Assertions.assertEquals(400, status(HttpMethod.POST, "/webrtc/offer", Map.of("type", "evil", "content", "sdp", "adventureId", adventureId.toString())));
         Assertions.assertEquals(400, status(HttpMethod.POST, "/webrtc/offer", Map.of("content", "sdp", "adventureId", adventureId.toString())));
         Assertions.assertEquals(400, status(HttpMethod.POST, "/webrtc/offer", Map.of("type", "offer", "adventureId", adventureId.toString())));
         Assertions.assertEquals(400, status(HttpMethod.POST, "/webrtc/offer", Map.of("type", "offer", "content", "sdp")));
         Assertions.assertEquals(400, status(HttpMethod.POST, "/webrtc/answer",
                 Map.of("type", "answer", "content", "x".repeat(20001), "adventureId", adventureId.toString())));
-        Assertions.assertEquals(200, status(HttpMethod.POST, "/webrtc/candidate",
+        Assertions.assertEquals(204, status(HttpMethod.POST, "/webrtc/candidate",
                 Map.of("type", "candidate", "content", "x".repeat(20000), "adventureId", adventureId.toString())));
     }
 
