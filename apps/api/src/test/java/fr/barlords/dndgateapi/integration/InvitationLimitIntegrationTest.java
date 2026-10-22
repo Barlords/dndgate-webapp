@@ -76,6 +76,11 @@ class InvitationLimitIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount invited = registerAndLogin();
         for (String status : new String[]{"FINISH", "ABORT"}) {
             UUID adventureId = createAdventure(master, "PRIVATE");
+            if (status.equals("FINISH")) {
+                // FINISH is only reachable from ONGOING
+                Assertions.assertEquals(200, call(HttpMethod.PUT, "/adventures/" + adventureId + "/status", master.token(),
+                        Map.of("status", "ONGOING")).getStatusCode().value());
+            }
             Assertions.assertEquals(200, call(HttpMethod.PUT, "/adventures/" + adventureId + "/status", master.token(),
                     Map.of("status", status)).getStatusCode().value());
 

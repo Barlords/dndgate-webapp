@@ -33,9 +33,13 @@ public class SpellBookEntity implements Serializable {
     private String description;
 
     @ElementCollection
-    @CollectionTable(name = "spell_book_entity_spell_list",
-            joinColumns = @JoinColumn(name = "spell_book_entity_id"))
-    @Column(name = "spell_list")
+    @CollectionTable(name = "spellbook_spells",
+            joinColumns = @JoinColumn(name = "spellbook_id"))
+    @Column(name = "spell")
     private Set<String> spellList;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
 }

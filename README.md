@@ -108,10 +108,11 @@ Les listes bornées par nature (personnages d'une aventure ou d'un compte, grimo
   - **1 000 sorts** par grimoire (`limits.spells-per-spell-book`), import compris ; ajouter un sort déjà présent n'est pas une erreur ;
   - **500 notes d'aventure** et **500 notes d'historique** par aventure (`limits.adventure-notes-per-adventure`, `limits.historical-notes-per-adventure`) ;
   - **30 messages par compte et par minute** (`limits.messages.max`, `limits.messages.window`) : au-delà, `429` avec `Retry-After` (secondes). Les messages sont comptés en base sur la dernière minute (index `message(sender_id, send_date)`).
-  Rouvrir une aventure terminée ou abandonnée contourne le plafond d'aventures actives, jusqu'à ce que le point 34 (machine à états du statut) interdise de quitter `FINISH` / `ABORT` ; le transfert de MJ (cession, réclamation) ne vérifie volontairement pas le plafond du nouveau MJ.
+  Une aventure terminée ou abandonnée ne peut pas être rouverte (machine à états du statut, voir « Statut d'une aventure ») : le plafond d'aventures actives ne se contourne donc pas ainsi. Le transfert de MJ (cession, réclamation) ne vérifie volontairement pas le plafond du nouveau MJ.
   Les comptages ne sont pas verrouillés : deux créations simultanées peuvent dépasser un plafond d'une unité ou deux. Les limites de taille des images ne changent pas.
 - **WebSocket** : un client n'envoie que `CONNECT`, `SUBSCRIBE` (et `UNSUBSCRIBE`) et des battements de cœur ; toute publication est refusée. Une trame de plus de 16 Ko coupe la connexion avant d'être lue. Seules les destinations exactes `/topic/adventure/chat/{id}` et `/topic/adventure/webrtc/{id}` (UUID en minuscules, rien avant ni après) sont acceptées au `SUBSCRIBE`. Une connexion ouvre au plus **20 abonnements** (`limits.websocket.subscriptions-per-connection`) ; un identifiant d'abonnement déjà utilisé sur la connexion est refusé, comme un second `CONNECT`. Limite connue : Spring ne garantit pas l'ordre de traitement des trames reçues d'une même connexion (pas d'option `preserveReceiveOrder` sur le canal entrant) ; un `UNSUBSCRIBE` suivi aussitôt d'un `SUBSCRIBE` avec le même identifiant peut donc être refusé si le second passe avant le premier. Le client doit attendre ou changer d'identifiant.
 - Toutes les routes qui reçoivent un corps JSON sont validées (`@Valid`).
+- **Modifications simultanées** : les comptes, aventures, grimoires, personnages, notes, notes d'historique, plannings et votes de disponibilité portent une version (pas les évaluations ni les messages). Une modification de l'une de ces lignes faite à partir d'une lecture devenue périmée (quelqu'un a modifié la même ligne entre-temps) répond `409` (`application/problem+json`) au lieu d'effacer l'autre modification : le client relit et renvoie. Sont rejoués automatiquement, sans `409`, l'ajout et le retrait d'un sort, le vote de disponibilité, la création simultanée d'un planning par `PUT /planning` et celle d'une évaluation par `PUT /ratings` : deux sorts ajoutés en même temps sont tous les deux gardés. Changer le mot de passe et terminer les sessions se font dans la même transaction : l'un ne va pas sans l'autre. Le mot de passe demandé pour modifier ou supprimer le compte est vérifié avant cette transaction, et un échec est toujours compté pour le verrouillage.
 - **Erreurs** : chaque réponse d'erreur (`application/problem+json`) porte un `correlationId`, le même que l'en-tête `X-Request-Id` et que sur chaque ligne de log de la requête ; c'est l'identifiant à donner pour signaler un problème.
 
 ## Images des personnages
@@ -135,7 +136,7 @@ Un seul MJ par aventure, et lui seul a les droits de MJ (modifier, changer le st
 | Voir le vote en cours / l'abandonner | `GET` / `DELETE /adventures/{id}/master/claim` | les participants / le candidat |
 
 - **L'aventure n'a plus de MJ** (`masterVacant: true`) quand le MJ a quitté le rôle ou **supprimé son compte** (aventure en cours). Personne n'a alors les droits de MJ, pas même l'ancien. Une aventure qui n'a pas commencé dont le MJ supprime le compte est toujours abandonnée.
-- **Vote** : **tous** les autres joueurs doivent approuver ; **un refus** met fin au vote ; une réponse peut être changée tant que le vote est en cours ; un vote sans réponse **expire au bout de 7 jours** (`game-master.claim.ttl`) et rien ne change. Les joueurs dont le compte est supprimé ne votent pas ; si plus personne n'a à voter, le candidat prend le rôle aussitôt. Un seul vote à la fois par aventure ; le vote est annulé si le candidat quitte l'aventure.
+- **Vote** : **tous** les autres joueurs doivent approuver ; **un refus** met fin au vote ; une réponse peut être changée tant que le vote est en cours ; un vote sans réponse **expire au bout de 7 jours** (`game-master.claim.ttl`) et rien ne change. Les joueurs dont le compte est supprimé ne votent pas ; si plus personne n'a à voter, le candidat prend le rôle aussitôt. Un seul vote à la fois par aventure ; le vote est annulé si le candidat quitte l'aventure ou si son compte est supprimé (la suppression annule ses votes ouverts et prévient les votants ; un vote resté ouvert pour un compte anonymisé est annulé au premier vote au lieu de donner le rôle).
 - **Au changement** : le nouveau MJ n'est plus joueur ; l'**ancien MJ devient joueur** s'il y a une place et que son compte existe, sinon il quitte l'aventure (ses personnages restent). Les **notes privées du MJ passent au nouveau MJ** (elles n'ont pas d'auteur : elles appartiennent au rôle). L'invitation en attente est annulée.
 - **E-mails** (jamais envoyés à un compte supprimé) :
 
@@ -175,6 +176,13 @@ Un seul MJ par aventure, et lui seul a les droits de MJ (modifier, changer le st
 - Le mot de passe n'est jamais modifié (pas de `trim()`) : les espaces en début et en fin en font partie.
   Le pseudo, lui, est rogné de la même façon à l'inscription et à la connexion.
 - Les anciens comptes ne sont pas concernés par la règle de longueur, qui s'applique à l'inscription et au changement de mot de passe.
+
+### Statut d'une aventure
+
+- Le statut ne change que par `PUT /adventures/{id}/status` (le `PATCH /adventures/{id}` n'a plus de champ `status` : s'il est envoyé, il est ignoré).
+- Passages permis : `NOT_STARTED` vers `ONGOING`, `ONGOING` vers `FINISH`, `NOT_STARTED` ou `ONGOING` vers `ABORT`. Redemander le statut courant est accepté sans effet. Tout le reste répond `409` en nommant le statut courant et le statut demandé : rien ne sort de `FINISH` / `ABORT`, rien ne revient à `NOT_STARTED`, on ne termine pas une aventure qui n'a pas démarré.
+- Le démarrage automatique quand la dernière place est prise (`NOT_STARTED` vers `ONGOING`) et l'abandon des aventures non commencées à l'anonymisation du MJ suivent la même machine.
+- `maxPlayer` ne peut pas descendre sous le nombre de joueurs déjà inscrits : `PATCH` en dessous répond `409`.
 
 ### Rejoindre une aventure
 

@@ -29,15 +29,12 @@ public class GameCharacterDeleterService implements GameCharacterDeleterApi {
 
         DeletionConfirmation.requireName(gameCharacter.getName(), confirmation);
 
-        if (gameCharacter.getPicturePath() != null) {
-            try {
-                minioSpi.deleteFile(gameCharacter.getPicturePath());
-            } catch (Exception e) {
-                throw new IllegalStateException("The file cannot be delete", e);
-            }
-        }
-
         spi.deleteById(id);
         audit.deletion("character", accountId, id);
+
+        // After the row: a storage failure must neither block the deletion nor leave a character without picture
+        if (gameCharacter.getPicturePath() != null) {
+            minioSpi.deleteAfterCommit(gameCharacter.getPicturePath());
+        }
     }
 }

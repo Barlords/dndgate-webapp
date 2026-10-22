@@ -1,12 +1,12 @@
 package fr.barlords.dndgateapi.server.adapter;
 
-import fr.barlords.dndgateapi.domain.ApplicationError;
+import fr.barlords.dndgateapi.domain.functional.exception.ConcurrentUpdateException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import fr.barlords.dndgateapi.domain.functional.model.planning.Planning;
 import fr.barlords.dndgateapi.domain.port.out.PlanningPersistenceSpi;
 import fr.barlords.dndgateapi.server.entity.PlanningEntity;
 import fr.barlords.dndgateapi.server.mapper.PlanningEntityMapper;
 import fr.barlords.dndgateapi.server.repository.PlanningRepository;
-import io.vavr.control.Either;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,8 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import static io.vavr.API.Try;
 
 @Service
 @RequiredArgsConstructor
@@ -25,11 +23,13 @@ public class PlanningDatabaseAdapter implements PlanningPersistenceSpi {
 
     @Override
     @Transactional
-    public Either<ApplicationError, Planning> save(Planning o){
-        return Try(() -> repository.save(PlanningEntityMapper.fromDomain(o)))
-                .toEither()
-                .mapLeft(throwable -> new ApplicationError("Error while writing to the database", null, o, throwable))
-                .map(PlanningEntityMapper::toDomain);
+    public Planning save(Planning o) {
+        // Flushed here so that a concurrent change is detected now, not later when the transaction commits
+        try {
+            return PlanningEntityMapper.toDomain(repository.saveAndFlush(PlanningEntityMapper.fromDomain(o)));
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new ConcurrentUpdateException(e);
+        }
     }
 
     @Override

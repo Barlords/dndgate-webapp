@@ -1,5 +1,7 @@
 package fr.barlords.dndgateapi.bootstrap.config.domain;
 
+import fr.barlords.dndgateapi.bootstrap.config.RetryingTransaction;
+import fr.barlords.dndgateapi.bootstrap.config.TransactionalRatingUpdater;
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
 import fr.barlords.dndgateapi.domain.functional.service.rating.RatingCreatorService;
 import fr.barlords.dndgateapi.domain.functional.service.rating.RatingEligibilityService;
@@ -51,9 +53,10 @@ public class RatingServiceConfiguration {
     @Bean
     public RatingUpdaterApi ratingUpdaterApi(
             RatingPersistenceSpi spi,
-            RatingEligibilityService ratingEligibilityService
+            RatingEligibilityService ratingEligibilityService,
+            RetryingTransaction transaction
     ) {
-        return new RatingUpdaterService(spi, ratingEligibilityService);
+        return new TransactionalRatingUpdater(new RatingUpdaterService(spi, ratingEligibilityService), transaction);
     }
 
 }

@@ -6,6 +6,8 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 import fr.barlords.dndgateapi.client.dto.spellbook.*;
 import fr.barlords.dndgateapi.client.dto.DeletionConfirmationRequest;
+import fr.barlords.dndgateapi.client.error.InvalidImportFileException;
+import fr.barlords.dndgateapi.client.error.dto.ValidationErrorResponse;
 import fr.barlords.dndgateapi.client.mapper.SpellBookDtoMapper;
 import fr.barlords.dndgateapi.client.mapper.SpellBookImportExportDtoMapper;
 import fr.barlords.dndgateapi.client.service.AuthVerifierService;
@@ -17,8 +19,11 @@ import fr.barlords.dndgateapi.domain.functional.model.SpellBook;
 import fr.barlords.dndgateapi.domain.port.in.spellbook.*;
 import fr.barlords.dndgateapi.domain.port.in.spellbook.spell.SpellDeleterApi;
 import fr.barlords.dndgateapi.domain.port.in.spellbook.spell.SpellWriterApi;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Valid;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +32,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 import static org.springframework.http.HttpStatus.*;
 
@@ -51,6 +57,8 @@ public class SpellBookController {
     private final SpellWriterApi spellWriterApi;
 
     private final SpellDeleterApi spellDeleterApi;
+
+    private final Validator validator;
 
     private final ObjectMapper objectMapper = JsonMapper.builder().build();
 
@@ -100,7 +108,7 @@ public class SpellBookController {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setContentDispositionFormData("attachment", "book.json");
+        headers.setContentDisposition(ContentDisposition.attachment().filename("book.json").build());
 
         return ResponseEntity.ok()
                 .headers(headers)
@@ -128,6 +136,15 @@ public class SpellBookController {
             spellBookImportDto = objectMapper.readValue(file.getInputStream(), SpellBookImportExportDto.class);
         } catch (IOException | JacksonException e) {
             throw new SpellBookImportException();
+        }
+
+        Set<ConstraintViolation<SpellBookImportExportDto>> violations = validator.validate(spellBookImportDto);
+        if (!violations.isEmpty()) {
+            throw new InvalidImportFileException(violations.stream()
+                    .map(violation -> new ValidationErrorResponse(
+                            violation.getPropertyPath().toString().replace(".<iterable element>", ""),
+                            violation.getMessage()))
+                    .toList());
         }
 
         return SpellBookDtoMapper.toDto(

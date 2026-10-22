@@ -42,7 +42,6 @@ public interface AdventureDtoMapper {
                 .description(request.description())
                 .maxPlayer(request.maxPlayer())
                 .visibility(request.visibility())
-                .status(request.status())
                 .postalCode(request.postalCode())
                 .city(request.city())
                 .build();

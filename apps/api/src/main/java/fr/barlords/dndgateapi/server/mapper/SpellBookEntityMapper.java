@@ -14,6 +14,7 @@ public interface SpellBookEntityMapper {
                 .name(entity.getName())
                 .description(entity.getDescription())
                 .spellList(new HashSet<>(entity.getSpellList()))
+                .version(entity.getVersion())
                 .build();
     }
 
@@ -24,6 +25,7 @@ public interface SpellBookEntityMapper {
                 .name(domain.getName())
                 .description(domain.getDescription())
                 .spellList(new HashSet<>(domain.getSpellList()))
+                .version(domain.getVersion())
                 .build();
     }
 

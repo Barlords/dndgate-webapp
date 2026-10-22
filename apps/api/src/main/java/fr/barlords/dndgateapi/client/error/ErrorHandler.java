@@ -1,11 +1,14 @@
 package fr.barlords.dndgateapi.client.error;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.EmailNotSendException;
 import fr.barlords.dndgateapi.domain.functional.exception.DeletionNotConfirmedException;
 import fr.barlords.dndgateapi.domain.functional.exception.InvalidPageRequestException;
 import fr.barlords.dndgateapi.domain.functional.exception.InvalidPictureException;
 import fr.barlords.dndgateapi.domain.functional.exception.UuidFormatNotValidException;
+import lombok.extern.slf4j.Slf4j;
+import fr.barlords.dndgateapi.domain.functional.exception.ConcurrentUpdateException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import fr.barlords.dndgateapi.domain.functional.exception.MessageRateLimitException;
@@ -26,10 +29,13 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
  * {@code detail} is the explanation, the other fields are the standard ones.
  * Checked before {@link FallbackErrorHandler}, which catches whatever is left.
  */
+@Slf4j
 @RestControllerAdvice
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RequiredArgsConstructor
 public class ErrorHandler {
+
+    static final String DATA_CONFLICT_MESSAGE = "The request conflicts with the current state of the data";
 
     private final Clock clock;
 
@@ -72,9 +78,25 @@ public class ErrorHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, DeletionNotConfirmedException.EXCEPTION_MESSAGE);
     }
 
-    @ExceptionHandler(DataNotSaveException.class)
-    public ProblemDetail handleDataNotSaveException() {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, DataNotSaveException.EXCEPTION_MESSAGE);
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ProblemDetail handleDataIntegrityViolationException(DataIntegrityViolationException exception) {
+        log.warn("The database refused a write", exception);
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, DATA_CONFLICT_MESSAGE);
+    }
+
+    @ExceptionHandler(ConcurrentUpdateException.class)
+    public ProblemDetail handleConcurrentUpdateException(ConcurrentUpdateException exception) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ConcurrentUpdateException.EXCEPTION_MESSAGE);
+    }
+
+    /**
+     * The adapters turn a stale write into {@link ConcurrentUpdateException} when they save; this one is met when
+     * the conflict only shows when the transaction commits. Same answer, logged to find where it comes from.
+     */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ProblemDetail handleOptimisticLockingFailureException(OptimisticLockingFailureException exception) {
+        log.warn("A concurrent change was detected when the transaction committed", exception);
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ConcurrentUpdateException.EXCEPTION_MESSAGE);
     }
 
     @ExceptionHandler(EmailNotSendException.class)

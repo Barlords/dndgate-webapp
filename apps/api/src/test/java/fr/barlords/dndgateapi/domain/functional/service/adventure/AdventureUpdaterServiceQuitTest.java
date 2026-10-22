@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.adventure;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.PlayerNotInAdventureException;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
@@ -11,7 +10,6 @@ import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureFinderApi;
 import fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
-import io.vavr.control.Either;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -80,7 +78,7 @@ class AdventureUpdaterServiceQuitTest {
     void a_player_who_leaves_is_removed_and_the_others_stay() {
         Adventure adventure = adventureWith(stayer.getId(), leaver.getId());
         when(adventureFinderApi.findById(adventure.getId())).thenReturn(Optional.of(adventure));
-        when(spi.save(any(Adventure.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(spi.save(any(Adventure.class))).thenAnswer(i -> i.getArguments()[0]);
 
         Adventure result = service.quitAdventure(adventure.getId(), leaver.getId());
 
@@ -94,7 +92,7 @@ class AdventureUpdaterServiceQuitTest {
     void the_live_channels_of_the_player_who_leaves_are_cut_and_only_theirs() {
         Adventure adventure = adventureWith(stayer.getId(), leaver.getId());
         when(adventureFinderApi.findById(adventure.getId())).thenReturn(Optional.of(adventure));
-        when(spi.save(any(Adventure.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(spi.save(any(Adventure.class))).thenAnswer(i -> i.getArguments()[0]);
 
         service.quitAdventure(adventure.getId(), leaver.getId());
 
@@ -106,7 +104,7 @@ class AdventureUpdaterServiceQuitTest {
     void the_list_read_from_the_database_is_not_modified_in_place() {
         Adventure adventure = adventureWith(stayer.getId(), leaver.getId());
         when(adventureFinderApi.findById(adventure.getId())).thenReturn(Optional.of(adventure));
-        when(spi.save(any(Adventure.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(spi.save(any(Adventure.class))).thenAnswer(i -> i.getArguments()[0]);
 
         service.quitAdventure(adventure.getId(), leaver.getId());
 
@@ -139,9 +137,9 @@ class AdventureUpdaterServiceQuitTest {
     void a_failed_save_is_reported_not_swallowed() {
         Adventure adventure = adventureWith(leaver.getId());
         when(adventureFinderApi.findById(adventure.getId())).thenReturn(Optional.of(adventure));
-        when(spi.save(any(Adventure.class))).thenReturn(Either.left(null));
+        when(spi.save(any(Adventure.class))).thenThrow(new IllegalStateException("db down"));
 
-        Assertions.assertThrows(DataNotSaveException.class, () -> service.quitAdventure(adventure.getId(), leaver.getId()));
+        Assertions.assertThrows(IllegalStateException.class, () -> service.quitAdventure(adventure.getId(), leaver.getId()));
         verifyNoInteractions(accessRevocation);
     }
 }

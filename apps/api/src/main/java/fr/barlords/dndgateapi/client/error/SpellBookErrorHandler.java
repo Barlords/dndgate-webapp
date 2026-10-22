@@ -22,12 +22,17 @@ public class SpellBookErrorHandler {
 
     @ExceptionHandler(SpellBookImportException.class)
     public ProblemDetail handleSpellBookImportException() {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, SpellBookImportException.EXCEPTION_MESSAGE);
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, SpellBookImportException.EXCEPTION_MESSAGE);
     }
 
     @ExceptionHandler(SpellBookExportException.class)
     public ProblemDetail handleSpellBookExportException() {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, SpellBookExportException.EXCEPTION_MESSAGE);
+        return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, SpellBookExportException.EXCEPTION_MESSAGE);
+    }
+
+    @ExceptionHandler(InvalidImportFileException.class)
+    public ProblemDetail handleInvalidImportFileException(InvalidImportFileException ex) {
+        return ValidationProblems.of(ex.getErrors());
     }
 
     @ExceptionHandler(SpellBookOwnerException.class)

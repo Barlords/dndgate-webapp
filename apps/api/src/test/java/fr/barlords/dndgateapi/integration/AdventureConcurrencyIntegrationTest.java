@@ -140,7 +140,7 @@ class AdventureConcurrencyIntegrationTest extends ApiIntegrationTestSupport {
         Adventure first = adventures.findById(adventureId).orElseThrow();
         Adventure second = adventures.findById(adventureId).orElseThrow();
 
-        adventures.save(first.withName("Renamed by the first")).get();
+        adventures.save(first.withName("Renamed by the first"));
 
         Assertions.assertThrows(AdventureConcurrentModificationException.class,
                 () -> adventures.save(second.withStatus(AdventureStatus.FINISH)));
@@ -153,7 +153,7 @@ class AdventureConcurrencyIntegrationTest extends ApiIntegrationTestSupport {
         UUID adventureId = createAdventure(4);
         Adventure read = adventures.findById(adventureId).orElseThrow();
 
-        Adventure saved = adventures.save(read.withName("Another name")).get();
+        Adventure saved = adventures.save(read.withName("Another name"));
 
         Assertions.assertEquals(read.getVersion() + 1, saved.getVersion());
         Assertions.assertEquals(saved.getVersion(), adventures.findById(adventureId).orElseThrow().getVersion());

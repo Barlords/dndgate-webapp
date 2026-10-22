@@ -24,4 +24,7 @@ public class Planning {
     @With
     List<LocalDate> propositionDates = new ArrayList<>();
 
+    /** Version read from the storage, null while the planning has never been saved: it detects concurrent changes. */
+    @With
+    Long version;
 }

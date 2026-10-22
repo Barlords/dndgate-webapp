@@ -2789,13 +2789,6 @@ components:
           enum:
           - PRIVATE
           - PUBLIC
-        status:
-          type: string
-          enum:
-          - NOT_STARTED
-          - ONGOING
-          - ABORT
-          - FINISH
         postalCode:
           type: string
           maxLength: 255

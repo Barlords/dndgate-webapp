@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.adventure.master;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.master.AdventureNotTransferableException;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.functional.service.DeletionConfirmation;
@@ -39,8 +38,7 @@ public class MasterStepDownService implements MasterStepDownApi {
             throw new AdventureNotTransferableException();
         }
 
-        Adventure vacant = adventures.save(adventure.withMasterVacantSince(clock.instant()))
-                .getOrElseThrow(DataNotSaveException::new);
+        Adventure vacant = adventures.save(adventure.withMasterVacantSince(clock.instant()));
         invitations.deleteByAdventureId(adventureId);
         notifier.masterSteppedDown(vacant);
 

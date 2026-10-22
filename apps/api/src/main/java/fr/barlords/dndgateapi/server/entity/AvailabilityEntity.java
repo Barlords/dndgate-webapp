@@ -34,4 +34,9 @@ public class AvailabilityEntity implements Serializable {
     @CollectionTable(name = "availability_dates", joinColumns = @JoinColumn(name = "availability_id"))
     @Column(name = "availability_dates")
     private List<LocalDate> availabilityDates = new ArrayList<>();
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
 }

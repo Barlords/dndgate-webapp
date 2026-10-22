@@ -60,6 +60,10 @@ public class Account {
     @With
     Instant anonymizedAt;
 
+    /** Version read from the storage, null while the account has never been saved: it detects concurrent changes. */
+    @With
+    Long version;
+
     /**
      * True when the code is the one that was sent and has not expired. The comparison takes the same time
      * whatever the number of correct characters, so that it cannot be used to guess the code one character at a time.

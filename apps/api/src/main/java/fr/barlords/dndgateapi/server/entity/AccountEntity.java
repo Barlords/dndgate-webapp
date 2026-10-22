@@ -57,4 +57,8 @@ public class AccountEntity implements Serializable {
             cascade = CascadeType.ALL)
     private List<SpellBookEntity> spellBookList;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
 }

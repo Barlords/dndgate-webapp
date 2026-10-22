@@ -28,7 +28,6 @@ import fr.barlords.dndgateapi.domain.port.out.HistoricalNotePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MessagePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
 import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
-import io.vavr.control.Either;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -117,7 +116,7 @@ class QuantityLimitsServicesTest {
     void a_player_below_the_character_limit_creates_one() {
         Adventure adventure = Adventure.builder().name("Quest").build();
         when(characterSpi.countByOwnerIdAndAdventureId(account.getId(), adventure.getId())).thenReturn(1L);
-        when(characterSpi.save(any(GameCharacter.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(characterSpi.save(any(GameCharacter.class))).thenAnswer(i -> i.getArguments()[0]);
 
         Assertions.assertNotNull(createCharacter(adventure));
     }
@@ -144,7 +143,7 @@ class QuantityLimitsServicesTest {
     @Test
     void a_master_below_the_active_adventure_limit_creates_one() {
         when(adventureSpi.countActiveByOwnerId(account.getId())).thenReturn(2L);
-        when(adventureSpi.save(any(Adventure.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(adventureSpi.save(any(Adventure.class))).thenAnswer(i -> i.getArguments()[0]);
 
         Assertions.assertNotNull(createAdventure());
     }
@@ -164,7 +163,7 @@ class QuantityLimitsServicesTest {
     void an_account_below_the_spell_book_limit_creates_one() {
         when(currentAccountService.getAccountById(account.getId())).thenReturn(account);
         when(spellBookSpi.countByOwnerId(account.getId())).thenReturn(3L);
-        when(spellBookSpi.save(any(SpellBook.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(spellBookSpi.save(any(SpellBook.class))).thenAnswer(i -> i.getArguments()[0]);
 
         Assertions.assertNotNull(new SpellBookCreatorService(spellBookSpi, currentAccountService, LIMITS)
                 .create(account.getId(), SpellBook.builder().name("Book").build()));
@@ -203,7 +202,7 @@ class QuantityLimitsServicesTest {
                 () -> service.importSpellBook(account.getId(), SpellBook.builder().name("Book").spellList(spells(6)).build()));
         verify(spellBookSpi, never()).save(any());
 
-        when(spellBookSpi.save(any(SpellBook.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(spellBookSpi.save(any(SpellBook.class))).thenAnswer(i -> i.getArguments()[0]);
         Assertions.assertEquals(5, service.importSpellBook(account.getId(), SpellBook.builder().name("Book").spellList(spells(5)).build())
                 .getSpellList().size());
     }
@@ -218,7 +217,7 @@ class QuantityLimitsServicesTest {
 
     @Test
     void a_spell_is_added_below_the_limit() {
-        when(spellBookSpi.save(any(SpellBook.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(spellBookSpi.save(any(SpellBook.class))).thenAnswer(i -> i.getArguments()[0]);
 
         Assertions.assertEquals(5, addSpell(spells(4), "new").getSpellList().size());
     }
@@ -232,7 +231,7 @@ class QuantityLimitsServicesTest {
 
     @Test
     void a_spell_already_in_a_full_spell_book_is_not_an_error() {
-        when(spellBookSpi.save(any(SpellBook.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(spellBookSpi.save(any(SpellBook.class))).thenAnswer(i -> i.getArguments()[0]);
 
         Assertions.assertEquals(5, addSpell(spells(5), "spell-0").getSpellList().size());
     }
@@ -249,7 +248,7 @@ class QuantityLimitsServicesTest {
     @Test
     void an_adventure_below_the_note_limit_gets_a_note() {
         when(adventureNoteSpi.countByAdventureId(any())).thenReturn(5L);
-        when(adventureNoteSpi.save(any(AdventureNote.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(adventureNoteSpi.save(any(AdventureNote.class))).thenAnswer(i -> i.getArguments()[0]);
 
         Assertions.assertNotNull(createAdventureNote());
     }
@@ -273,7 +272,7 @@ class QuantityLimitsServicesTest {
     @Test
     void an_adventure_below_the_historical_note_limit_gets_a_note() {
         when(historicalNoteSpi.countByAdventureId(any())).thenReturn(6L);
-        when(historicalNoteSpi.save(any(HistoricalNote.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(historicalNoteSpi.save(any(HistoricalNote.class))).thenAnswer(i -> i.getArguments()[0]);
 
         Assertions.assertNotNull(createHistoricalNote());
     }
@@ -299,7 +298,7 @@ class QuantityLimitsServicesTest {
     @Test
     void messages_below_the_rate_limit_are_saved_and_counted_over_the_last_window() {
         when(messageSpi.countBySenderIdSince(account.getId(), NOW.minus(WINDOW))).thenReturn(7L);
-        when(messageSpi.save(any(Message.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(messageSpi.save(any(Message.class))).thenAnswer(i -> i.getArguments()[0]);
 
         Assertions.assertNotNull(sendMessage());
     }

@@ -1,13 +1,11 @@
 package fr.barlords.dndgateapi.domain.functional.service.spellbook;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.TokenNotValidException;
 import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
 import fr.barlords.dndgateapi.domain.functional.model.SpellBook;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
 import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
-import io.vavr.control.Either;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,7 +41,7 @@ class SpellBookCreatorServiceTest {
     @Test
     void the_spellbook_belongs_to_the_caller_whatever_the_request_says() {
         when(currentAccountService.getAccountById(wizard.getId())).thenReturn(wizard);
-        when(spi.save(any(SpellBook.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(spi.save(any(SpellBook.class))).thenAnswer(i -> i.getArguments()[0]);
         Account someoneElse = Account.builder().pseudo("other").build();
         SpellBook draft = SpellBook.builder().owner(someoneElse).name("Grimoire").description("Fire").spellList(Set.of("Fireball")).build();
 
@@ -67,9 +65,9 @@ class SpellBookCreatorServiceTest {
     @Test
     void a_failed_save_is_reported() {
         when(currentAccountService.getAccountById(wizard.getId())).thenReturn(wizard);
-        when(spi.save(any(SpellBook.class))).thenReturn(Either.left(null));
+        when(spi.save(any(SpellBook.class))).thenThrow(new IllegalStateException("db down"));
 
-        Assertions.assertThrows(DataNotSaveException.class,
+        Assertions.assertThrows(IllegalStateException.class,
                 () -> service.create(wizard.getId(), SpellBook.builder().name("X").build()));
     }
 }

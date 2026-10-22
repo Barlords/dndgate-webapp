@@ -283,6 +283,18 @@ class MasterClaimServiceTest {
         verify(handOver, never()).handOver(any(), any());
     }
 
+    @Test
+    void a_vote_for_a_candidate_whose_account_was_deleted_is_cancelled_and_never_hands_over_the_role() {
+        exists(candidate, true);
+        Adventure adventure = vacantAdventure(candidate, alice);
+        openClaim(adventure, now.plusSeconds(60));
+
+        MasterClaimDetails details = service.vote(alice, adventure.getId(), true);
+
+        Assertions.assertEquals(MasterClaimStatus.CANCELLED, details.claim().getStatus());
+        verify(handOver, never()).handOver(any(), any());
+    }
+
     // ---- cancelling and reading ----
 
     @Test

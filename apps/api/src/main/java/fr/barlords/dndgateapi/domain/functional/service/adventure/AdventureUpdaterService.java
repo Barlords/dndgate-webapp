@@ -4,12 +4,13 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureConcurrentModificationException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureNotJoinableException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureFullException;
+import fr.barlords.dndgateapi.domain.functional.exception.adventure.InvalidStatusTransitionException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.InvitationRateLimitException;
+import fr.barlords.dndgateapi.domain.functional.exception.adventure.MaxPlayerBelowPlayersException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.PlayerNotInAdventureException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.PlayersAlreadyInAdventureException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.AccountNotFoundException;
@@ -66,31 +67,41 @@ public class AdventureUpdaterService implements AdventureUpdaterApi {
 
         Adventure patchedAdventure = previousAdventure
                 .withName(Objects.requireNonNullElse(adventure.getName(), previousAdventure.getName()))
-                .withStatus(Objects.requireNonNullElse(adventure.getStatus(), previousAdventure.getStatus()))
                 .withDescription(Objects.requireNonNullElse(adventure.getDescription(), previousAdventure.getDescription()))
                 .withVisibility(Objects.requireNonNullElse(adventure.getVisibility(), previousAdventure.getVisibility()))
                 .withPostalCode(Objects.requireNonNullElse(adventure.getPostalCode(), previousAdventure.getPostalCode()))
                 .withCity(Objects.requireNonNullElse(adventure.getCity(), previousAdventure.getCity()))
                 .withMaxPlayer(Objects.requireNonNullElse(adventure.getMaxPlayer(), previousAdventure.getMaxPlayer()));
 
-        return spi.save(patchedAdventure)
-                .getOrElseThrow(DataNotSaveException::new);
+        // The capacity can never drop under the players who already took a seat
+        if (patchedAdventure.getMaxPlayer() < patchedAdventure.getPlayers().size()) {
+            throw new MaxPlayerBelowPlayersException(patchedAdventure.getMaxPlayer(), patchedAdventure.getPlayers().size());
+        }
+
+        return spi.save(patchedAdventure);
     }
 
     @Override
     public Adventure updateVisibility(UUID accountId, UUID id, AdventureVisibility visibility) {
         Adventure adventure = adventureOwnerVerifierService.verify(accountId, id);
 
-        return spi.save(adventure.withVisibility(visibility))
-                .getOrElseThrow(DataNotSaveException::new);
+        return spi.save(adventure.withVisibility(visibility));
     }
 
     @Override
     public Adventure updateStatus(UUID accountId, UUID id, AdventureStatus status) {
         Adventure adventure = adventureOwnerVerifierService.verify(accountId, id);
 
-        return spi.save(adventure.withStatus(status))
-                .getOrElseThrow(DataNotSaveException::new);
+        // Asking for the current status again changes nothing: the call is idempotent
+        if (adventure.getStatus() == status) {
+            return adventure;
+        }
+
+        if (!adventure.getStatus().canMoveTo(status)) {
+            throw new InvalidStatusTransitionException(adventure.getStatus(), status);
+        }
+
+        return spi.save(adventure.withStatus(status));
     }
 
     @Override
@@ -137,8 +148,7 @@ public class AdventureUpdaterService implements AdventureUpdaterApi {
             joined = joined.withStatus(AdventureStatus.ONGOING).withVisibility(AdventureVisibility.PRIVATE);
         }
 
-        return spi.save(joined)
-                .getOrElseThrow(DataNotSaveException::new);
+        return spi.save(joined);
     }
 
     @Override
@@ -197,8 +207,7 @@ public class AdventureUpdaterService implements AdventureUpdaterApi {
             List<UUID> players = new ArrayList<>(adventure.getPlayers());
             players.remove(account.getId());
 
-            return spi.save(adventure.withPlayers(players))
-                    .getOrElseThrow(DataNotSaveException::new);
+            return spi.save(adventure.withPlayers(players));
         });
 
         // The chat and the WebRTC signals already open for this account must stop as well

@@ -11,6 +11,7 @@ public interface PlanningEntityMapper {
             .id(entity.getId())
             .adventureId(entity.getAdventureId())
             .propositionDates(new ArrayList<>(entity.getPropositionDates()))
+            .version(entity.getVersion())
             .build();
     }
 
@@ -19,6 +20,7 @@ public interface PlanningEntityMapper {
             .id(domain.getId())
             .adventureId(domain.getAdventureId())
             .propositionDates(new ArrayList<>(domain.getPropositionDates()))
+            .version(domain.getVersion())
             .build();
     }
 }

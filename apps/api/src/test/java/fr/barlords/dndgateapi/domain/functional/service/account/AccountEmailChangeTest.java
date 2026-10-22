@@ -11,7 +11,6 @@ import fr.barlords.dndgateapi.domain.port.in.account.AccountSessionRevokerApi;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
 import fr.barlords.dndgateapi.domain.port.out.PasswordHasherSpi;
-import io.vavr.control.Either;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -129,7 +128,7 @@ public class AccountEmailChangeTest {
                     new AccountModifierService(passwordHasher), passwordVerifier, sessionRevoker, emailingSpi, clock, TTL);
             lenient().when(currentAccountService.getAccountById(existing.getId())).thenReturn(existing);
             lenient().when(passwordVerifier.verify(any(), any(), any(), any())).thenAnswer(i -> i.getArguments()[0]);
-            lenient().when(spi.save(any(Account.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+            lenient().when(spi.save(any(Account.class))).thenAnswer(i -> i.getArguments()[0]);
         }
 
         @Test
@@ -220,7 +219,7 @@ public class AccountEmailChangeTest {
             Account waiting = waitingFor("new@test.fr", "secretcode", NOW.plus(TTL));
             when(spi.findAllByPendingEmail("new@test.fr")).thenReturn(List.of(waiting));
             when(spi.findByEmail("new@test.fr")).thenReturn(Optional.empty());
-            when(spi.save(any(Account.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+            when(spi.save(any(Account.class))).thenAnswer(i -> i.getArguments()[0]);
 
             service().confirm("new@test.fr", "secretcode");
 
@@ -240,7 +239,7 @@ public class AccountEmailChangeTest {
             Account owner = waitingFor("new@test.fr", "secretcode", NOW.plus(TTL));
             when(spi.findAllByPendingEmail("new@test.fr")).thenReturn(List.of(stranger, owner));
             when(spi.findByEmail("new@test.fr")).thenReturn(Optional.empty());
-            when(spi.save(any(Account.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+            when(spi.save(any(Account.class))).thenAnswer(i -> i.getArguments()[0]);
 
             service().confirm("new@test.fr", "secretcode");
 

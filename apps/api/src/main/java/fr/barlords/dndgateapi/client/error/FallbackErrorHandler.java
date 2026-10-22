@@ -36,9 +36,7 @@ public class FallbackErrorHandler extends ResponseEntityExceptionHandler {
                 .map(error -> new ValidationErrorResponse(error.getField(), error.getDefaultMessage()))
                 .toList();
 
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "The request is not valid");
-        problem.setProperty("errors", errors);
-        return handleExceptionInternal(ex, problem, headers, status, request);
+        return handleExceptionInternal(ex, ValidationProblems.of(errors), headers, status, request);
     }
 
     /** Security decides what to answer to these: they must reach its filters, not become a 500. */

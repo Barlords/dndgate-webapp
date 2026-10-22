@@ -2,7 +2,6 @@ package fr.barlords.dndgateapi.domain.functional.service.historicnote;
 
 import java.util.Objects;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.note.AdventureNoteNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.note.HistoricalNote;
 import fr.barlords.dndgateapi.domain.functional.service.adventure.AdventureOwnerVerifierService;
@@ -33,7 +32,6 @@ public class HistoricalNoteUpdaterService implements HistoricalNoteUpdaterApi {
                 .withDate(Objects.requireNonNullElse(historicalNote.getDate(), previousHistoricalNote.getDate()))
                 .withContent(Objects.requireNonNullElse(historicalNote.getContent(), previousHistoricalNote.getContent()));
 
-        return spi.save(patchedHistoricalNote)
-                .getOrElseThrow(DataNotSaveException::new);
+        return spi.save(patchedHistoricalNote);
     }
 }

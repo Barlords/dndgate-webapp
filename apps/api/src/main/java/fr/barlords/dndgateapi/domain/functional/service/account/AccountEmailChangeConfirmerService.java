@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.account;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.InvalidVerificationCodeException;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountEmailChangeConfirmerApi;
@@ -32,8 +31,7 @@ public class AccountEmailChangeConfirmerService implements AccountEmailChangeCon
                         .withEmail(newEmail)
                         .withPendingEmail(null)
                         .withPendingEmailCode(null)
-                        .withPendingEmailExpiresAt(null))
-                .getOrElseThrow(DataNotSaveException::new);
+                        .withPendingEmailExpiresAt(null));
     }
 
 }

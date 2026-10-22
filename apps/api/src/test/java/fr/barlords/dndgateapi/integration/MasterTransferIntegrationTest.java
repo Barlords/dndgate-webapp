@@ -429,6 +429,34 @@ class MasterTransferIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     @Test
+    void a_candidate_who_deletes_the_account_cancels_the_vote_and_another_player_can_ask_at_once() {
+        joinWhileOpen(stranger);
+        stepDown();
+        claim(first);
+
+        Assertions.assertEquals(204, deleteAccount(first));
+
+        Assertions.assertEquals("CANCELLED", claimStatus());
+        Assertions.assertEquals(0, jdbc.queryForObject("select count(*) from master_claims where adventure_id = ? and status = 'OPEN'", Integer.class, adventureId));
+        Assertions.assertEquals(201, claim(second).getStatusCode().value());
+        Assertions.assertEquals("OPEN", claimStatus());
+    }
+
+    @Test
+    void a_vote_left_open_for_an_anonymized_candidate_never_hands_over_the_role() {
+        stepDown();
+        claim(first);
+        jdbc.update("update accounts set anonymized_at = now() where id = ?", first.id());
+
+        ResponseEntity<String> voted = vote(second, true);
+
+        Assertions.assertEquals("CANCELLED", body(voted).get("status").asString());
+        Assertions.assertEquals("CANCELLED", claimStatus());
+        Assertions.assertEquals(master.id(), ownerId());
+        Assertions.assertNotNull(jdbc.queryForObject("select master_vacant_since from adventure where id = ?", Object.class, adventureId));
+    }
+
+    @Test
     void the_players_vote_at_the_same_moment_and_the_role_changes_hands_exactly_once() throws Exception {
         List<TestAccount> others = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
