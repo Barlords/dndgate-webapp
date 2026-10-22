@@ -598,6 +598,64 @@ class FlywayMigrationIntegrationTest {
     }
 
     @Test
+    void a_legacy_address_in_mixed_case_becomes_a_normalised_pending_signup() throws Exception {
+        String url = newDatabase();
+        flyway(url, "16").migrate();
+        try (Connection connection = connect(url)) {
+            // V14 lower-cased the existing rows, but nothing stops a later insert from using capitals
+            execute(connection, "insert into accounts (id, email, password, pseudo, activated, verification_code, verification_expires_at) "
+                    + "values (?, 'Heidi@Mail.COM', 'h', 'Heidi', false, 'heidicode', now())", UUID.randomUUID());
+        }
+
+        flyway(url, null).migrate();
+
+        try (Connection connection = connect(url)) {
+            Assertions.assertEquals("heidi@mail.com", stringValue(connection, "select email from pending_signups where pseudo = 'Heidi'"));
+            Assertions.assertEquals(0, count(connection, "select count(*) from accounts where pseudo = 'Heidi'"));
+        }
+    }
+
+    @Test
+    void a_pending_signup_that_already_holds_the_address_wins_over_the_legacy_account() throws Exception {
+        String url = newDatabase();
+        flyway(url, "16").migrate();
+        try (Connection connection = connect(url)) {
+            insertUnverifiedAccount(connection, UUID.randomUUID(), "Grace", "legacycode", "now()");
+            execute(connection, "insert into pending_signups (id, email, pseudo, password_hash, code_hash, created_at, expires_at) "
+                    + "values (?, 'grace@mail.com', 'Grace2', 'newer-hash', 'newer-code-hash', now(), now() + interval '1 day')", UUID.randomUUID());
+        }
+
+        flyway(url, null).migrate();
+
+        try (Connection connection = connect(url)) {
+            Assertions.assertEquals(0, count(connection, "select count(*) from accounts where pseudo = 'Grace'"), "the legacy account is removed");
+            Assertions.assertEquals(1, count(connection, "select count(*) from pending_signups"));
+            Assertions.assertEquals("newer-code-hash", stringValue(connection, "select code_hash from pending_signups where email = 'grace@mail.com'"),
+                    "the newer signup is kept as it is");
+        }
+    }
+
+    @Test
+    void an_account_that_is_neither_activated_nor_anonymized_nor_convertible_stops_the_migration_and_is_named() throws Exception {
+        String url = newDatabase();
+        flyway(url, "16").migrate();
+        try (Connection connection = connect(url)) {
+            execute(connection, "insert into accounts (id, email, password, pseudo, activated) values (?, 'ivan@mail.com', 'h', 'Ivan', false)",
+                    UUID.randomUUID());
+            insertUnverifiedAccount(connection, UUID.randomUUID(), "Judy", "judycode", "now()");
+        }
+
+        FlywayException failure = Assertions.assertThrows(FlywayException.class, () -> flyway(url, null).migrate());
+
+        Assertions.assertTrue(failure.getMessage().contains("ivan@mail.com"), failure.getMessage());
+        try (Connection connection = connect(url)) {
+            Assertions.assertEquals(2, count(connection, "select count(*) from accounts"), "nothing deleted");
+            Assertions.assertEquals(0, count(connection, "select count(*) from pending_signups"), "nothing converted");
+        }
+        Assertions.assertEquals("16", flyway(url, null).info().current().getVersion().getVersion());
+    }
+
+    @Test
     void an_unverified_account_that_owns_data_stops_the_migration_and_is_named() throws Exception {
         String url = newDatabase();
         flyway(url, "16").migrate();
