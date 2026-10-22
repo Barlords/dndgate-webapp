@@ -21,7 +21,7 @@ public class HistoricalNoteUpdaterService implements HistoricalNoteUpdaterApi {
     private final AdventureOwnerVerifierService adventureOwnerVerifierService;
 
     @Override
-    public HistoricalNote update(UUID accountId, UUID adventureId, HistoricalNote historicalNote) {
+    public HistoricalNote update(UUID accountId, HistoricalNote historicalNote) {
         HistoricalNote previousHistoricalNote = spi.findById(historicalNote.getId())
                 .orElseThrow(AdventureNoteNotFoundException::new);
 

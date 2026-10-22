@@ -1,5 +1,7 @@
 package fr.barlords.dndgateapi.client;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -22,8 +24,9 @@ public class WebRTCMessage {
     @Size(max = 36)
     private String adventureId;
 
-    /** Ignored: the sender is the authenticated caller. */
-    @Size(max = 36)
+    /** Set by the server on the broadcast message (the authenticated sender); never read from the request. */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    @Schema(accessMode = Schema.AccessMode.READ_ONLY)
     private String accountId;
 }
 

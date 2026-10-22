@@ -6,6 +6,6 @@ import java.util.UUID;
 
 public interface HistoricalNoteUpdaterApi {
 
-    HistoricalNote update(UUID accountId, UUID adventureId, HistoricalNote historicalNote);
+    HistoricalNote update(UUID accountId, HistoricalNote historicalNote);
 
 }

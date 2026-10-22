@@ -26,8 +26,8 @@ public interface SpellBookDtoMapper {
 
     static SpellBook patchRequestToDomain(SpellBookPatchRequest request) {
         return SpellBook.builder()
-                .name(request.name().trim())
-                .description(request.description().trim())
+                .name(request.name() == null ? null : request.name().trim())
+                .description(request.description() == null ? null : request.description().trim())
                 .build();
     }
 }

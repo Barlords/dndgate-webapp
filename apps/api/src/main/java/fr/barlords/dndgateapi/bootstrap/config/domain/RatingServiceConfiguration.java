@@ -2,15 +2,12 @@ package fr.barlords.dndgateapi.bootstrap.config.domain;
 
 import fr.barlords.dndgateapi.bootstrap.config.RetryingTransaction;
 import fr.barlords.dndgateapi.bootstrap.config.TransactionalRatingUpdater;
-import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
 import fr.barlords.dndgateapi.domain.functional.service.rating.RatingCreatorService;
 import fr.barlords.dndgateapi.domain.functional.service.rating.RatingEligibilityService;
 import fr.barlords.dndgateapi.domain.functional.service.rating.RatingFinderService;
-import fr.barlords.dndgateapi.domain.functional.service.rating.RatingPatcherService;
 import fr.barlords.dndgateapi.domain.functional.service.rating.RatingUpdaterService;
 import fr.barlords.dndgateapi.domain.port.in.rating.RatingCreatorApi;
 import fr.barlords.dndgateapi.domain.port.in.rating.RatingFinderApi;
-import fr.barlords.dndgateapi.domain.port.in.rating.RatingPatcherApi;
 import fr.barlords.dndgateapi.domain.port.in.rating.RatingUpdaterApi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.RatingPersistenceSpi;
@@ -40,14 +37,6 @@ public class RatingServiceConfiguration {
             RatingPersistenceSpi spi
     ) {
         return new RatingFinderService(spi);
-    }
-
-    @Bean
-    public RatingPatcherApi ratingPatcherApi(
-            RatingPersistenceSpi spi,
-            CurrentAccountService currentAccountService
-    ) {
-        return new RatingPatcherService(spi, currentAccountService);
     }
 
     @Bean

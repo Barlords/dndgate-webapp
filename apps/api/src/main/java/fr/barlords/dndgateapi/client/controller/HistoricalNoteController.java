@@ -87,7 +87,6 @@ public class HistoricalNoteController {
         return HistoricalNoteDtoMapper.toDto(
                 historicalNoteUpdaterApi.update(
                         authVerifierService.currentAccountId(),
-                        request.adventureId(),
                         HistoricalNoteDtoMapper.patchRequestToDomain(request).withId(UuidValidator.validate(id))
                 )
         );

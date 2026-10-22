@@ -5,6 +5,7 @@ import fr.barlords.dndgateapi.domain.functional.model.pagination.PageRequest;
 
 import fr.barlords.dndgateapi.domain.functional.exception.rating.RatingOwnerException;
 import fr.barlords.dndgateapi.domain.functional.model.Rating;
+import fr.barlords.dndgateapi.domain.functional.model.RatingSummary;
 import fr.barlords.dndgateapi.domain.port.in.rating.RatingFinderApi;
 import fr.barlords.dndgateapi.domain.port.out.RatingPersistenceSpi;
 import lombok.RequiredArgsConstructor;
@@ -39,8 +40,10 @@ public class RatingFinderService implements RatingFinderApi {
     }
 
     @Override
-    public Optional<Double> findAverageRatingOfAccount(UUID targetedAccountId) {
-        return spi.computeAverageRatingOfAccount(targetedAccountId);
+    public RatingSummary summarizeRatingsOfAccount(UUID targetedAccountId) {
+        return new RatingSummary(
+                spi.computeAverageRatingOfAccount(targetedAccountId).orElse(null),
+                spi.countRatingsOfAccount(targetedAccountId));
     }
 
 }

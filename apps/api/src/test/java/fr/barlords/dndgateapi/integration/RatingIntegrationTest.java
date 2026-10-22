@@ -93,7 +93,7 @@ class RatingIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(409, rate(player, master, 5).getStatusCode().value());
 
         // the average was not inflated by the refused attempt
-        Assertions.assertEquals("3.0", call(HttpMethod.GET, "/ratings/mean?accountId=" + master.id(),
+        Assertions.assertEquals("{\"average\":3.0,\"count\":1}", call(HttpMethod.GET, "/ratings/mean?accountId=" + master.id(),
                 player.token(), null).getBody());
     }
 
@@ -106,7 +106,7 @@ class RatingIntegrationTest extends ApiIntegrationTestSupport {
         call(HttpMethod.PUT, "/ratings", player.token(), Map.of("accountTargetedId", master.id().toString(), "rate", 2));
         call(HttpMethod.PUT, "/ratings", player.token(), Map.of("accountTargetedId", master.id().toString(), "rate", 4));
 
-        Assertions.assertEquals("4.0", call(HttpMethod.GET, "/ratings/mean?accountId=" + master.id(),
+        Assertions.assertEquals("{\"average\":4.0,\"count\":1}", call(HttpMethod.GET, "/ratings/mean?accountId=" + master.id(),
                 stranger.token(), null).getBody());
     }
 
@@ -119,21 +119,6 @@ class RatingIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     // ---- who can read / change what ----
-
-    @Test
-    void only_the_author_can_change_a_rating() {
-        startAdventure();
-        UUID ratingId = UUID.fromString(body(rate(player, master, 2)).get("id").asString());
-
-        Assertions.assertEquals(403, call(HttpMethod.PATCH, "/ratings/" + ratingId, master.token(), Map.of("rate", 5))
-                .getStatusCode().value());
-        Assertions.assertEquals(403, call(HttpMethod.PATCH, "/ratings/" + ratingId, stranger.token(), Map.of("rate", 5))
-                .getStatusCode().value());
-        Assertions.assertEquals(200, call(HttpMethod.PATCH, "/ratings/" + ratingId, player.token(), Map.of("rate", 5))
-                .getStatusCode().value());
-        Assertions.assertEquals(400, call(HttpMethod.PATCH, "/ratings/" + ratingId, player.token(), Map.of("rate", 9))
-                .getStatusCode().value());
-    }
 
     @Test
     void the_detail_of_received_ratings_is_only_readable_by_the_rated_account() {

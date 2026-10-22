@@ -8,7 +8,7 @@ import fr.barlords.dndgateapi.domain.functional.model.pagination.PageRequest;
 
 import fr.barlords.dndgateapi.client.dto.rating.RatingCreationRequest;
 import fr.barlords.dndgateapi.client.dto.rating.RatingDto;
-import fr.barlords.dndgateapi.client.dto.rating.RatingPatchRequest;
+import fr.barlords.dndgateapi.client.dto.rating.RatingMeanDto;
 import fr.barlords.dndgateapi.client.mapper.RatingDtoMapper;
 import fr.barlords.dndgateapi.client.service.AuthVerifierService;
 import fr.barlords.dndgateapi.client.validator.UuidValidator;
@@ -17,7 +17,6 @@ import fr.barlords.dndgateapi.domain.functional.model.Rating;
 import fr.barlords.dndgateapi.domain.functional.model.Upserted;
 import fr.barlords.dndgateapi.domain.port.in.rating.RatingCreatorApi;
 import fr.barlords.dndgateapi.domain.port.in.rating.RatingFinderApi;
-import fr.barlords.dndgateapi.domain.port.in.rating.RatingPatcherApi;
 import fr.barlords.dndgateapi.domain.port.in.rating.RatingUpdaterApi;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -39,8 +38,6 @@ public class RatingController {
     private final AuthVerifierService authVerifierService;
 
     private final RatingCreatorApi ratingCreatorApi;
-
-    private final RatingPatcherApi ratingPatcherApi;
 
     private final RatingUpdaterApi ratingUpdaterApi;
 
@@ -70,9 +67,8 @@ public class RatingController {
 
     @GetMapping("/mean")
     @ResponseStatus(OK)
-    public Double getMeanRateOfAccount(@RequestParam String accountId) {
-        return ratingFinderApi.findAverageRatingOfAccount(UuidValidator.validate(accountId))
-                .orElse(0.0);
+    public RatingMeanDto getMeanRateOfAccount(@RequestParam String accountId) {
+        return RatingDtoMapper.toDto(ratingFinderApi.summarizeRatingsOfAccount(UuidValidator.validate(accountId)));
     }
 
     @PostMapping
@@ -93,15 +89,6 @@ public class RatingController {
                 authVerifierService.currentAccountId(),
                 RatingDtoMapper.creationRequestToDomain(request));
         return ResponseEntity.status(result.created() ? CREATED : OK).body(RatingDtoMapper.toDto(result.value()));
-    }
-
-    @PatchMapping("/{id}")
-    @ResponseStatus(OK)
-    public RatingDto patchRate(@PathVariable String id, @Valid @RequestBody RatingPatchRequest request) {
-        return RatingDtoMapper.toDto(
-                ratingPatcherApi.patch(
-                        authVerifierService.currentAccountId(),
-                        RatingDtoMapper.patchRequestToDomain(request).withId(UuidValidator.validate(id))));
     }
 
 }

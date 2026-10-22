@@ -87,7 +87,6 @@ public class AdventureNoteController {
         return AdventureNoteDtoMapper.toDto(
                 adventureNoteUpdaterApi.update(
                         authVerifierService.currentAccountId(),
-                        request.adventureId(),
                         AdventureNoteDtoMapper.patchRequestToDomain(request).withId(UuidValidator.validate(id))
                 )
         );

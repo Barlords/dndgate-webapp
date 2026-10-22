@@ -3,7 +3,6 @@ package fr.barlords.dndgateapi.client.mapper;
 
 import fr.barlords.dndgateapi.client.dto.message.MessageCreationRequest;
 import fr.barlords.dndgateapi.client.dto.message.MessageDto;
-import fr.barlords.dndgateapi.client.validator.UuidValidator;
 import fr.barlords.dndgateapi.domain.functional.model.Message;
 
 
@@ -21,7 +20,7 @@ public interface MessageDtoMapper {
 
     static Message creationRequestToDomain(MessageCreationRequest request) {
         return Message.builder()
-                .adventureId(UuidValidator.validate(request.adventureId()))
+                .adventureId(request.adventureId())
                 .content(request.content().trim())
                 .build();
     }

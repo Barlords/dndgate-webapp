@@ -279,7 +279,7 @@ class AccountAnonymizationIntegrationTest extends ApiIntegrationTestSupport {
 
         deleteAccount(player);
 
-        Assertions.assertEquals("4.0", call(HttpMethod.GET, "/ratings/mean?accountId=" + master.id(),
+        Assertions.assertEquals("{\"average\":4.0,\"count\":1}", call(HttpMethod.GET, "/ratings/mean?accountId=" + master.id(),
                 master.token(), null).getBody());
     }
 }

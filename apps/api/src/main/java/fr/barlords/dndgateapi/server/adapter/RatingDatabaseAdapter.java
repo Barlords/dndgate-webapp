@@ -66,4 +66,10 @@ public class RatingDatabaseAdapter implements RatingPersistenceSpi {
     public Optional<Double> computeAverageRatingOfAccount(UUID targetedAccountId) {
         return repository.findAverageRatingByAccountId(targetedAccountId);
     }
+
+    @Override
+    @Transactional
+    public long countRatingsOfAccount(UUID targetedAccountId) {
+        return repository.countByTargetId(targetedAccountId);
+    }
 }
