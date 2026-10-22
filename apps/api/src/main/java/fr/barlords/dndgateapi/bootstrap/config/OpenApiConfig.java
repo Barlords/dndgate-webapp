@@ -37,7 +37,7 @@ public class OpenApiConfig {
     static final String PROBLEM = "Problem";
 
     /** Version of the contract (not of the build): raised when the routes change in a way clients must follow. */
-    static final String CONTRACT_VERSION = "1.0.0";
+    static final String CONTRACT_VERSION = "2.0.0";
 
     @Bean
     public OpenAPI dndGateOpenApi(@Value("${server.servlet.context-path:}") String contextPath) {

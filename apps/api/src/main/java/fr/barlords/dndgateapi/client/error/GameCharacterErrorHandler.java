@@ -23,4 +23,9 @@ public class GameCharacterErrorHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, GameCharacterOwnerException.EXCEPTION_MESSAGE);
     }
 
+    @ExceptionHandler(InvalidCharacterFilterException.class)
+    public ProblemDetail handleInvalidCharacterFilterException() {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, InvalidCharacterFilterException.EXCEPTION_MESSAGE);
+    }
+
 }

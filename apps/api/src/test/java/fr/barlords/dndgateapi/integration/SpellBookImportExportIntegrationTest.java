@@ -91,4 +91,13 @@ class SpellBookImportExportIntegrationTest extends ApiIntegrationTestSupport {
                 exported.getHeaders().getFirst("Content-Disposition"));
         Assertions.assertEquals("fireball", body(exported).get("spellList").get(0).asText());
     }
+
+    @Test
+    void a_spell_book_file_is_imported_as_multipart() {
+        TestAccount account = registerAndLogin();
+
+        ResponseEntity<String> response = importFile(account, "{\"name\":\"Multipart\",\"description\":\"d\",\"spellList\":[]}");
+
+        Assertions.assertEquals(201, response.getStatusCode().value(), response.getBody());
+    }
 }

@@ -217,6 +217,51 @@ class OpenApiContractIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(new TreeSet<String>(), problems, "answers declared as */*: a generated client cannot parse them");
     }
 
+    // ================= the four routes a generated client could not guess =================
+
+    @Test
+    void the_character_listing_is_one_operation_with_two_optional_filters() {
+        JsonNode list = spec().get("paths").get("/game-characters").get("get");
+
+        Assertions.assertEquals("getGameCharacters", list.get("operationId").asString());
+        TreeSet<String> names = new TreeSet<>();
+        list.get("parameters").forEach(parameter -> {
+            names.add(parameter.get("name").asString());
+            Assertions.assertFalse(parameter.path("required").asBoolean(false), parameter.toString());
+        });
+        Assertions.assertEquals(new TreeSet<>(List.of("adventureId", "ownerId")), names);
+    }
+
+    @Test
+    void the_spell_book_import_is_a_multipart_file() {
+        JsonNode body = spec().get("paths").get("/spellbooks/import-file").get("post").get("requestBody");
+
+        JsonNode schema = body.get("content").get("multipart/form-data").get("schema");
+        Assertions.assertEquals("string", schema.get("properties").get("file").get("type").asString());
+        Assertions.assertEquals("binary", schema.get("properties").get("file").get("format").asString());
+        Assertions.assertEquals("file", schema.get("required").get(0).asString());
+    }
+
+    @Test
+    void the_picture_is_a_png_or_a_jpeg_file() {
+        JsonNode content = spec().get("paths").get("/game-characters/{id}/picture").get("get")
+                .get("responses").get("200").get("content");
+
+        for (String type : List.of("image/png", "image/jpeg")) {
+            Assertions.assertEquals("string", content.get(type).get("schema").get("type").asString(), type);
+            Assertions.assertEquals("binary", content.get(type).get("schema").get("format").asString(), type);
+        }
+    }
+
+    @Test
+    void the_export_is_a_spell_book_file() {
+        JsonNode content = spec().get("paths").get("/spellbooks/{id}/export-file").get("get")
+                .get("responses").get("200").get("content");
+
+        Assertions.assertTrue(content.get("application/json").get("schema").get("$ref").asString()
+                .endsWith("/SpellBookImportExportDto"));
+    }
+
     // ================= what the contract says about security is true =================
 
     @Test

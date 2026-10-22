@@ -1,7 +1,12 @@
 package fr.barlords.dndgateapi.client.controller;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
+import fr.barlords.dndgateapi.client.error.InvalidCharacterFilterException;
+import fr.barlords.dndgateapi.domain.functional.model.GameCharacter;
 import fr.barlords.dndgateapi.domain.functional.model.GameCharacterPicture;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import java.time.Duration;
@@ -27,6 +32,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 
 import static org.springframework.http.HttpStatus.*;
 
@@ -57,6 +63,9 @@ public class GameCharacterController {
     }
 
     @GetMapping("/{id}/picture")
+    @ApiResponse(responseCode = "200", description = "The picture, as it was uploaded.", content = {
+            @Content(mediaType = "image/png", schema = @Schema(type = "string", format = "binary")),
+            @Content(mediaType = "image/jpeg", schema = @Schema(type = "string", format = "binary"))})
     public ResponseEntity<byte[]> getGameCharacterPicture(@PathVariable String id) {
         GameCharacterPicture picture = gameCharacterFinderApi.findPicture(authVerifierService.currentAccountId(), UuidValidator.validate(id));
 
@@ -67,20 +76,19 @@ public class GameCharacterController {
                 .body(picture.content());
     }
 
-    @GetMapping(params = "ownerId")
+    @GetMapping
     @ResponseStatus(OK)
-    public List<GameCharacterDto> getGameCharactersByOwnerId(@RequestParam String ownerId) {
-        return gameCharacterFinderApi.findByOwnerId(authVerifierService.currentAccountId(), UuidValidator.validate(ownerId))
-                .stream()
-                .map(GameCharacterDtoMapper::toDto)
-                .toList();
-    }
-
-    @GetMapping(params = "adventureId")
-    @ResponseStatus(OK)
-    public List<GameCharacterDto> getGameCharactersByAdventureId(@RequestParam String adventureId) {
-        return gameCharacterFinderApi.findByAdventureId(authVerifierService.currentAccountId(), UuidValidator.validate(adventureId))
-                .stream()
+    public List<GameCharacterDto> getGameCharacters(
+            @RequestParam(required = false) String ownerId,
+            @RequestParam(required = false) String adventureId) {
+        if ((ownerId == null) == (adventureId == null)) {
+            throw new InvalidCharacterFilterException();
+        }
+        UUID accountId = authVerifierService.currentAccountId();
+        List<GameCharacter> characters = ownerId != null
+                ? gameCharacterFinderApi.findByOwnerId(accountId, UuidValidator.validate(ownerId))
+                : gameCharacterFinderApi.findByAdventureId(accountId, UuidValidator.validate(adventureId));
+        return characters.stream()
                 .map(GameCharacterDtoMapper::toDto)
                 .toList();
     }
