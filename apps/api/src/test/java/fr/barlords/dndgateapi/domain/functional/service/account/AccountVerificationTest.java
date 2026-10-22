@@ -379,14 +379,15 @@ public class AccountVerificationTest {
         }
 
         @Test
-        void a_taken_address_gives_the_same_silent_answer_even_when_the_pseudo_is_taken_too() {
-            when(spi.findByEmail("test@test.fr")).thenReturn(Optional.of(owner()));
-            when(noticeLog.claim(any(), any(), any())).thenReturn(true);
+        void a_taken_pseudo_is_refused_before_the_address_is_looked_at_and_nobody_is_mailed() {
+            Account account = newcomer();
+            doThrow(new PseudoAlreadyUsedException()).when(checker).pseudoIsAvailable(account);
 
-            Assertions.assertDoesNotThrow(() -> service().create(newcomer()));
+            Assertions.assertThrows(PseudoAlreadyUsedException.class, () -> service().create(account));
 
-            verify(checker, never()).pseudoIsAvailable(any());
-            verify(emailingSpi).sendSignupAttemptEmail(any());
+            verify(spi, never()).findByEmail(any());
+            verify(noticeLog, never()).claim(any(), any(), any());
+            verify(emailingSpi, never()).sendSignupAttemptEmail(any());
         }
 
         @Test

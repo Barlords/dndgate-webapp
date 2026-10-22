@@ -40,7 +40,38 @@ class SignupEnumerationIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(202, fresh.getStatusCode().value());
         Assertions.assertEquals(fresh.getStatusCode(), taken.getStatusCode());
         Assertions.assertEquals(fresh.getBody(), taken.getBody());
-        Assertions.assertEquals(fresh.getHeaders().getContentType(), taken.getHeaders().getContentType());
+        Assertions.assertEquals(stableHeaders(fresh), stableHeaders(taken));
+    }
+
+    /** The headers that do not change from one request to the next: not the date, the correlation id, the counters. */
+    private static Map<String, java.util.List<String>> stableHeaders(ResponseEntity<String> response) {
+        Map<String, java.util.List<String>> kept = new java.util.TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        response.getHeaders().forEach((name, values) -> {
+            String lower = name.toLowerCase();
+            if (!lower.equals("date") && !lower.contains("correlation") && !lower.equals("x-request-id") && !lower.contains("ratelimit")
+                    && !lower.contains("rate-limit") && !lower.equals("retry-after")) {
+                kept.put(name, values);
+            }
+        });
+        return kept;
+    }
+
+    @Test
+    void a_taken_pseudo_answers_409_the_same_whether_the_address_is_registered_or_free() {
+        String owner = newPseudo();
+        register(owner, owner + "@mail.com");
+        String taken = newPseudo();
+        register(taken, taken + "@mail.com");
+        Mockito.clearInvocations(emailingSpi);
+
+        ResponseEntity<String> registeredAddress = register(owner, taken + "@mail.com");
+        ResponseEntity<String> freeAddress = register(owner, "free-" + newPseudo() + "@mail.com");
+
+        Assertions.assertEquals(409, registeredAddress.getStatusCode().value());
+        Assertions.assertEquals(registeredAddress.getStatusCode(), freeAddress.getStatusCode());
+        Assertions.assertEquals(body(registeredAddress).get("detail"), body(freeAddress).get("detail"));
+        Mockito.verify(emailingSpi, Mockito.never()).sendSignupAttemptEmail(ArgumentMatchers.any());
+        Mockito.verify(emailingSpi, Mockito.never()).sendAccountValidationEmail(ArgumentMatchers.any());
     }
 
     @Test

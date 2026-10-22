@@ -41,6 +41,15 @@ class SignupNoticeLimitIntegrationTest extends ApiIntegrationTestSupport {
         }
     }
 
+    private static String sha256(String text) {
+        try {
+            return java.util.HexFormat.of().formatHex(
+                    java.security.MessageDigest.getInstance("SHA-256").digest(text.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     private int notices() {
         return Mockito.mockingDetails(emailingSpi).getInvocations().stream()
                 .filter(i -> i.getMethod().getName().equals("sendSignupAttemptEmail")).toList().size();
@@ -67,7 +76,7 @@ class SignupNoticeLimitIntegrationTest extends ApiIntegrationTestSupport {
         register(owner, owner + "@mail.com");
         Mockito.clearInvocations(emailingSpi);
         attempts(owner + "@mail.com", 1);
-        jdbc.update("update signup_notices set sent_at = now() - interval '25 hours'");
+        jdbc.update("update signup_notices set sent_at = now() - interval '25 hours' where email_hash = ?", sha256(owner + "@mail.com"));
 
         attempts(owner + "@mail.com", 1);
 
@@ -94,9 +103,10 @@ class SignupNoticeLimitIntegrationTest extends ApiIntegrationTestSupport {
         register(owner, owner + "@mail.com");
         attempts(owner + "@mail.com", 1);
 
+        Assertions.assertEquals(1, jdbc.queryForObject(
+                "select count(*) from signup_notices where email_hash = ?", Integer.class, sha256(owner + "@mail.com")));
         Assertions.assertEquals(0, jdbc.queryForObject(
                 "select count(*) from signup_notices where email_hash like '%mail.com%'", Integer.class));
-        Assertions.assertTrue(jdbc.queryForObject("select count(*) from signup_notices", Integer.class) >= 1);
     }
 
     @Test
@@ -111,14 +121,13 @@ class SignupNoticeLimitIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     @Test
-    void a_taken_address_with_a_taken_pseudo_still_answers_202() {
+    void a_taken_address_with_a_taken_pseudo_answers_409_because_the_pseudo_is_public() {
         String owner = newPseudo();
         register(owner, owner + "@mail.com");
 
         ResponseEntity<String> response = register(owner, owner + "@mail.com");
 
-        Assertions.assertEquals(202, response.getStatusCode().value(), response.getBody());
-        Assertions.assertNull(response.getBody());
+        Assertions.assertEquals(409, response.getStatusCode().value(), response.getBody());
     }
 
     @Test
@@ -129,6 +138,17 @@ class SignupNoticeLimitIntegrationTest extends ApiIntegrationTestSupport {
         Account duplicate = Account.builder().pseudo(newPseudo()).email(owner + "@mail.com").password("hash").build();
 
         Assertions.assertThrows(EmailAlreadyUsedException.class, () -> accounts.save(duplicate));
+    }
+
+    @Test
+    void the_constraint_is_read_from_its_name_not_from_the_refused_value() {
+        // The refused value ends up in the message of the database: it must not be taken for a constraint name
+        String name = "accounts_email_key";
+        accounts.save(Account.builder().pseudo(name).email("odd-" + newPseudo() + "@mail.com").password("hash").build());
+
+        Account duplicate = Account.builder().pseudo(name).email("odd2-" + newPseudo() + "@mail.com").password("hash").build();
+
+        Assertions.assertThrows(PseudoAlreadyUsedException.class, () -> accounts.save(duplicate));
     }
 
     @Test

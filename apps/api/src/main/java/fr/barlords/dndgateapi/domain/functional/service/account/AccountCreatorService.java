@@ -40,17 +40,18 @@ public class AccountCreatorService implements AccountCreatorApi {
 
     @Override
     public void create(Account account) {
+        // The pseudo comes first and is public: a taken pseudo answers 409 whatever the address, so the answer
+        // can never tell whether the address is registered (checking the address first would be an oracle)
+        accountCheckerService.pseudoIsAvailable(account);
+
         // Hashed before the address is looked at: both answers cost the same time, the hash being the slow part
         Account encoded = accountModifierService.encodePassword(account);
 
-        // The address comes first: when it is taken the answer is the same whatever the pseudo
         Optional<Account> owner = spi.findByEmail(account.getEmail());
         if (owner.isPresent()) {
             tellTheOwner(owner.get());
             return;
         }
-
-        accountCheckerService.pseudoIsAvailable(account);
 
         Account toSave = encoded
                 .withVerificationCode(RandomStringGenerator.generateAlphanumericString(Account.VERIFICATION_CODE_LENGTH))
