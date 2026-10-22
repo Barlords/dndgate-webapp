@@ -178,7 +178,7 @@ class DeletionConfirmationIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(0, count("select count(*) from propositions where planning_id = ?", planningId));
         Assertions.assertEquals(0, count("select count(*) from availability where planning_id = ?", planningId));
         Assertions.assertEquals(0, count("select count(*) from availability_dates where availability_id = ?", voteId));
-        Mockito.verify(minioSpi).deleteFile(picturePath);
+        Mockito.verify(minioSpi).deleteAfterCommit(picturePath);
 
         // the accounts themselves are untouched
         Assertions.assertEquals(200, call(HttpMethod.GET, "/accounts/me", player.token(), null).getStatusCode().value());
@@ -214,12 +214,12 @@ class DeletionConfirmationIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(400, delete(path, player, confirmation("gandalf")));
         Assertions.assertEquals(403, delete(path, master, confirmation("Gandalf")), "only its owner can delete it");
         Assertions.assertEquals(1, count("select count(*) from \"character\" where id = ?", characterId));
-        Mockito.verify(minioSpi, Mockito.never()).deleteFile(Mockito.anyString());
+        Mockito.verify(minioSpi, Mockito.never()).deleteAfterCommit(Mockito.anyString());
 
         Assertions.assertEquals(204, delete(path, player, confirmation("Gandalf")));
 
         Assertions.assertEquals(0, count("select count(*) from \"character\" where id = ?", characterId));
-        Mockito.verify(minioSpi).deleteFile(picturePath);
+        Mockito.verify(minioSpi).deleteAfterCommit(picturePath);
     }
 
     // ================= spell book =================

@@ -173,8 +173,9 @@ public class AdventureDeleterServiceTest {
         order.verify(plannings).deleteById(planning.getId());
         order.verify(messages).deleteByAdventureId(adventure.getId());
         order.verify(spi).deleteById(adventure.getId());
-        order.verify(minioSpi).deleteFile("account/1/a.png");
-        verify(minioSpi, never()).deleteFile(org.mockito.ArgumentMatchers.eq(null));
+        order.verify(minioSpi).deleteAfterCommit("account/1/a.png");
+        verify(minioSpi, never()).deleteAfterCommit(org.mockito.ArgumentMatchers.eq(null));
+        verify(minioSpi, never()).deleteFile(any());
     }
 
     @Test
@@ -190,14 +191,16 @@ public class AdventureDeleterServiceTest {
     }
 
     @Test
-    void a_picture_that_cannot_be_removed_does_not_undo_the_deletion() throws Exception {
+    void the_pictures_are_kept_when_the_adventure_cannot_be_deleted() throws Exception {
         ownerIsVerified();
         when(plannings.findByAdventureId(adventure.getId())).thenReturn(Optional.empty());
         when(gameCharacters.findByAdventureId(adventure.getId()))
                 .thenReturn(List.of(GameCharacter.builder().name("A").picturePath("account/1/a.png").build()));
-        doThrow(new RuntimeException("storage unavailable")).when(minioSpi).deleteFile("account/1/a.png");
+        doThrow(new IllegalStateException("database refused")).when(spi).deleteById(adventure.getId());
 
-        Assertions.assertDoesNotThrow(() -> service.deleteById(accountId, adventure.getId(), "La quête du soir"));
-        verify(spi).deleteById(adventure.getId());
+        Assertions.assertThrows(IllegalStateException.class, () -> service.deleteById(accountId, adventure.getId(), "La quête du soir"));
+
+        verify(minioSpi, never()).deleteAfterCommit(any());
+        verify(minioSpi, never()).deleteFile(any());
     }
 }

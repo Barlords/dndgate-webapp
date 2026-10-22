@@ -71,11 +71,25 @@ public class GameCharacterCreatorService implements GameCharacterCreatorApi {
             throw new IllegalStateException("The file cannot be stored", e);
         }
 
-        return spi.save(gameCharacter
-                        .withOwner(account)
-                        .withAdventure(adventure)
-                        .withPicturePath(picturePath)
-                );
+        try {
+            return spi.save(gameCharacter
+                    .withOwner(account)
+                    .withAdventure(adventure)
+                    .withPicturePath(picturePath)
+            );
+        } catch (RuntimeException e) {
+            removeOrphanPicture(picturePath);
+            throw e;
+        }
+    }
+
+    /** Best effort: the character was not saved, so nothing refers to the uploaded picture. */
+    private void removeOrphanPicture(String picturePath) {
+        try {
+            minioSpi.deleteFile(picturePath);
+        } catch (Exception e) {
+            log.warn("The picture {} of a character that could not be saved was left behind", picturePath, e);
+        }
     }
 
 }

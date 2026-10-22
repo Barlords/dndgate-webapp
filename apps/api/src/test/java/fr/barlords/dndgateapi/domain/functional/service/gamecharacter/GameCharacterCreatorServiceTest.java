@@ -177,10 +177,26 @@ class GameCharacterCreatorServiceTest {
     }
 
     @Test
-    void a_failed_save_is_reported() {
+    void a_failed_save_is_reported_and_the_uploaded_picture_is_removed() throws Exception {
         playerIsParticipant();
-        when(spi.save(any(GameCharacter.class))).thenThrow(new IllegalStateException("db down"));
+        IllegalStateException failure = new IllegalStateException("db down");
+        when(spi.save(any(GameCharacter.class))).thenThrow(failure);
 
-        Assertions.assertThrows(IllegalStateException.class, () -> create(PNG));
+        IllegalStateException thrown = Assertions.assertThrows(IllegalStateException.class, () -> create(PNG));
+
+        Assertions.assertSame(failure, thrown);
+        verify(minioSpi).deleteFile("account/" + player.getId() + "/game_character/" + draft.getId() + ".png");
+    }
+
+    @Test
+    void a_picture_that_cannot_be_removed_does_not_hide_the_failed_save() throws Exception {
+        playerIsParticipant();
+        IllegalStateException failure = new IllegalStateException("db down");
+        when(spi.save(any(GameCharacter.class))).thenThrow(failure);
+        doThrow(new RuntimeException("minio down")).when(minioSpi).deleteFile(any());
+
+        IllegalStateException thrown = Assertions.assertThrows(IllegalStateException.class, () -> create(PNG));
+
+        Assertions.assertSame(failure, thrown);
     }
 }

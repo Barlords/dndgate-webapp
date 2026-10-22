@@ -74,15 +74,9 @@ public class AdventureDeleterService implements AdventureDeleterApi {
         deletePictures(pictures);
     }
 
-    /** After the data: a picture that cannot be removed must not bring back an adventure that is gone. */
+    /** Deferred until the commit: a rolled back deletion keeps its pictures, a failed removal is only logged. */
     private void deletePictures(List<String> pictures) {
-        for (String picture : pictures) {
-            try {
-                minioSpi.deleteFile(picture);
-            } catch (Exception e) {
-                log.warn("The picture {} of a deleted adventure could not be removed", picture, e);
-            }
-        }
+        pictures.forEach(minioSpi::deleteAfterCommit);
     }
 
 }
