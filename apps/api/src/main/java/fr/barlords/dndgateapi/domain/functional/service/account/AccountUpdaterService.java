@@ -43,9 +43,24 @@ public class AccountUpdaterService implements AccountUpdaterApi {
 
     @Override
     public Account update(UUID accountId, String currentPassword, AccountChanges changes, ClientAddress client) {
-        Account previous = passwordVerifier.verify(
-                currentAccountService.getAccountById(accountId), currentPassword, client, WrongPasswordException::new);
+        return apply(verify(accountId, currentPassword, client), currentPassword, changes);
+    }
 
+    /**
+     * First step of {@link #update}: reads the account and checks the current password (a wrong one is counted as a
+     * failed login). Writes nothing else, so that it can run before the transaction of the change opens.
+     */
+    public Account verify(UUID accountId, String currentPassword, ClientAddress client) {
+        return passwordVerifier.verify(
+                currentAccountService.getAccountById(accountId), currentPassword, client, WrongPasswordException::new);
+    }
+
+    /**
+     * Second step of {@link #update}: applies the changes to the account read by {@link #verify}. Its version is the
+     * one read then: if the account changed since, the save is refused.
+     */
+    public Account apply(Account previous, String currentPassword, AccountChanges changes) {
+        UUID accountId = previous.getId();
         Account patched = previous;
         boolean emailChangeRequested = false;
 

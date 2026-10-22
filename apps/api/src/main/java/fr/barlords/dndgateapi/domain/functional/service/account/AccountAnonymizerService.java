@@ -26,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -62,15 +63,34 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
 
     @Override
     public void anonymize(UUID accountId, String password, ClientAddress client) {
+        verify(accountId, password, client).ifPresent(this::apply);
+    }
+
+    /**
+     * First step of {@link #anonymize}: reads the account and checks the password (a wrong one is counted as a failed
+     * login), so that it can run before the transaction of the anonymization opens.
+     *
+     * @return the account to anonymize, or nothing when it already is (its last sessions are ended)
+     */
+    public Optional<Account> verify(UUID accountId, String password, ClientAddress client) {
         Account account = accounts.findById(accountId)
                 .orElseThrow(AccountNotFoundException::new);
 
         if (account.isAnonymized()) {
             sessionRevoker.logoutAll(accountId);
-            return;
+            return Optional.empty();
         }
 
         passwordVerifier.verify(account, password, client, WrongPasswordException::new);
+        return Optional.of(account);
+    }
+
+    /**
+     * Second step of {@link #anonymize}, to run in one transaction. The account keeps the version read by
+     * {@link #verify}: if it changed since, its save is refused and nothing is kept.
+     */
+    public void apply(Account account) {
+        UUID accountId = account.getId();
 
         abortOwnedAdventuresThatHaveNotStarted(accountId);
         freeSeatsInAdventuresThatHaveNotStarted(accountId);

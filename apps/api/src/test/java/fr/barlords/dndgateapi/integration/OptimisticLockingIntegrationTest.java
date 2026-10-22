@@ -343,10 +343,14 @@ class OptimisticLockingIntegrationTest extends ApiIntegrationTestSupport {
         Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
         statistics.setStatisticsEnabled(true);
         statistics.clear();
-
-        save.run();
-
-        return statistics.getPrepareStatementCount();
+        try {
+            save.run();
+            return statistics.getPrepareStatementCount();
+        } finally {
+            // the session factory is shared by every test class of the context
+            statistics.setStatisticsEnabled(false);
+            statistics.clear();
+        }
     }
 
     @Test

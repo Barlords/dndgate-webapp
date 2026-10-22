@@ -22,6 +22,7 @@ import fr.barlords.dndgateapi.domain.port.out.SessionPersistenceSpi;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -76,12 +77,13 @@ public class AccountServiceConfiguration {
             MasterTransferNotifier masterTransferNotifier,
             Clock clock,
             AuditSpi audit,
-            LoginFailureSpi loginFailures
+            LoginFailureSpi loginFailures,
+            PlatformTransactionManager transactionManager
     ) {
         return new TransactionalAccountAnonymizer(new AccountAnonymizerService(
                 accounts, adventures, masterClaims, spellBooks, passwordHasher, opaqueTokenSpi,
                 accountPasswordVerifierService,
-                accountSessionRevokerApi, masterTransferNotifier, clock, audit, loginFailures));
+                accountSessionRevokerApi, masterTransferNotifier, clock, audit, loginFailures), transactionManager);
     }
 
     @Bean
@@ -101,11 +103,12 @@ public class AccountServiceConfiguration {
             AccountSessionRevokerApi accountSessionRevokerApi,
             EmailingSpi emailingSpi,
             Clock clock,
-            @Value("${security.verification.ttl:PT24H}") Duration emailChangeCodeTtl
+            @Value("${security.verification.ttl:PT24H}") Duration emailChangeCodeTtl,
+            PlatformTransactionManager transactionManager
     ) {
         return new TransactionalAccountUpdater(new AccountUpdaterService(spi, currentAccountService, accountCheckerService,
                 accountModifierService, accountPasswordVerifierService, accountSessionRevokerApi, emailingSpi, clock,
-                emailChangeCodeTtl));
+                emailChangeCodeTtl), transactionManager);
     }
 
     @Bean
