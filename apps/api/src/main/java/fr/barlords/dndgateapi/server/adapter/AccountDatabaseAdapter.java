@@ -1,6 +1,8 @@
 package fr.barlords.dndgateapi.server.adapter;
 
 
+import fr.barlords.dndgateapi.domain.functional.exception.ConcurrentUpdateException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
 import fr.barlords.dndgateapi.server.mapper.AccountEntityMapper;
@@ -22,7 +24,12 @@ public class AccountDatabaseAdapter implements AccountPersistenceSpi {
     @Override
     @Transactional
     public Account save(Account o) {
-        return AccountEntityMapper.toDomain(repository.save(AccountEntityMapper.fromDomain(o)));
+        // Flushed here so that a concurrent change is detected now, not later when the transaction commits
+        try {
+            return AccountEntityMapper.toDomain(repository.saveAndFlush(AccountEntityMapper.fromDomain(o)));
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new ConcurrentUpdateException(e);
+        }
     }
 
     @Override
@@ -64,7 +71,7 @@ public class AccountDatabaseAdapter implements AccountPersistenceSpi {
     @Override
     @Transactional
     public Account update(Account o) {
-        return AccountEntityMapper.toDomain(repository.save(AccountEntityMapper.fromDomain(o)));
+        return save(o);
     }
 
 }

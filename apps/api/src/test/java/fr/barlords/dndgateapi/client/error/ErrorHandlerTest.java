@@ -9,7 +9,9 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import fr.barlords.dndgateapi.domain.functional.exception.ConcurrentUpdateException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 
@@ -58,5 +60,24 @@ class ErrorHandlerTest {
         Assertions.assertNotNull(event.getThrowableProxy());
         Assertions.assertEquals(DataIntegrityViolationException.class.getName(), event.getThrowableProxy().getClassName());
         Assertions.assertNotNull(event.getThrowableProxy().getCause(), "the cause is not lost");
+    }
+
+    @Test
+    void a_write_made_from_a_stale_read_is_a_409() {
+        ProblemDetail problem = new ErrorHandler(Clock.systemUTC())
+                .handleConcurrentUpdateException(new ConcurrentUpdateException(new IllegalStateException("version 3 expected")));
+
+        Assertions.assertEquals(HttpStatus.CONFLICT.value(), problem.getStatus());
+        Assertions.assertEquals(ConcurrentUpdateException.EXCEPTION_MESSAGE, problem.getDetail());
+    }
+
+    @Test
+    void a_stale_write_detected_at_commit_is_the_same_409_without_internal_details() {
+        ProblemDetail problem = new ErrorHandler(Clock.systemUTC())
+                .handleOptimisticLockingFailureException(new ObjectOptimisticLockingFailureException("SpellBookEntity", "an id"));
+
+        Assertions.assertEquals(HttpStatus.CONFLICT.value(), problem.getStatus());
+        Assertions.assertEquals(ConcurrentUpdateException.EXCEPTION_MESSAGE, problem.getDetail());
+        Assertions.assertEquals(1, appender.list.size(), "logged, as it should have been caught earlier");
     }
 }

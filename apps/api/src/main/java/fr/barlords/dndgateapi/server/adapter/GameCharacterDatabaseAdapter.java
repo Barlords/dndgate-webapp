@@ -1,5 +1,7 @@
 package fr.barlords.dndgateapi.server.adapter;
 
+import fr.barlords.dndgateapi.domain.functional.exception.ConcurrentUpdateException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import fr.barlords.dndgateapi.domain.functional.model.GameCharacter;
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
 import fr.barlords.dndgateapi.server.mapper.GameCharacterEntityMapper;
@@ -21,7 +23,12 @@ public class GameCharacterDatabaseAdapter implements GameCharacterPersistenceSpi
     @Override
     @Transactional
     public GameCharacter save(GameCharacter o) {
-        return GameCharacterEntityMapper.toDomain(repository.save(GameCharacterEntityMapper.fromDomain(o)));
+        // Flushed here so that a concurrent change is detected now, not later when the transaction commits
+        try {
+            return GameCharacterEntityMapper.toDomain(repository.saveAndFlush(GameCharacterEntityMapper.fromDomain(o)));
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new ConcurrentUpdateException(e);
+        }
     }
 
     @Override

@@ -32,4 +32,8 @@ public class PlanningEntity implements Serializable {
     @Column(name = "proposition_dates")
     private List<LocalDate> propositionDates = new ArrayList<>();
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
 }

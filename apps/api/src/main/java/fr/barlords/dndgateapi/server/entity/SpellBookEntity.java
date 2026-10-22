@@ -38,4 +38,8 @@ public class SpellBookEntity implements Serializable {
     @Column(name = "spell_list")
     private Set<String> spellList;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
 }

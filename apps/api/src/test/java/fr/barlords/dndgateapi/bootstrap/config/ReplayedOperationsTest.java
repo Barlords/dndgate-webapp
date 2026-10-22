@@ -1,0 +1,143 @@
+package fr.barlords.dndgateapi.bootstrap.config;
+
+import fr.barlords.dndgateapi.domain.functional.exception.ConcurrentUpdateException;
+import fr.barlords.dndgateapi.domain.functional.model.SpellBook;
+import fr.barlords.dndgateapi.domain.functional.model.planning.Availability;
+import fr.barlords.dndgateapi.domain.functional.model.planning.Planning;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.SimpleTransactionStatus;
+
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+/**
+ * The "read, then modify" operations are replayed from a fresh read when someone changed the same row meanwhile;
+ * the other ones answer the conflict.
+ */
+class ReplayedOperationsTest {
+
+    private final UUID accountId = UUID.randomUUID();
+
+    private final UUID spellBookId = UUID.randomUUID();
+
+    private final RetryingTransaction transaction = transaction();
+
+    private static RetryingTransaction transaction() {
+        PlatformTransactionManager manager = mock(PlatformTransactionManager.class);
+        when(manager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
+        return new RetryingTransaction(manager);
+    }
+
+    private static ConcurrentUpdateException conflict() {
+        return new ConcurrentUpdateException(new IllegalStateException("stale"));
+    }
+
+    // ---- spells ----
+
+    @Test
+    void a_spell_addition_met_by_a_concurrent_change_is_replayed() {
+        AtomicInteger calls = new AtomicInteger();
+        SpellBook book = SpellBook.builder().build();
+        TransactionalSpellWriter writer = new TransactionalSpellWriter((account, id, spell) -> {
+            if (calls.incrementAndGet() == 1) {
+                throw conflict();
+            }
+            return book;
+        }, transaction);
+
+        Assertions.assertSame(book, writer.addSpell(accountId, spellBookId, "fireball"));
+        Assertions.assertEquals(2, calls.get());
+    }
+
+    @Test
+    void a_spell_addition_failing_otherwise_is_not_replayed() {
+        AtomicInteger calls = new AtomicInteger();
+        TransactionalSpellWriter writer = new TransactionalSpellWriter((account, id, spell) -> {
+            calls.incrementAndGet();
+            throw new IllegalStateException("other");
+        }, transaction);
+
+        Assertions.assertThrows(IllegalStateException.class, () -> writer.addSpell(accountId, spellBookId, "fireball"));
+        Assertions.assertEquals(1, calls.get());
+    }
+
+    @Test
+    void a_spell_removal_met_by_a_concurrent_change_is_replayed() {
+        AtomicInteger calls = new AtomicInteger();
+        TransactionalSpellDeleter deleter = new TransactionalSpellDeleter((account, id, spell) -> {
+            if (calls.incrementAndGet() == 1) {
+                throw conflict();
+            }
+        }, transaction);
+
+        deleter.deleteSpell(accountId, spellBookId, "fireball");
+
+        Assertions.assertEquals(2, calls.get());
+    }
+
+    @Test
+    void a_conflict_that_never_goes_away_is_finally_reported() {
+        AtomicInteger calls = new AtomicInteger();
+        TransactionalSpellDeleter deleter = new TransactionalSpellDeleter((account, id, spell) -> {
+            calls.incrementAndGet();
+            throw conflict();
+        }, transaction);
+
+        Assertions.assertThrows(ConcurrentUpdateException.class, () -> deleter.deleteSpell(accountId, spellBookId, "fireball"));
+        Assertions.assertEquals(10, calls.get());
+    }
+
+    // ---- availability vote: both kinds of conflict ----
+
+    @Test
+    void a_vote_met_by_a_concurrent_change_is_replayed() {
+        AtomicInteger calls = new AtomicInteger();
+        Availability vote = Availability.builder().build();
+        TransactionalAvailabilityVote voting = new TransactionalAvailabilityVote((account, availability) -> {
+            if (calls.incrementAndGet() == 1) {
+                throw conflict();
+            }
+            return availability;
+        }, transaction);
+
+        Assertions.assertSame(vote, voting.createOrUpdate(accountId, vote));
+        Assertions.assertEquals(2, calls.get());
+    }
+
+    // ---- planning: only the creation race is replayed ----
+
+    @Test
+    void two_first_plannings_of_an_adventure_are_replayed_into_an_update() {
+        AtomicInteger calls = new AtomicInteger();
+        Planning planning = Planning.builder().build();
+        TransactionalPlanningUpdater updater = new TransactionalPlanningUpdater((account, sent) -> {
+            if (calls.incrementAndGet() == 1) {
+                throw new DataIntegrityViolationException("duplicate key");
+            }
+            return sent;
+        }, transaction);
+
+        Assertions.assertSame(planning, updater.createOrUpdate(accountId, planning));
+        Assertions.assertEquals(2, calls.get());
+    }
+
+    @Test
+    void a_planning_changed_meanwhile_is_reported_and_not_replayed() {
+        AtomicInteger calls = new AtomicInteger();
+        TransactionalPlanningUpdater updater = new TransactionalPlanningUpdater((account, sent) -> {
+            calls.incrementAndGet();
+            throw conflict();
+        }, transaction);
+
+        Planning planning = Planning.builder().build();
+        Assertions.assertThrows(ConcurrentUpdateException.class, () -> updater.createOrUpdate(accountId, planning));
+        Assertions.assertEquals(1, calls.get());
+    }
+}

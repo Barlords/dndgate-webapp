@@ -1,5 +1,7 @@
 package fr.barlords.dndgateapi.server.adapter;
 
+import fr.barlords.dndgateapi.domain.functional.exception.ConcurrentUpdateException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import fr.barlords.dndgateapi.domain.functional.model.pagination.Page;
 import fr.barlords.dndgateapi.domain.functional.model.pagination.PageRequest;
 import fr.barlords.dndgateapi.server.mapper.PageMapper;
@@ -30,7 +32,12 @@ public class AdventureNoteDatabaseAdapter implements AdventureNotePersistenceSpi
     @Override
     @Transactional
     public AdventureNote save(AdventureNote o) {
-        return AdventureNoteEntityMapper.toDomain(repository.save(AdventureNoteEntityMapper.fromDomain(o)));
+        // Flushed here so that a concurrent change is detected now, not later when the transaction commits
+        try {
+            return AdventureNoteEntityMapper.toDomain(repository.saveAndFlush(AdventureNoteEntityMapper.fromDomain(o)));
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new ConcurrentUpdateException(e);
+        }
     }
 
     @Override

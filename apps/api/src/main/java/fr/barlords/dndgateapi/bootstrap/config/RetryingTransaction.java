@@ -28,15 +28,16 @@ public class RetryingTransaction {
     }
 
     /**
-     * Same, replaying when the given kind of exception is raised (for instance a unique index violation met at
-     * commit, when two requests create the same row at the same moment).
+     * Same, replaying when one of the given kinds of exception is raised (for instance a unique index violation met
+     * at commit, when two requests create the same row at the same moment, or a row changed by someone else).
      */
-    public <T> T execute(Supplier<T> operation, Class<? extends RuntimeException> retryOn) {
+    @SafeVarargs
+    public final <T> T execute(Supplier<T> operation, Class<? extends RuntimeException>... retryOn) {
         for (int remaining = MAX_ATTEMPTS - 1; ; remaining--) {
             try {
                 return template.execute(status -> operation.get());
             } catch (RuntimeException e) {
-                if (!retryOn.isInstance(e)) {
+                if (!isOneOf(e, retryOn)) {
                     throw e;
                 }
                 if (remaining == 0) {
@@ -44,6 +45,15 @@ public class RetryingTransaction {
                 }
             }
         }
+    }
+
+    private static boolean isOneOf(RuntimeException e, Class<? extends RuntimeException>[] kinds) {
+        for (Class<? extends RuntimeException> kind : kinds) {
+            if (kind.isInstance(e)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void run(Runnable operation) {

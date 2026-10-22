@@ -14,6 +14,7 @@ import fr.barlords.dndgateapi.domain.port.out.LoginFailureSpi;
 import fr.barlords.dndgateapi.domain.port.out.PasswordHasherSpi;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
 import fr.barlords.dndgateapi.bootstrap.config.TransactionalAccountAnonymizer;
+import fr.barlords.dndgateapi.bootstrap.config.TransactionalAccountUpdater;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.OpaqueTokenSpi;
 import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
@@ -102,8 +103,9 @@ public class AccountServiceConfiguration {
             Clock clock,
             @Value("${security.verification.ttl:PT24H}") Duration emailChangeCodeTtl
     ) {
-        return new AccountUpdaterService(spi, currentAccountService, accountCheckerService, accountModifierService,
-                accountPasswordVerifierService, accountSessionRevokerApi, emailingSpi, clock, emailChangeCodeTtl);
+        return new TransactionalAccountUpdater(new AccountUpdaterService(spi, currentAccountService, accountCheckerService,
+                accountModifierService, accountPasswordVerifierService, accountSessionRevokerApi, emailingSpi, clock,
+                emailChangeCodeTtl));
     }
 
     @Bean

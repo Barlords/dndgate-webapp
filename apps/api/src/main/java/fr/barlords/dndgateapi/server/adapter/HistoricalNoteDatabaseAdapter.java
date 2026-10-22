@@ -1,5 +1,7 @@
 package fr.barlords.dndgateapi.server.adapter;
 
+import fr.barlords.dndgateapi.domain.functional.exception.ConcurrentUpdateException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import fr.barlords.dndgateapi.domain.functional.model.pagination.Page;
 import fr.barlords.dndgateapi.domain.functional.model.pagination.PageRequest;
 import fr.barlords.dndgateapi.server.mapper.PageMapper;
@@ -27,7 +29,12 @@ public class HistoricalNoteDatabaseAdapter implements HistoricalNotePersistenceS
     @Override
     @Transactional
     public HistoricalNote save(HistoricalNote o) {
-        return HistoricalNoteEntityMapper.toDomain(repository.save(HistoricalNoteEntityMapper.fromDomain(o)));
+        // Flushed here so that a concurrent change is detected now, not later when the transaction commits
+        try {
+            return HistoricalNoteEntityMapper.toDomain(repository.saveAndFlush(HistoricalNoteEntityMapper.fromDomain(o)));
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new ConcurrentUpdateException(e);
+        }
     }
 
     @Override

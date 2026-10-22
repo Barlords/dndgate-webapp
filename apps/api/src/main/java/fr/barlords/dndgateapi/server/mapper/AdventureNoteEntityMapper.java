@@ -12,6 +12,7 @@ public interface AdventureNoteEntityMapper {
                 .content(entity.getContent())
                 .date(entity.getDate())
                 .noteVisibility(entity.getNoteVisibility())
+                .version(entity.getVersion())
                 .build();
     }
 
@@ -22,6 +23,7 @@ public interface AdventureNoteEntityMapper {
                 .content(domain.getContent())
                 .date(domain.getDate())
                 .noteVisibility(domain.getNoteVisibility())
+                .version(domain.getVersion())
                 .build();
     }
 

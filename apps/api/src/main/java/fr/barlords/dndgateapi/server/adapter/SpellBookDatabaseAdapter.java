@@ -1,5 +1,7 @@
 package fr.barlords.dndgateapi.server.adapter;
 
+import fr.barlords.dndgateapi.domain.functional.exception.ConcurrentUpdateException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import fr.barlords.dndgateapi.domain.functional.model.SpellBook;
 import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
 import fr.barlords.dndgateapi.server.mapper.SpellBookEntityMapper;
@@ -21,7 +23,12 @@ public class SpellBookDatabaseAdapter implements SpellBookPersistenceSpi {
     @Override
     @Transactional
     public SpellBook save(SpellBook o) {
-        return SpellBookEntityMapper.toDomain(repository.save(SpellBookEntityMapper.fromDomain(o)));
+        // Flushed here so that a concurrent change is detected now, not later when the transaction commits
+        try {
+            return SpellBookEntityMapper.toDomain(repository.saveAndFlush(SpellBookEntityMapper.fromDomain(o)));
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new ConcurrentUpdateException(e);
+        }
     }
 
     @Override

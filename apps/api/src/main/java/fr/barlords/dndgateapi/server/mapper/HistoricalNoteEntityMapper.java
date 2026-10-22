@@ -11,6 +11,7 @@ public interface HistoricalNoteEntityMapper {
                 .adventure(AdventureEntityMapper.toDomain(entity.getAdventure()))
                 .content(entity.getContent())
                 .date(entity.getDate())
+                .version(entity.getVersion())
                 .build();
     }
 
@@ -20,6 +21,7 @@ public interface HistoricalNoteEntityMapper {
                 .adventure(AdventureEntityMapper.fromDomain(domain.getAdventure()))
                 .content(domain.getContent())
                 .date(domain.getDate())
+                .version(domain.getVersion())
                 .build();
     }
 

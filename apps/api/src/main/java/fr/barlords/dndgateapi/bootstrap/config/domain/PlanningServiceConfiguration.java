@@ -1,5 +1,7 @@
 package fr.barlords.dndgateapi.bootstrap.config.domain;
 
+import fr.barlords.dndgateapi.bootstrap.config.RetryingTransaction;
+import fr.barlords.dndgateapi.bootstrap.config.TransactionalPlanningUpdater;
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
 import fr.barlords.dndgateapi.domain.functional.service.planning.PlanningCreatorService;
 import fr.barlords.dndgateapi.domain.functional.service.planning.PlanningFinderService;
@@ -36,9 +38,10 @@ public class PlanningServiceConfiguration {
     @Bean
     public PlanningUpdaterApi planningUpdaterApi(
             PlanningPersistenceSpi spi,
-            AdventureOwnerVerifierService adventureOwnerVerifierService
+            AdventureOwnerVerifierService adventureOwnerVerifierService,
+            RetryingTransaction transaction
     ) {
-        return new PlanningUpdaterService(spi, adventureOwnerVerifierService);
+        return new TransactionalPlanningUpdater(new PlanningUpdaterService(spi, adventureOwnerVerifierService), transaction);
     }
 
     @Bean

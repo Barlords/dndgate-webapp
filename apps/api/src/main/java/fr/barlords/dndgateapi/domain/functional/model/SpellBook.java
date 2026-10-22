@@ -30,6 +30,10 @@ public class SpellBook {
     @With
     Set<String> spellList = new HashSet<>();
 
+    /** Version read from the storage, null while the spell book has never been saved: it detects concurrent changes. */
+    @With
+    Long version;
+
     public boolean isMyOwner(Account account) {
         return account.getId().equals(this.owner.getId());
     }

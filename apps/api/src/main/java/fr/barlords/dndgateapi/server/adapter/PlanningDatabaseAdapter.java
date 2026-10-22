@@ -1,5 +1,7 @@
 package fr.barlords.dndgateapi.server.adapter;
 
+import fr.barlords.dndgateapi.domain.functional.exception.ConcurrentUpdateException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import fr.barlords.dndgateapi.domain.functional.model.planning.Planning;
 import fr.barlords.dndgateapi.domain.port.out.PlanningPersistenceSpi;
 import fr.barlords.dndgateapi.server.entity.PlanningEntity;
@@ -21,8 +23,13 @@ public class PlanningDatabaseAdapter implements PlanningPersistenceSpi {
 
     @Override
     @Transactional
-    public Planning save(Planning o){
-        return PlanningEntityMapper.toDomain(repository.save(PlanningEntityMapper.fromDomain(o)));
+    public Planning save(Planning o) {
+        // Flushed here so that a concurrent change is detected now, not later when the transaction commits
+        try {
+            return PlanningEntityMapper.toDomain(repository.saveAndFlush(PlanningEntityMapper.fromDomain(o)));
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new ConcurrentUpdateException(e);
+        }
     }
 
     @Override

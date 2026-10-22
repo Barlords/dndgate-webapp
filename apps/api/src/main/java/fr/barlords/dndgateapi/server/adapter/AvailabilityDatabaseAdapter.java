@@ -1,5 +1,7 @@
 package fr.barlords.dndgateapi.server.adapter;
 
+import fr.barlords.dndgateapi.domain.functional.exception.ConcurrentUpdateException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import fr.barlords.dndgateapi.domain.functional.model.planning.Availability;
 import fr.barlords.dndgateapi.domain.port.out.AvailabilityPersistenceSpi;
 import fr.barlords.dndgateapi.server.entity.AvailabilityEntity;
@@ -23,7 +25,12 @@ public class AvailabilityDatabaseAdapter implements AvailabilityPersistenceSpi {
     @Override
     @Transactional
     public Availability save(Availability o) {
-        return AvailabilityEntityMapper.toDomain(repository.save(AvailabilityEntityMapper.fromDomain(o)));
+        // Flushed here so that a concurrent change is detected now, not later when the transaction commits
+        try {
+            return AvailabilityEntityMapper.toDomain(repository.saveAndFlush(AvailabilityEntityMapper.fromDomain(o)));
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new ConcurrentUpdateException(e);
+        }
     }
 
 
