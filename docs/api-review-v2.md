@@ -2,7 +2,7 @@
 
 Audit du 21/10/2026 de `apps/api` (tout le code de `src/main`, la configuration, les migrations, la CI et la livraison), fait **après** l'audit v1 (`docs/api-review.md`).
 Les points déjà traités ou déjà notés dans la v1 ne sont pas repris, sauf quand ce rapport y ajoute un fait nouveau.
-La numérotation continue celle de la v1 (points 1 à 24) : les points de ce rapport vont de **25** à **58**.
+La numérotation continue celle de la v1 (points 1 à 24) : les points de ce rapport vont de **25** à **59**.
 
 Statuts : `[ ]` à faire, `[~]` en cours, `[x]` fait.
 
@@ -48,6 +48,7 @@ Statuts : `[ ]` à faire, `[~]` en cours, `[x]` fait.
 | 56 | L'ancien MJ reste « participant » pendant la vacance | Décision | lu |
 | 57 | Un inconnu peut rejoindre une aventure publique sans MJ et prendre le rôle | Décision | lu |
 | 58 | Autres questions fonctionnelles | Décision | — |
+| 59 | Inscription en attente : le compte n'existe qu'après le clic sur le lien | P1 | lu |
 
 Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 50), **lot 2** (abus : 26, 27, 40, 33), **lot 3** (intégrité : 34, 35, 36, 38, 39, 42, 44), **lot 4** (contrat, avec le premier client Angular généré : 31, 32, 46, 47, 48, 49), puis le reste.
 
@@ -368,6 +369,24 @@ Pistes : refuser les nouveaux joueurs tant qu'il n'y a pas de MJ ; ou réserver 
 - **Référentiel SRD** : le projet se décrit comme « référentiel des SRD », mais l'API n'expose aucune donnée du SRD et n'en vérifie aucune (un sort est une chaîne libre). Est-ce porté par le front, ou à faire côté API ?
 - **Messages** : ni modification ni suppression, même pour leur auteur ou le MJ (modération).
 - **Image d'un personnage** : impossible de la changer après la création.
+
+### 59. Inscription en attente : le compte n'existe qu'après le clic sur le lien — *lu*
+- [ ] Suite du point 31. Aujourd'hui `POST /accounts` **crée** le compte (non activé) et envoie un code. Deux restes du point 31 en découlent :
+  1. **Sondage en deux requêtes** : on envoie `(pseudo neuf, adresse visée)`, puis on sonde le pseudo neuf (`POST /accounts` ou `GET /accounts/pseudo/{pseudo}`) : il est pris seulement si l'adresse était libre.
+  2. **Pré-inscription** : n'importe qui peut occuper une adresse (et un pseudo) avec un mot de passe qu'il a choisi, sans posséder la boîte mail.
+- **Décision (idée de l'utilisateur, discutée le 22/10/2026)** : `POST /accounts` ne crée plus de compte. Il enregistre une **inscription en attente** et la réponse est identique dans tous les cas (`202`, même corps). Le compte n'est créé qu'au clic sur le lien reçu par mail : seul le détenteur de la boîte mail peut le créer.
+- Comportement voulu :
+  - `POST /accounts` : pseudo pris (par un **compte**) → `409` comme aujourd'hui (le pseudo est public). Sinon, quelle que soit l'adresse : `202` avec un corps fixe (« Une dernière étape avant la validation de votre compte : vérifiez votre adresse e-mail »), jamais de donnée de compte.
+    - adresse sans compte : inscription en attente créée (ou remplacée si l'ancienne a plus que le délai de renvoi, `security.verification.resend-cooldown` ; sinon rien, en silence) et mail avec le lien ;
+    - adresse déjà inscrite : aucune inscription, e-mail d'avis (existant, un par adresse et par 24 h, `signup_notices`).
+  - Le **pseudo n'est pas réservé** par une inscription en attente (sinon on recrée un moyen de sonder). Il est revérifié à la confirmation ; s'il a été pris entre-temps, la confirmation répond `409` (pseudo déjà utilisé), l'inscription en attente est supprimée et la personne se réinscrit avec un autre pseudo.
+  - `POST /accounts/verify` `{email, code}` : crée le compte, **déjà activé**, à partir de l'inscription en attente (mot de passe déjà haché), puis supprime l'inscription. Code à usage unique, 24 h (`security.verification.ttl`), comparé en temps constant, **stocké haché** (SHA-256) en base. Réponse `204`. Code faux, expiré ou inconnu : même erreur qu'aujourd'hui (`InvalidVerificationCodeException`).
+  - `POST /accounts/verification-email` `{email}` : renvoie un lien pour une inscription en attente (nouveau code, l'ancien cesse de fonctionner), toujours `202`, au plus un mail par minute et par adresse. Pour une adresse qui a déjà un compte, ne fait rien (pas de mail, réponse identique).
+  - Purge nocturne des inscriptions en attente expirées.
+  - Migration : une table `pending_signups` (adresse en minuscules unique, pseudo, mot de passe haché, code haché, expiration, date de création) ; les comptes **non activés** déjà en base sont convertis en inscriptions en attente puis supprimés (ils n'ont pas pu se connecter : aucune donnée liée), pour qu'il n'existe qu'un seul chemin de vérification.
+- Reste, et c'est assumé : une personne peut recevoir un lien pour une inscription qu'elle n'a pas demandée. Si elle clique, le compte est créé avec le mot de passe choisi par l'attaquant (ingénierie sociale, comme tout lien de confirmation) ; le texte du mail dit d'ignorer le message si on n'est pas à l'origine de la demande. Pour fermer aussi ce cas : demander le mot de passe **à la confirmation** et non à l'inscription (changement de contrat plus lourd pour le front, non retenu pour l'instant).
+- Non retenu : le désabonnement des e-mails d'avis (jeton signé ou liste d'adresses de plus à tenir, pour un gain faible : l'avis est limité à un par 24 h et c'est précisément l'information utile à la personne).
+- Test : le sondage en deux requêtes ne distingue plus une adresse inscrite d'une adresse libre (le pseudo neuf reste libre dans les deux cas) ; une inscription en attente ne crée aucun compte ; la confirmation crée un compte activé ; migration des comptes non activés ; purge ; mutation par défaut (compte créé à l'inscription ; pseudo réservé par l'attente ; code en clair).
 
 ---
 
