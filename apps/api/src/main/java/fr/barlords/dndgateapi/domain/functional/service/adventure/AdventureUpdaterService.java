@@ -8,7 +8,9 @@ import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureCon
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureNotJoinableException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureFullException;
+import fr.barlords.dndgateapi.domain.functional.exception.adventure.InvalidStatusTransitionException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.InvitationRateLimitException;
+import fr.barlords.dndgateapi.domain.functional.exception.adventure.MaxPlayerBelowPlayersException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.PlayerNotInAdventureException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.PlayersAlreadyInAdventureException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.AccountNotFoundException;
@@ -65,12 +67,16 @@ public class AdventureUpdaterService implements AdventureUpdaterApi {
 
         Adventure patchedAdventure = previousAdventure
                 .withName(Objects.requireNonNullElse(adventure.getName(), previousAdventure.getName()))
-                .withStatus(Objects.requireNonNullElse(adventure.getStatus(), previousAdventure.getStatus()))
                 .withDescription(Objects.requireNonNullElse(adventure.getDescription(), previousAdventure.getDescription()))
                 .withVisibility(Objects.requireNonNullElse(adventure.getVisibility(), previousAdventure.getVisibility()))
                 .withPostalCode(Objects.requireNonNullElse(adventure.getPostalCode(), previousAdventure.getPostalCode()))
                 .withCity(Objects.requireNonNullElse(adventure.getCity(), previousAdventure.getCity()))
                 .withMaxPlayer(Objects.requireNonNullElse(adventure.getMaxPlayer(), previousAdventure.getMaxPlayer()));
+
+        // The capacity can never drop under the players who already took a seat
+        if (patchedAdventure.getMaxPlayer() < patchedAdventure.getPlayers().size()) {
+            throw new MaxPlayerBelowPlayersException(patchedAdventure.getMaxPlayer(), patchedAdventure.getPlayers().size());
+        }
 
         return spi.save(patchedAdventure);
     }
@@ -85,6 +91,15 @@ public class AdventureUpdaterService implements AdventureUpdaterApi {
     @Override
     public Adventure updateStatus(UUID accountId, UUID id, AdventureStatus status) {
         Adventure adventure = adventureOwnerVerifierService.verify(accountId, id);
+
+        // Asking for the current status again changes nothing: the call is idempotent
+        if (adventure.getStatus() == status) {
+            return adventure;
+        }
+
+        if (!adventure.getStatus().canMoveTo(status)) {
+            throw new InvalidStatusTransitionException(adventure.getStatus(), status);
+        }
 
         return spi.save(adventure.withStatus(status));
     }

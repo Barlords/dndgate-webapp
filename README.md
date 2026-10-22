@@ -108,7 +108,7 @@ Les listes bornées par nature (personnages d'une aventure ou d'un compte, grimo
   - **1 000 sorts** par grimoire (`limits.spells-per-spell-book`), import compris ; ajouter un sort déjà présent n'est pas une erreur ;
   - **500 notes d'aventure** et **500 notes d'historique** par aventure (`limits.adventure-notes-per-adventure`, `limits.historical-notes-per-adventure`) ;
   - **30 messages par compte et par minute** (`limits.messages.max`, `limits.messages.window`) : au-delà, `429` avec `Retry-After` (secondes). Les messages sont comptés en base sur la dernière minute (index `message(sender_id, send_date)`).
-  Rouvrir une aventure terminée ou abandonnée contourne le plafond d'aventures actives, jusqu'à ce que le point 34 (machine à états du statut) interdise de quitter `FINISH` / `ABORT` ; le transfert de MJ (cession, réclamation) ne vérifie volontairement pas le plafond du nouveau MJ.
+  Une aventure terminée ou abandonnée ne peut pas être rouverte (machine à états du statut, voir « Statut d'une aventure ») : le plafond d'aventures actives ne se contourne donc pas ainsi. Le transfert de MJ (cession, réclamation) ne vérifie volontairement pas le plafond du nouveau MJ.
   Les comptages ne sont pas verrouillés : deux créations simultanées peuvent dépasser un plafond d'une unité ou deux. Les limites de taille des images ne changent pas.
 - **WebSocket** : un client n'envoie que `CONNECT`, `SUBSCRIBE` (et `UNSUBSCRIBE`) et des battements de cœur ; toute publication est refusée. Une trame de plus de 16 Ko coupe la connexion avant d'être lue. Seules les destinations exactes `/topic/adventure/chat/{id}` et `/topic/adventure/webrtc/{id}` (UUID en minuscules, rien avant ni après) sont acceptées au `SUBSCRIBE`. Une connexion ouvre au plus **20 abonnements** (`limits.websocket.subscriptions-per-connection`) ; un identifiant d'abonnement déjà utilisé sur la connexion est refusé, comme un second `CONNECT`. Limite connue : Spring ne garantit pas l'ordre de traitement des trames reçues d'une même connexion (pas d'option `preserveReceiveOrder` sur le canal entrant) ; un `UNSUBSCRIBE` suivi aussitôt d'un `SUBSCRIBE` avec le même identifiant peut donc être refusé si le second passe avant le premier. Le client doit attendre ou changer d'identifiant.
 - Toutes les routes qui reçoivent un corps JSON sont validées (`@Valid`).
@@ -175,6 +175,13 @@ Un seul MJ par aventure, et lui seul a les droits de MJ (modifier, changer le st
 - Le mot de passe n'est jamais modifié (pas de `trim()`) : les espaces en début et en fin en font partie.
   Le pseudo, lui, est rogné de la même façon à l'inscription et à la connexion.
 - Les anciens comptes ne sont pas concernés par la règle de longueur, qui s'applique à l'inscription et au changement de mot de passe.
+
+### Statut d'une aventure
+
+- Le statut ne change que par `PUT /adventures/{id}/status` (le `PATCH /adventures/{id}` n'a plus de champ `status` : s'il est envoyé, il est ignoré).
+- Passages permis : `NOT_STARTED` vers `ONGOING`, `ONGOING` vers `FINISH`, `NOT_STARTED` ou `ONGOING` vers `ABORT`. Redemander le statut courant est accepté sans effet. Tout le reste répond `409` en nommant le statut courant et le statut demandé : rien ne sort de `FINISH` / `ABORT`, rien ne revient à `NOT_STARTED`, on ne termine pas une aventure qui n'a pas démarré.
+- Le démarrage automatique quand la dernière place est prise (`NOT_STARTED` vers `ONGOING`) et l'abandon des aventures non commencées à l'anonymisation du MJ suivent la même machine.
+- `maxPlayer` ne peut pas descendre sous le nombre de joueurs déjà inscrits : `PATCH` en dessous répond `409`.
 
 ### Rejoindre une aventure
 

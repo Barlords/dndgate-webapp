@@ -110,21 +110,29 @@ class AdventureJoinIntegrationTest extends ApiIntegrationTestSupport {
         UUID adventureId = createAdventure(2, "PUBLIC");
         joinById(player, adventureId);
         joinById(stranger, adventureId);
-        // the second player took the last seat, which started the adventure: the owner opens it again while it is still full
-        Assertions.assertEquals(200, call(HttpMethod.PUT, "/adventures/" + adventureId + "/status", master.token(),
-                Map.of("status", "NOT_STARTED")).getStatusCode().value());
+        // the second player took the last seat, which started the adventure; the API no longer lets an adventure
+        // go back to NOT_STARTED, so the status is put back in the database to keep the capacity check under test
+        jdbc.update("update adventure set status = 'NOT_STARTED' where id = ?", adventureId);
         TestAccount third = registerAndLogin();
 
         // 2 seats, 2 players: the status alone would allow it, the capacity must refuse it
         Assertions.assertEquals(409, joinByCode(third, adventureId));
     }
 
+    private void setStatus(UUID adventureId, String status) {
+        Assertions.assertEquals(200, call(HttpMethod.PUT, "/adventures/" + adventureId + "/status", master.token(),
+                Map.of("status", status)).getStatusCode().value());
+    }
+
     @Test
     void an_adventure_that_has_started_or_ended_refuses_new_players() {
         for (String status : new String[]{"ONGOING", "FINISH", "ABORT"}) {
             UUID adventureId = createAdventure(4, "PUBLIC");
-            Assertions.assertEquals(200, call(HttpMethod.PUT, "/adventures/" + adventureId + "/status", master.token(),
-                    Map.of("status", status)).getStatusCode().value());
+            if (status.equals("FINISH")) {
+                // FINISH is only reachable from ONGOING
+                setStatus(adventureId, "ONGOING");
+            }
+            setStatus(adventureId, status);
 
             Assertions.assertEquals(409, joinById(player, adventureId), "by id, " + status);
             Assertions.assertEquals(409, joinByCode(player, adventureId), "by code, " + status);

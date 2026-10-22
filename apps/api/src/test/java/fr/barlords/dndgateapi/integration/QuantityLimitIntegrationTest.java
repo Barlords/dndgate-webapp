@@ -79,8 +79,10 @@ class QuantityLimitIntegrationTest extends ApiIntegrationTestSupport {
 
         assertConflict(createAdventureRaw(master));
 
-        Assertions.assertEquals(200, call(HttpMethod.PUT, "/adventures/" + first + "/status", master.token(),
-                Map.of("status", "FINISH")).getStatusCode().value());
+        for (String status : new String[]{"ONGOING", "FINISH"}) {
+            Assertions.assertEquals(200, call(HttpMethod.PUT, "/adventures/" + first + "/status", master.token(),
+                    Map.of("status", status)).getStatusCode().value());
+        }
         Assertions.assertEquals(201, createAdventureRaw(master).getStatusCode().value(), "a finished adventure no longer counts");
         assertConflict(createAdventureRaw(master));
         Assertions.assertEquals(201, createAdventureRaw(registerAndLogin()).getStatusCode().value(), "the limit is per account");

@@ -1,6 +1,8 @@
 package fr.barlords.dndgateapi.domain.functional.service.adventure;
 
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureOwnerException;
+import fr.barlords.dndgateapi.domain.functional.exception.adventure.InvalidStatusTransitionException;
+import fr.barlords.dndgateapi.domain.functional.exception.adventure.MaxPlayerBelowPlayersException;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureStatus;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureVisibility;
@@ -95,18 +97,49 @@ class AdventureUpdaterServiceUpdateTest {
     void every_field_can_be_changed() {
         masterIsOwner();
         Adventure patch = Adventure.builder().id(stored.getId())
-                .name("New").description("Other").status(AdventureStatus.ONGOING).visibility(AdventureVisibility.PUBLIC)
+                .name("New").description("Other").visibility(AdventureVisibility.PUBLIC)
                 .postalCode("69001").city("Lyon").maxPlayer(6).build();
 
         Adventure result = service.update(masterId, patch);
 
         Assertions.assertEquals("New", result.getName());
         Assertions.assertEquals("Other", result.getDescription());
-        Assertions.assertEquals(AdventureStatus.ONGOING, result.getStatus());
         Assertions.assertEquals(AdventureVisibility.PUBLIC, result.getVisibility());
         Assertions.assertEquals("69001", result.getPostalCode());
         Assertions.assertEquals("Lyon", result.getCity());
         Assertions.assertEquals(6, result.getMaxPlayer());
+    }
+
+    @Test
+    void the_status_is_never_taken_from_the_patch() {
+        masterIsOwner();
+        Adventure patch = Adventure.builder().id(stored.getId()).name("Renamed").status(AdventureStatus.FINISH).build();
+
+        Adventure result = service.update(masterId, patch);
+
+        Assertions.assertEquals(AdventureStatus.NOT_STARTED, result.getStatus());
+    }
+
+    @Test
+    void the_capacity_cannot_drop_below_the_players_already_in() {
+        Adventure twoPlayers = stored.withPlayers(java.util.List.of(UUID.randomUUID(), UUID.randomUUID()));
+        when(adventureOwnerVerifierService.verify(masterId, stored.getId())).thenReturn(twoPlayers);
+
+        Assertions.assertThrows(MaxPlayerBelowPlayersException.class,
+                () -> service.update(masterId, Adventure.builder().id(stored.getId()).maxPlayer(1).build()));
+
+        verify(spi, never()).save(any());
+    }
+
+    @Test
+    void the_capacity_can_drop_to_exactly_the_number_of_players() {
+        Adventure twoPlayers = stored.withPlayers(java.util.List.of(UUID.randomUUID(), UUID.randomUUID()));
+        when(adventureOwnerVerifierService.verify(masterId, stored.getId())).thenReturn(twoPlayers);
+        when(spi.save(any(Adventure.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        Adventure result = service.update(masterId, Adventure.builder().id(stored.getId()).maxPlayer(2).build());
+
+        Assertions.assertEquals(2, result.getMaxPlayer());
     }
 
     @Test
@@ -156,9 +189,33 @@ class AdventureUpdaterServiceUpdateTest {
     void the_status_changes_and_nothing_else() {
         masterIsOwner();
 
-        Adventure result = service.updateStatus(masterId, stored.getId(), AdventureStatus.FINISH);
+        Adventure result = service.updateStatus(masterId, stored.getId(), AdventureStatus.ONGOING);
 
-        Assertions.assertEquals(stored.withStatus(AdventureStatus.FINISH), result);
+        Assertions.assertEquals(stored.withStatus(AdventureStatus.ONGOING), result);
+    }
+
+    @Test
+    void every_status_move_follows_the_state_machine() {
+        for (AdventureStatus from : AdventureStatus.values()) {
+            for (AdventureStatus to : AdventureStatus.values()) {
+                Adventure current = stored.withStatus(from);
+                org.mockito.Mockito.reset(spi, adventureOwnerVerifierService);
+                when(adventureOwnerVerifierService.verify(masterId, stored.getId())).thenReturn(current);
+                org.mockito.Mockito.lenient().when(spi.save(any(Adventure.class))).thenAnswer(i -> i.getArguments()[0]);
+
+                if (from == to) {
+                    Assertions.assertEquals(current, service.updateStatus(masterId, stored.getId(), to), from + " to " + to);
+                } else if (from.canMoveTo(to)) {
+                    Assertions.assertEquals(to, service.updateStatus(masterId, stored.getId(), to).getStatus(), from + " to " + to);
+                    verify(spi).save(any());
+                } else {
+                    InvalidStatusTransitionException refused = Assertions.assertThrows(InvalidStatusTransitionException.class,
+                            () -> service.updateStatus(masterId, stored.getId(), to), from + " to " + to);
+                    Assertions.assertTrue(refused.getMessage().contains(from.name()) && refused.getMessage().contains(to.name()));
+                    verify(spi, never()).save(any());
+                }
+            }
+        }
     }
 
     @Test
