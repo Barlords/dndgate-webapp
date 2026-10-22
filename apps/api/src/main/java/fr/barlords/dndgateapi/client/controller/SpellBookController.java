@@ -17,8 +17,12 @@ import fr.barlords.dndgateapi.domain.functional.model.SpellBook;
 import fr.barlords.dndgateapi.domain.port.in.spellbook.*;
 import fr.barlords.dndgateapi.domain.port.in.spellbook.spell.SpellDeleterApi;
 import fr.barlords.dndgateapi.domain.port.in.spellbook.spell.SpellWriterApi;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +31,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 import static org.springframework.http.HttpStatus.*;
 
@@ -51,6 +56,8 @@ public class SpellBookController {
     private final SpellWriterApi spellWriterApi;
 
     private final SpellDeleterApi spellDeleterApi;
+
+    private final Validator validator;
 
     private final ObjectMapper objectMapper = JsonMapper.builder().build();
 
@@ -100,7 +107,7 @@ public class SpellBookController {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setContentDispositionFormData("attachment", "book.json");
+        headers.setContentDisposition(ContentDisposition.attachment().filename("book.json").build());
 
         return ResponseEntity.ok()
                 .headers(headers)
@@ -128,6 +135,11 @@ public class SpellBookController {
             spellBookImportDto = objectMapper.readValue(file.getInputStream(), SpellBookImportExportDto.class);
         } catch (IOException | JacksonException e) {
             throw new SpellBookImportException();
+        }
+
+        Set<ConstraintViolation<SpellBookImportExportDto>> violations = validator.validate(spellBookImportDto);
+        if (!violations.isEmpty()) {
+            throw new ConstraintViolationException(violations);
         }
 
         return SpellBookDtoMapper.toDto(

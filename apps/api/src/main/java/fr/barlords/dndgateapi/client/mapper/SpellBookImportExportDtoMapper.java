@@ -16,7 +16,7 @@ public interface SpellBookImportExportDtoMapper {
     static SpellBook importToDomain(SpellBookImportExportDto importDto) {
         return SpellBook.builder()
                 .name(importDto.name().trim())
-                .description(importDto.description().trim())
+                .description(importDto.description() == null ? null : importDto.description().trim())
                 .spellList(importDto.spellList())
                 .build();
     }
