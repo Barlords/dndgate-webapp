@@ -79,13 +79,13 @@ class AdventureStatusIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(409, refused.getStatusCode().value());
         Assertions.assertTrue(refused.getHeaders().getContentType().toString().contains("problem+json"));
         Assertions.assertEquals(4, jdbc.queryForObject("select max_player from adventure where id = ?", Integer.class, adventureId));
-        Assertions.assertEquals(201, call(HttpMethod.PATCH, "/adventures/" + adventureId, master.token(), Map.of("maxPlayer", 2))
+        Assertions.assertEquals(200, call(HttpMethod.PATCH, "/adventures/" + adventureId, master.token(), Map.of("maxPlayer", 2))
                 .getStatusCode().value());
     }
 
     @Test
     void a_patch_cannot_change_the_status() {
-        Assertions.assertEquals(201, call(HttpMethod.PATCH, "/adventures/" + adventureId, master.token(),
+        Assertions.assertEquals(200, call(HttpMethod.PATCH, "/adventures/" + adventureId, master.token(),
                 Map.of("name", "Renamed", "status", "FINISH")).getStatusCode().value());
 
         Assertions.assertEquals("NOT_STARTED", storedStatus());

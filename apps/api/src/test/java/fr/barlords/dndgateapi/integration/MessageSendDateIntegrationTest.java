@@ -22,7 +22,7 @@ class MessageSendDateIntegrationTest extends ApiIntegrationTestSupport {
         for (int i = 0; i < extra.length; i += 2) {
             request.put((String) extra[i], extra[i + 1]);
         }
-        Assertions.assertEquals(200, call(HttpMethod.POST, "/messages", account.token(), request).getStatusCode().value());
+        Assertions.assertEquals(201, call(HttpMethod.POST, "/messages", account.token(), request).getStatusCode().value());
     }
 
     @Test

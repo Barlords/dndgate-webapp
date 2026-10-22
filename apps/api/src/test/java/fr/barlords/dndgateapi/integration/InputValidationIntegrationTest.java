@@ -125,7 +125,7 @@ class InputValidationIntegrationTest extends ApiIntegrationTestSupport {
     void an_optional_text_cannot_be_emptied_by_spaces() {
         Assertions.assertEquals(400, status(HttpMethod.PATCH, "/adventures/" + adventureId, Map.of("name", "    ")));
         Assertions.assertEquals(400, status(HttpMethod.PATCH, "/adventures/" + adventureId, Map.of("description", " \t ")));
-        Assertions.assertEquals(201, status(HttpMethod.PATCH, "/adventures/" + adventureId, Map.of("name", "Renamed")));
+        Assertions.assertEquals(200, status(HttpMethod.PATCH, "/adventures/" + adventureId, Map.of("name", "Renamed")));
     }
 
     // ---- pictures ----

@@ -67,6 +67,6 @@ class DateBoundsIntegrationTest extends ApiIntegrationTestSupport {
                 Map.of("adventureId", adventureId.toString(), "content", "note", "date", "2026-05-01"))).get("id").asString();
 
         Assertions.assertEquals(400, status(HttpMethod.PATCH, "/historical-notes/" + noteId, Map.of("date", TOO_FAR)));
-        Assertions.assertEquals(201, status(HttpMethod.PATCH, "/historical-notes/" + noteId, Map.of("date", "2026-06-01")));
+        Assertions.assertEquals(200, status(HttpMethod.PATCH, "/historical-notes/" + noteId, Map.of("date", "2026-06-01")));
     }
 }

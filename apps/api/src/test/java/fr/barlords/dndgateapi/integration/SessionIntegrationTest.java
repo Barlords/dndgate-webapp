@@ -141,7 +141,7 @@ class SessionIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(401, status(HttpMethod.GET, "/accounts/me", account.token(), null));
         Assertions.assertEquals(401, status(HttpMethod.GET, "/accounts/me", otherDevice.token(), null));
         Assertions.assertEquals(401, refresh(otherDevice.refreshToken()).getStatusCode().value());
-        Assertions.assertEquals(404, status(HttpMethod.POST, "/accounts/login", null,
+        Assertions.assertEquals(401, status(HttpMethod.POST, "/accounts/login", null,
                 Map.of("pseudo", newPseudo, "password", account.password())), "the old password no longer works");
         Assertions.assertEquals(200, status(HttpMethod.POST, "/accounts/login", null,
                 Map.of("pseudo", newPseudo, "password", "another-password")));
@@ -172,7 +172,7 @@ class SessionIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount account = registerAndLogin();
 
         for (int i = 0; i < 5; i++) {
-            Assertions.assertEquals(404, status(HttpMethod.POST, "/accounts/login", null,
+            Assertions.assertEquals(401, status(HttpMethod.POST, "/accounts/login", null,
                     Map.of("pseudo", account.pseudo(), "password", "wrong-" + i)));
         }
 
@@ -205,7 +205,7 @@ class SessionIntegrationTest extends ApiIntegrationTestSupport {
 
         for (int round = 0; round < 3; round++) {
             for (int i = 0; i < 4; i++) {
-                Assertions.assertEquals(404, status(HttpMethod.POST, "/accounts/login", null,
+                Assertions.assertEquals(401, status(HttpMethod.POST, "/accounts/login", null,
                         Map.of("pseudo", account.pseudo(), "password", "wrong-" + i)));
             }
             Assertions.assertEquals(200, status(HttpMethod.POST, "/accounts/login", null,

@@ -84,7 +84,7 @@ class LoginLockoutPerClientIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount account = registerAndLogin();
 
         for (int i = 0; i < 5; i++) {
-            Assertions.assertEquals(404, login(ADDRESS_A, account, "wrong-" + i));
+            Assertions.assertEquals(401, login(ADDRESS_A, account, "wrong-" + i));
         }
 
         ResponseEntity<String> locked = from(ADDRESS_A, HttpMethod.POST, "/accounts/login", null,
@@ -102,8 +102,8 @@ class LoginLockoutPerClientIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount account = registerAndLogin();
 
         for (int i = 0; i < 3; i++) {
-            Assertions.assertEquals(404, login(ADDRESS_A, account, "wrong-" + i));
-            Assertions.assertEquals(404, login(ADDRESS_B, account, "wrong-" + i));
+            Assertions.assertEquals(401, login(ADDRESS_A, account, "wrong-" + i));
+            Assertions.assertEquals(401, login(ADDRESS_B, account, "wrong-" + i));
         }
 
         Assertions.assertEquals(200, login(ADDRESS_A, account, account.password()), "3 failures from A are below the limit");
@@ -170,7 +170,7 @@ class LoginLockoutPerClientIntegrationTest extends ApiIntegrationTestSupport {
                 + "values (?, ?, ?, 5, now() - interval '1 minute', now() - interval '16 minutes')",
                 UUID.randomUUID(), account.id(), sha256Hex(ADDRESS_A));
 
-        Assertions.assertEquals(404, login(ADDRESS_A, account, "wrong"), "the lock is over: the password is examined, not refused with 429");
+        Assertions.assertEquals(401, login(ADDRESS_A, account, "wrong"), "the lock is over: the password is examined, not refused with 429");
         Assertions.assertEquals(1, jdbc.queryForObject("select failed_attempts from login_failures where account_id = ?", Integer.class, account.id()));
         Assertions.assertNull(jdbc.queryForObject("select locked_until from login_failures where account_id = ?", Object.class, account.id()));
         Assertions.assertEquals(200, login(ADDRESS_A, account, account.password()));
@@ -181,7 +181,7 @@ class LoginLockoutPerClientIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount account = registerAndLogin();
 
         for (int i = 0; i < 5; i++) {
-            Assertions.assertEquals(404, login("2001:db8:1:2::" + (i + 1), account, "wrong-" + i));
+            Assertions.assertEquals(401, login("2001:db8:1:2::" + (i + 1), account, "wrong-" + i));
         }
 
         Assertions.assertEquals(429, login("2001:db8:1:2:ffff:ffff:ffff:ffff", account, account.password()), "rotating inside the /64 does not help");
@@ -218,7 +218,7 @@ class LoginLockoutPerClientIntegrationTest extends ApiIntegrationTestSupport {
 
         Assertions.assertEquals(0, jdbc.queryForObject("select count(*) from login_failures where account_id = ?", Integer.class, account.id()));
         for (int i = 0; i < 4; i++) {
-            Assertions.assertEquals(404, login(ADDRESS_A, account, "again-" + i));
+            Assertions.assertEquals(401, login(ADDRESS_A, account, "again-" + i));
         }
         Assertions.assertEquals(200, login(ADDRESS_A, account, account.password()), "the counter restarted from zero");
     }

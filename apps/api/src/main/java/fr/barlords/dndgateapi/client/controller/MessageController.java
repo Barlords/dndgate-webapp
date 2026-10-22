@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.OK;
 
 @Tag(name = "Messages")
@@ -46,8 +47,8 @@ public class MessageController {
     }
 
     @PostMapping
-    @ResponseStatus(OK)
-    public void sendMessage(@Valid @RequestBody MessageCreationRequest request) {
+    @ResponseStatus(CREATED)
+    public MessageDto sendMessage(@Valid @RequestBody MessageCreationRequest request) {
         Message message = messageCreatorApi.create(
                 authVerifierService.currentAccountId(),
                 MessageDtoMapper.creationRequestToDomain(request)
@@ -55,6 +56,8 @@ public class MessageController {
 
         // Broadcast the message to the subscribers of the adventure
         messagingTemplate.convertAndSend("/topic/adventure/chat/"+message.getAdventureId().toString(), message);
+
+        return MessageDtoMapper.toDto(message);
     }
 }
 

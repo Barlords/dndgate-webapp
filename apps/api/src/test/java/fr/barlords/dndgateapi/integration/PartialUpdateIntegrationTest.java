@@ -37,7 +37,7 @@ class PartialUpdateIntegrationTest extends ApiIntegrationTestSupport {
 
     @Test
     void patching_an_adventure_with_one_field_keeps_the_others() {
-        Assertions.assertEquals(201, patch(master, "/adventures/" + adventureId, Map.of("name", "Renamed")));
+        Assertions.assertEquals(200, patch(master, "/adventures/" + adventureId, Map.of("name", "Renamed")));
 
         Assertions.assertEquals("Renamed", string("select name from adventure where id = ?", adventureId));
         Assertions.assertEquals("A quest", string("select description from adventure where id = ?", adventureId));
@@ -50,7 +50,7 @@ class PartialUpdateIntegrationTest extends ApiIntegrationTestSupport {
 
     @Test
     void the_postal_code_can_be_patched() {
-        Assertions.assertEquals(201, patch(master, "/adventures/" + adventureId, Map.of("postalCode", "69001")));
+        Assertions.assertEquals(200, patch(master, "/adventures/" + adventureId, Map.of("postalCode", "69001")));
 
         Assertions.assertEquals("69001", string("select postal_code from adventure where id = ?", adventureId));
     }
@@ -60,7 +60,7 @@ class PartialUpdateIntegrationTest extends ApiIntegrationTestSupport {
         ResponseEntity<String> created = createCharacter(master, adventureId, "Gandalf");
         UUID characterId = UUID.fromString(body(created).get("id").asString());
 
-        Assertions.assertEquals(201, patch(master, "/game-characters/" + characterId, Map.of("race", "Maia")));
+        Assertions.assertEquals(200, patch(master, "/game-characters/" + characterId, Map.of("race", "Maia")));
 
         Assertions.assertEquals("Maia", string("select race from \"character\" where id = ?", characterId));
         Assertions.assertEquals("Gandalf", string("select name from \"character\" where id = ?", characterId));
@@ -74,8 +74,8 @@ class PartialUpdateIntegrationTest extends ApiIntegrationTestSupport {
         UUID noteId = insertAdventureNote(adventureId, "first", "PRIVATE");
         UUID historyId = insertHistoricalNote(adventureId, "chapter");
 
-        Assertions.assertEquals(201, patch(master, "/adventure-notes/" + noteId, Map.of("content", "second")));
-        Assertions.assertEquals(201, patch(master, "/historical-notes/" + historyId, Map.of("content", "chapter two")));
+        Assertions.assertEquals(200, patch(master, "/adventure-notes/" + noteId, Map.of("content", "second")));
+        Assertions.assertEquals(200, patch(master, "/historical-notes/" + historyId, Map.of("content", "chapter two")));
 
         Assertions.assertEquals("second", string("select content from adventure_note where id = ?", noteId));
         Assertions.assertEquals("PRIVATE", string("select visibility from adventure_note where id = ?", noteId));
@@ -88,7 +88,7 @@ class PartialUpdateIntegrationTest extends ApiIntegrationTestSupport {
     void the_date_of_an_adventure_note_can_be_patched() {
         UUID noteId = insertAdventureNote(adventureId, "first", "PRIVATE");
 
-        Assertions.assertEquals(201, patch(master, "/adventure-notes/" + noteId, Map.of("date", "2027-05-05")));
+        Assertions.assertEquals(200, patch(master, "/adventure-notes/" + noteId, Map.of("date", "2027-05-05")));
 
         Assertions.assertEquals("2027-05-05", string("select date::text from adventure_note where id = ?", noteId));
         Assertions.assertEquals("first", string("select content from adventure_note where id = ?", noteId));
@@ -115,7 +115,7 @@ class PartialUpdateIntegrationTest extends ApiIntegrationTestSupport {
     void the_owner_changes_a_note_whatever_adventure_the_request_names() {
         UUID noteId = insertAdventureNote(adventureId, "mine", "PUBLIC");
 
-        Assertions.assertEquals(201, patch(master, "/adventure-notes/" + noteId, Map.of("adventureId", UUID.randomUUID().toString(), "content", "edited")));
+        Assertions.assertEquals(200, patch(master, "/adventure-notes/" + noteId, Map.of("adventureId", UUID.randomUUID().toString(), "content", "edited")));
         Assertions.assertEquals("edited", string("select content from adventure_note where id = ?", noteId));
     }
 

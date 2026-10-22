@@ -64,6 +64,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RatingDto"
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RatingDto"
         default:
           description: "The error, in the same shape whatever produced it (RFC 9457)."
           content:
@@ -137,6 +143,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PlanningDto"
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanningDto"
         default:
           description: "The error, in the same shape whatever produced it (RFC 9457)."
           content:
@@ -182,6 +194,12 @@ paths:
       responses:
         "201":
           description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvailabilityDto"
+        "200":
+          description: Updated
           content:
             application/json:
               schema:
@@ -533,8 +551,12 @@ paths:
               $ref: "#/components/schemas/MessageCreationRequest"
         required: true
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageDto"
         default:
           description: "The error, in the same shape whatever produced it (RFC 9457)."
           content:
@@ -910,8 +932,8 @@ paths:
         schema:
           type: string
       responses:
-        "200":
-          description: OK
+        "202":
+          description: Accepted
         default:
           description: "The error, in the same shape whatever produced it (RFC 9457)."
           content:
@@ -1316,8 +1338,8 @@ paths:
               $ref: "#/components/schemas/SpellBookPatchRequest"
         required: true
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           content:
             application/json:
               schema:
@@ -1428,8 +1450,8 @@ paths:
               $ref: "#/components/schemas/HistoricalNotePatchRequest"
         required: true
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           content:
             application/json:
               schema:
@@ -1509,8 +1531,8 @@ paths:
               $ref: "#/components/schemas/GameCharacterPatchRequest"
         required: true
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           content:
             application/json:
               schema:
@@ -1590,8 +1612,8 @@ paths:
               $ref: "#/components/schemas/AdventurePatchRequest"
         required: true
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           content:
             application/json:
               schema:
@@ -1671,8 +1693,8 @@ paths:
               $ref: "#/components/schemas/AdventureNotePatchRequest"
         required: true
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           content:
             application/json:
               schema:
@@ -2405,6 +2427,29 @@ components:
       required:
       - adventureId
       - content
+    MessageDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        adventureId:
+          type: string
+          format: uuid
+        senderId:
+          type: string
+          format: uuid
+        content:
+          type: string
+        sendDate:
+          type: string
+          format: date-time
+      required:
+      - adventureId
+      - content
+      - id
+      - sendDate
+      - senderId
     HistoricalNoteCreationRequest:
       type: object
       properties:
@@ -2858,29 +2903,6 @@ components:
         totalPages:
           type: integer
           format: int32
-    MessageDto:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        adventureId:
-          type: string
-          format: uuid
-        senderId:
-          type: string
-          format: uuid
-        content:
-          type: string
-        sendDate:
-          type: string
-          format: date-time
-      required:
-      - adventureId
-      - content
-      - id
-      - sendDate
-      - senderId
     PageDtoMessageDto:
       type: object
       properties:

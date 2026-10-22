@@ -1,6 +1,7 @@
 package fr.barlords.dndgateapi.domain.functional.service.planning;
 
 import fr.barlords.dndgateapi.domain.functional.exception.planning.PlanningNotFoundException;
+import fr.barlords.dndgateapi.domain.functional.model.Upserted;
 import fr.barlords.dndgateapi.domain.functional.model.planning.Availability;
 import fr.barlords.dndgateapi.domain.port.in.planning.AvailabilityUpdaterApi;
 import fr.barlords.dndgateapi.domain.port.out.AvailabilityPersistenceSpi;
@@ -46,7 +47,10 @@ class AvailabilityServicesTest {
         Availability stored = Availability.builder().planningId(planningId).accountId(accountId).availabilityDates(newDates).build();
         when(spi.save(any())).thenReturn(stored);
 
-        Assertions.assertSame(stored, service.createOrUpdate(accountId, received()));
+        Upserted<Availability> result = service.createOrUpdate(accountId, received());
+
+        Assertions.assertSame(stored, result.value());
+        Assertions.assertTrue(result.created());
 
         ArgumentCaptor<Availability> saved = ArgumentCaptor.forClass(Availability.class);
         verify(spi).save(saved.capture());
@@ -61,10 +65,11 @@ class AvailabilityServicesTest {
         when(spi.findByAccountIdAndPlanningId(accountId, planningId)).thenReturn(List.of(previous));
         when(spi.save(any())).thenAnswer(call -> call.getArgument(0));
 
-        Availability result = service.createOrUpdate(accountId, received());
+        Upserted<Availability> result = service.createOrUpdate(accountId, received());
 
-        Assertions.assertEquals(previous.getId(), result.getId());
-        Assertions.assertEquals(newDates, result.getAvailabilityDates());
+        Assertions.assertFalse(result.created());
+        Assertions.assertEquals(previous.getId(), result.value().getId());
+        Assertions.assertEquals(newDates, result.value().getAvailabilityDates());
     }
 
     @Test
@@ -81,7 +86,7 @@ class AvailabilityServicesTest {
         AvailabilityUpdaterApi updater = org.mockito.Mockito.mock(AvailabilityUpdaterApi.class);
         Availability given = received();
         Availability stored = given.withAccountId(accountId);
-        when(updater.createOrUpdate(accountId, given)).thenReturn(stored);
+        when(updater.createOrUpdate(accountId, given)).thenReturn(Upserted.updated(stored));
 
         Assertions.assertSame(stored, new AvailabilityCreatorService(updater).create(accountId, given));
     }

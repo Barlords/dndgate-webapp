@@ -80,7 +80,7 @@ public class AdventureNoteController {
     // PATCH //
 
     @PatchMapping("/{id}")
-    @ResponseStatus(CREATED)
+    @ResponseStatus(OK)
     public AdventureNoteDto patchAdventureNote(
             @PathVariable String id,
             @Valid @RequestBody AdventureNotePatchRequest request) {

@@ -98,7 +98,7 @@ class AccountAnonymizationIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(401, status(HttpMethod.GET, "/accounts/me", account, null));
         Assertions.assertEquals(401, call(HttpMethod.POST, "/accounts/refresh", null,
                 Map.of("refreshToken", account.refreshToken())).getStatusCode().value());
-        Assertions.assertEquals(404, call(HttpMethod.POST, "/accounts/login", null,
+        Assertions.assertEquals(401, call(HttpMethod.POST, "/accounts/login", null,
                 Map.of("pseudo", account.pseudo(), "password", account.password())).getStatusCode().value());
     }
 

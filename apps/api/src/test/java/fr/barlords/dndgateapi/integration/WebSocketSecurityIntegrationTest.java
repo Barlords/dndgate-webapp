@@ -152,7 +152,7 @@ class WebSocketSecurityIntegrationTest extends ApiIntegrationTestSupport {
 
         var sent = call(HttpMethod.POST, "/messages", owner.token(), Map.of("adventureId", adventureId.toString(),
                 "content", "hello table"));
-        Assertions.assertEquals(200, sent.getStatusCode().value(), sent.getBody());
+        Assertions.assertEquals(201, sent.getStatusCode().value(), sent.getBody());
 
         String payload = received.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
         Assertions.assertTrue(payload.contains("hello table"), payload);

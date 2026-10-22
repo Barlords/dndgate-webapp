@@ -67,7 +67,7 @@ class PasswordPolicyIntegrationTest extends ApiIntegrationTestSupport {
         activate(pseudo);
 
         Assertions.assertEquals(200, login(pseudo, " secret123 "), "the password as typed must work");
-        Assertions.assertEquals(404, login(pseudo, "secret123"), "a different password must not");
+        Assertions.assertEquals(401, login(pseudo, "secret123"), "a different password must not");
     }
 
     @Test
@@ -96,8 +96,8 @@ class PasswordPolicyIntegrationTest extends ApiIntegrationTestSupport {
     void a_very_long_password_at_login_is_a_plain_refusal_not_a_server_error() {
         TestAccount account = registerAndLogin();
 
-        Assertions.assertEquals(404, login(account.pseudo(), "a".repeat(100)));
-        Assertions.assertEquals(404, login(account.pseudo(), "€".repeat(60)));
+        Assertions.assertEquals(401, login(account.pseudo(), "a".repeat(100)));
+        Assertions.assertEquals(401, login(account.pseudo(), "€".repeat(60)));
     }
 
     @Test

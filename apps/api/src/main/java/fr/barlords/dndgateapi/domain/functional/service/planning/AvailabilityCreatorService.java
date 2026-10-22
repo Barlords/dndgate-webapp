@@ -18,7 +18,7 @@ public class AvailabilityCreatorService implements AvailabilityCreatorApi {
 
     @Override
     public Availability create(UUID accountId, Availability availability) {
-        return updater.createOrUpdate(accountId, availability);
+        return updater.createOrUpdate(accountId, availability).value();
     }
 
 }

@@ -40,7 +40,7 @@ class RateLimitIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     void login_attempts_are_limited_per_address() {
         for (int i = 0; i < 3; i++) {
-            Assertions.assertEquals(404, login("nobody").getStatusCode().value());
+            Assertions.assertEquals(401, login("nobody").getStatusCode().value());
         }
 
         ResponseEntity<String> refused = login("nobody");

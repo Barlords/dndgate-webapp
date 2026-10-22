@@ -2,6 +2,7 @@ package fr.barlords.dndgateapi.bootstrap.config;
 
 import fr.barlords.dndgateapi.domain.functional.exception.ConcurrentUpdateException;
 import fr.barlords.dndgateapi.domain.functional.model.SpellBook;
+import fr.barlords.dndgateapi.domain.functional.model.Upserted;
 import fr.barlords.dndgateapi.domain.functional.model.planning.Availability;
 import fr.barlords.dndgateapi.domain.functional.model.planning.Planning;
 import org.junit.jupiter.api.Assertions;
@@ -104,10 +105,10 @@ class ReplayedOperationsTest {
             if (calls.incrementAndGet() == 1) {
                 throw conflict();
             }
-            return availability;
+            return Upserted.created(availability);
         }, transaction);
 
-        Assertions.assertSame(vote, voting.createOrUpdate(accountId, vote));
+        Assertions.assertSame(vote, voting.createOrUpdate(accountId, vote).value());
         Assertions.assertEquals(2, calls.get());
     }
 
@@ -121,10 +122,10 @@ class ReplayedOperationsTest {
             if (calls.incrementAndGet() == 1) {
                 throw new DataIntegrityViolationException("duplicate key");
             }
-            return sent;
+            return Upserted.updated(sent);
         }, transaction);
 
-        Assertions.assertSame(planning, updater.createOrUpdate(accountId, planning));
+        Assertions.assertSame(planning, updater.createOrUpdate(accountId, planning).value());
         Assertions.assertEquals(2, calls.get());
     }
 

@@ -164,7 +164,7 @@ class QuantityLimitIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount master = registerAndLogin();
         UUID adventureId = createAdventure(master, "PUBLIC");
         for (int i = 0; i < 3; i++) {
-            Assertions.assertEquals(200, message(master, adventureId).getStatusCode().value());
+            Assertions.assertEquals(201, message(master, adventureId).getStatusCode().value());
         }
 
         ResponseEntity<String> refused = message(master, adventureId);
@@ -178,7 +178,7 @@ class QuantityLimitIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount other = registerAndLogin();
         Assertions.assertEquals(200, call(HttpMethod.POST, "/adventures/" + adventureId + "/join", other.token(), null)
                 .getStatusCode().value());
-        Assertions.assertEquals(200, message(other, adventureId).getStatusCode().value(), "the limit is per account");
+        Assertions.assertEquals(201, message(other, adventureId).getStatusCode().value(), "the limit is per account");
     }
 
     @Test
@@ -186,13 +186,13 @@ class QuantityLimitIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount master = registerAndLogin();
         UUID adventureId = createAdventure(master, "PUBLIC");
         for (int i = 0; i < 3; i++) {
-            Assertions.assertEquals(200, message(master, adventureId).getStatusCode().value());
+            Assertions.assertEquals(201, message(master, adventureId).getStatusCode().value());
         }
         Assertions.assertEquals(429, message(master, adventureId).getStatusCode().value());
 
         jdbc.update("update message set send_date = send_date - interval '2 minutes' where sender_id = ?", master.id());
 
-        Assertions.assertEquals(200, message(master, adventureId).getStatusCode().value());
+        Assertions.assertEquals(201, message(master, adventureId).getStatusCode().value());
     }
 
     @Test

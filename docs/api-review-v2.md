@@ -35,10 +35,10 @@ Statuts : `[ ]` à faire, `[~]` en cours, `[x]` fait.
 | 43 | Requêtes N+1 restantes, domaine qui transporte des comptes entiers | P2 | lu |
 | 44 | Contraintes manquantes en base | P2 | lu |
 | 45 | WebRTC répond du texte là où le contrat annonce du JSON | P3 | vérifié |
-| 46 | Codes de statut HTTP incohérents | P3 | lu |
+| 46 | Codes de statut HTTP incohérents | P3 | vérifié |
 | 47 | Champs ignorés et routes en double dans le contrat | P3 | lu |
 | 48 | Ce qui passe par WebSocket n'est ni typé ni documenté | P3 | lu |
-| 49 | CORS : en-têtes de réponse illisibles par le front | P3 | lu |
+| 49 | CORS : en-têtes de réponse illisibles par le front | P3 | vérifié |
 | 50 | Deux textes en français ont échappé à `LanguagePolicyTest` | P3 | vérifié |
 | 51 | Code mort | P3 | lu |
 | 52 | Doublons et petites incohérences de code | P3 | lu |
@@ -250,14 +250,15 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
   Mesuré : le corps n'est pas du JSON valide. Le client Angular généré échouera à le lire.
 - Correctif : `204 No Content`, et régénérer le contrat.
 
-### 46. Codes de statut HTTP incohérents — *lu*
-- [ ] Les `PATCH` répondent `201 Created` (aventure, personnage, notes, notes historiques, grimoire) : il faut `200`.
-- [ ] Les `PUT` répondent toujours `201`, même pour une mise à jour (planning, disponibilité, évaluation) : `200` pour une mise à jour, `201` pour une création.
-- [ ] `POST /messages` répond `200` sans corps : il faut `201` et le `MessageDto` créé.
-- [ ] `POST /adventures/{id}/invitations/{pseudo}` répond `200` sans corps : il faut `202` (l'e-mail part plus tard) ou `204`.
-- [ ] Un échec de connexion (pseudo inconnu ou mauvais mot de passe) répond **404** (`AccountCredentialNotFoundException`) : il faut `401`.
+### 46. Codes de statut HTTP incohérents — *corrigé*
+- [x] Les `PATCH` répondent `201 Created` (aventure, personnage, notes, notes historiques, grimoire) : il faut `200`.
+- [x] Les `PUT` répondent toujours `201`, même pour une mise à jour (planning, disponibilité, évaluation) : `200` pour une mise à jour, `201` pour une création.
+- [x] `POST /messages` répond `200` sans corps : il faut `201` et le `MessageDto` créé.
+- [x] `POST /adventures/{id}/invitations/{pseudo}` répond `200` sans corps : il faut `202` (l'e-mail part plus tard) ou `204`.
+- [x] Un échec de connexion (pseudo inconnu ou mauvais mot de passe) répond **404** (`AccountCredentialNotFoundException`) : il faut `401`.
 - [x] Points 36 (import en `400`, export en `500`) et 35 (`409` plutôt que `500`) : faits, voir ces points.
 - À faire en une fois, avant de générer le client Angular : ce sont des ruptures de contrat.
+- Corrigé : les cinq `PATCH` (aventure, personnage, note, note historique, grimoire) répondent `200`. Les trois `PUT` créer-ou-mettre-à-jour (`/planning`, `/planning/availability`, `/ratings`) répondent `201` quand l'appel crée et `200` quand il met à jour : les `*UpdaterApi.createOrUpdate` renvoient un `Upserted<T>` (nouveau, `domain/functional/model` : la valeur et un booléen `created`) au lieu de la valeur seule, les services le calculent là où ils savent déjà s'ils ont trouvé l'existant, et le contrôleur choisit le statut. Le contrat documente les deux réponses (`@ApiResponses` 201 et 200 avec le même schéma). `POST /messages` répond `201` avec le `MessageDto` du message créé (la diffusion WebSocket envoie toujours l'objet du domaine, point 48). `POST …/invitations/{pseudo}` répond `202`. `AccountCredentialNotFoundException` → `401` (pseudo inconnu et mauvais mot de passe, même réponse). Un `PUT` rejoué après une course (`TransactionalRatingUpdater`, `TransactionalPlanningUpdater`, `TransactionalAvailabilityVote`) répond donc `200` : il met à jour ce que l'autre appel vient de créer. Contrat régénéré. Tests : `HttpStatusCodesIntegrationTest` (8 cas : chaque `PATCH`, chaque `PUT` en `201` puis `200`, message, invitation, connexion refusée), `PlanningUpdaterServiceTest` et `RatingUpdaterServiceTest` (nouveaux : indicateur `created`), `AvailabilityServicesTest` ; une cinquantaine d'assertions de tests existants passent aux nouveaux codes (`PATCH` 200, connexion 401, message 201, invitation 202). Contrôle par mutation fait : chaque `PATCH` remis à `201` (rouge), `PUT` planning, disponibilité et évaluation toujours en `201` (rouge), `Upserted.updated` remplacé par `created` dans les trois services (rouge), message remis à `200`, invitation remise à `200`, connexion remise à `404` (rouge). Non fait : `POST /planning/availability` reste en `201` même quand il remplace un vote existant (point 29 : « créer ou remplacer »), et le `401` de connexion n'est pas distingué du `401` d'un jeton invalide par le client (même statut, `detail` différent).
 
 ### 47. Champs ignorés et routes en double dans le contrat — *lu*
 - [ ] `adventureId` dans `AdventureNotePatchRequest` et `HistoricalNotePatchRequest` est ignoré depuis la v1 (le droit vient de la note) : à retirer. Idem pour `accountId` dans `WebRTCMessage`.
@@ -274,9 +275,10 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
 - [ ] Les signaux WebRTC (offres SDP, candidats ICE qui contiennent les adresses IP) sont diffusés à **tous** les participants, sans destinataire : voir le point 58.
 - Correctif : diffuser des DTO, et documenter les sujets (un `contracts/asyncapi.yaml`, ou au moins une section de `contracts/README.md`).
 
-### 49. CORS : en-têtes de réponse illisibles par le front — *lu*
-- [ ] `SecurityConfig.corsConfigurationSource` n'expose aucun en-tête. Depuis une autre origine (le front en dev sur `localhost:4200`), le JavaScript ne peut pas lire `X-Request-Id`, `Retry-After` (429) ni `Content-Disposition` (export).
+### 49. CORS : en-têtes de réponse illisibles par le front — *corrigé*
+- [x] `SecurityConfig.corsConfigurationSource` n'expose aucun en-tête. Depuis une autre origine (le front en dev sur `localhost:4200`), le JavaScript ne peut pas lire `X-Request-Id`, `Retry-After` (429) ni `Content-Disposition` (export).
 - Correctif : `setExposedHeaders(List.of("X-Request-Id", "Retry-After", "Content-Disposition"))`. Remplacer aussi `setAllowedHeaders("*")` par la liste réellement utilisée.
+- Corrigé : `setExposedHeaders(List.of("X-Request-Id", "Retry-After", "Content-Disposition"))` et `setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Request-Id"))` (le jeton, le type du corps et l'identifiant de corrélation que le client peut envoyer ; `Accept` et `Origin` n'ont pas besoin d'être listés). Tests : `CorsExposedHeadersIntegrationTest` (réponse avec `Origin: http://localhost:4200` : `Access-Control-Expose-Headers` contient les trois en-têtes ; requête préliminaire acceptée pour les trois en-têtes autorisés, refusée en `403` pour un en-tête inconnu). Contrôle par mutation fait : exposition retirée (rouge), `setAllowedHeaders("*")` remis (rouge). Non fait : l'envoi de `Cache-Control` ou d'autres en-têtes par le front passerait par cette liste, à compléter alors.
 
 ### 50. Deux textes en français ont échappé à `LanguagePolicyTest` — *corrigé*
 - [x] Corrigé : les deux textes sont en anglais et `LanguagePolicyTest` refuse aussi une liste de mots français fréquents (test rouge avant la traduction ; `pom.xml` non touché).

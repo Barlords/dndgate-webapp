@@ -76,7 +76,7 @@ class RatingConcurrencyIntegrationTest extends ApiIntegrationTestSupport {
 
         ResponseEntity<String> response = rate(HttpMethod.PUT, 5);
 
-        Assertions.assertEquals(201, response.getStatusCode().value(), response.getBody());
+        Assertions.assertEquals(200, response.getStatusCode().value(), response.getBody());
         Assertions.assertEquals(1, jdbc.queryForObject("select count(*) from rating where emitter_id = ? and target_id = ?", Integer.class,
                 player.id(), master.id()));
         Assertions.assertEquals(5, storedRate(), "the replayed request updated the rating");
