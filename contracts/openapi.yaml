@@ -2157,6 +2157,9 @@ components:
         rate:
           type: integer
           format: int32
+        createdAt:
+          type: string
+          format: date-time
     PlanningCreationRequest:
       type: object
       properties:

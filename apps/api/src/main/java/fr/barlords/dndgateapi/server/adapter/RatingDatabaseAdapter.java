@@ -51,7 +51,7 @@ public class RatingDatabaseAdapter implements RatingPersistenceSpi {
     @Override
     @Transactional
     public Page<Rating> findByTargetedAccountId(UUID targetedAccountId, PageRequest request) {
-        return PageMapper.toDomain(repository.findAllByTargetId(targetedAccountId, PageMapper.toPageable(request, Sort.by("id"))), request,
+        return PageMapper.toDomain(repository.findAllByTargetId(targetedAccountId, PageMapper.toPageable(request, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")))), request,
                 RatingEntityMapper::toDomain);
     }
 

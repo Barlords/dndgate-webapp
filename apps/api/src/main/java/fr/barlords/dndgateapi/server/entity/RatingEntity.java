@@ -8,6 +8,7 @@ import jakarta.persistence.Table;
 import lombok.*;
 
 import java.io.Serializable;
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -32,5 +33,8 @@ public class RatingEntity implements Serializable {
 
     @Column(name = "rate", nullable = false)
     private int rate;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
 
 }

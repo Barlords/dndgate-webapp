@@ -243,7 +243,7 @@ class PaginationIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     void ratings_received_are_paginated_and_still_private_to_their_target() {
         for (int i = 0; i < 3; i++) {
-            jdbc.update("insert into rating (id, emitter_id, target_id, rate) values (?, ?, ?, ?)",
+            jdbc.update("insert into rating (id, emitter_id, target_id, rate, created_at) values (?, ?, ?, ?, now())",
                     UUID.randomUUID(), registerAndLogin().id(), master.id(), 3 + i % 2);
         }
 

@@ -14,6 +14,8 @@ import fr.barlords.dndgateapi.domain.port.out.RatingPersistenceSpi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.Clock;
+
 @Configuration
 public class RatingServiceConfiguration {
 
@@ -27,9 +29,10 @@ public class RatingServiceConfiguration {
     @Bean
     public RatingCreatorApi ratingCreatorApi(
             RatingPersistenceSpi spi,
-            RatingEligibilityService ratingEligibilityService
+            RatingEligibilityService ratingEligibilityService,
+            Clock clock
     ) {
-        return new RatingCreatorService(spi, ratingEligibilityService);
+        return new RatingCreatorService(spi, ratingEligibilityService, clock);
     }
 
     @Bean
@@ -43,9 +46,10 @@ public class RatingServiceConfiguration {
     public RatingUpdaterApi ratingUpdaterApi(
             RatingPersistenceSpi spi,
             RatingEligibilityService ratingEligibilityService,
-            RetryingTransaction transaction
+            RetryingTransaction transaction,
+            Clock clock
     ) {
-        return new TransactionalRatingUpdater(new RatingUpdaterService(spi, ratingEligibilityService), transaction);
+        return new TransactionalRatingUpdater(new RatingUpdaterService(spi, ratingEligibilityService, clock), transaction);
     }
 
 }

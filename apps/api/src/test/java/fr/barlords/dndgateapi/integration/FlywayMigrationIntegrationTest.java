@@ -421,6 +421,30 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    // ---- V13: rating creation date (review v2, point 47) ----
+
+    @Test
+    void existing_ratings_get_a_creation_date_and_the_column_refuses_null_afterwards() throws Exception {
+        Fixture fixture = databaseOnVersion11();
+        flyway(fixture.url(), "12").migrate();
+        UUID rating = UUID.randomUUID();
+        try (Connection connection = connect(fixture.url())) {
+            execute(connection, "insert into rating (id, emitter_id, target_id, rate) values (?, ?, ?, 4)",
+                    rating, fixture.player(), fixture.master());
+        }
+
+        flyway(fixture.url(), null).migrate();
+
+        try (Connection connection = connect(fixture.url())) {
+            Assertions.assertEquals(1, count(connection, "select count(*) from rating where id = ? and created_at is not null", rating));
+            Assertions.assertEquals("timestamp with time zone", stringValue(connection,
+                    "select data_type from information_schema.columns where table_name = 'rating' and column_name = 'created_at'"));
+            Assertions.assertThrows(SQLException.class, () -> execute(connection,
+                    "insert into rating (id, emitter_id, target_id, rate, created_at) values (?, ?, ?, 3, null)",
+                    UUID.randomUUID(), fixture.master(), fixture.player()));
+        }
+    }
+
     @Test
     void once_up_to_date_the_database_itself_refuses_what_the_code_used_to_check() throws Exception {
         String url = newDatabase();
@@ -434,7 +458,7 @@ class FlywayMigrationIntegrationTest {
             insertAccount(connection, player, "Player");
             insertAdventure(connection, adventure, master, "PUBLIC", "CODE000001");
             execute(connection, "insert into adventure_players (adventure_id, player_id) values (?, ?)", adventure, player);
-            execute(connection, "insert into rating (id, emitter_id, target_id, rate) values (?, ?, ?, 4)", UUID.randomUUID(), player, master);
+            execute(connection, "insert into rating (id, emitter_id, target_id, rate, created_at) values (?, ?, ?, 4, now())", UUID.randomUUID(), player, master);
 
             Assertions.assertThrows(SQLException.class, () -> insertAdventure(connection, UUID.randomUUID(), ghost, "PUBLIC", null), "creator");
             Assertions.assertThrows(SQLException.class, () -> insertAdventure(connection, UUID.randomUUID(), master, "PUBLIC", "CODE000001"), "code");

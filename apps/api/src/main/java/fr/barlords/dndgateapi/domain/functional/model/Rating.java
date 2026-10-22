@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Value;
 import lombok.With;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Value
@@ -22,5 +23,9 @@ public class Rating {
 
     @With
     int rate;
+
+    /** Set by the services from the clock when the rating is first given. */
+    @With
+    Instant createdAt;
 
 }

@@ -14,7 +14,8 @@ public interface RatingDtoMapper {
                 domain.getId(),
                 domain.getEmitterId(),
                 domain.getAccountTargetedId(),
-                domain.getRate()
+                domain.getRate(),
+                domain.getCreatedAt()
         );
     }
 
