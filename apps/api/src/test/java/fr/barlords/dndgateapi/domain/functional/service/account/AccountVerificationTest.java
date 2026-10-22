@@ -7,6 +7,8 @@ import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
 import fr.barlords.dndgateapi.domain.port.out.PasswordHasherSpi;
+import fr.barlords.dndgateapi.domain.port.out.SignupNoticeLogSpi;
+import fr.barlords.dndgateapi.domain.functional.exception.account.EmailAlreadyUsedException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -39,6 +41,8 @@ public class AccountVerificationTest {
     private static final Instant NOW = Instant.parse("2026-01-01T10:00:00Z");
 
     private static final Duration TTL = Duration.ofHours(24);
+
+    private static final Duration NOTICE_WINDOW = Duration.ofHours(24);
 
     private static final Duration COOLDOWN = Duration.ofMinutes(1);
 
@@ -281,8 +285,16 @@ public class AccountVerificationTest {
         @Mock
         private PasswordHasherSpi passwordHasher;
 
+        @Mock
+        private SignupNoticeLogSpi noticeLog;
+
         private AccountCreatorService service() {
-            return new AccountCreatorService(spi, checker, new AccountModifierService(passwordHasher), emailingSpi, clock, TTL);
+            return new AccountCreatorService(spi, checker, new AccountModifierService(passwordHasher), emailingSpi, clock, TTL,
+                    noticeLog, NOTICE_WINDOW);
+        }
+
+        private Account owner() {
+            return Account.builder().pseudo("owner").email("test@test.fr").password("hash").activated(true).build();
         }
 
         @BeforeEach
@@ -335,8 +347,9 @@ public class AccountVerificationTest {
 
         @Test
         void an_address_already_registered_changes_nothing_and_its_owner_is_told_instead() {
-            Account owner = Account.builder().pseudo("owner").email("test@test.fr").password("hash").activated(true).build();
+            Account owner = owner();
             when(spi.findByEmail("test@test.fr")).thenReturn(Optional.of(owner));
+            when(noticeLog.claim(any(), any(), any())).thenReturn(true);
 
             Assertions.assertDoesNotThrow(() -> service().create(newcomer()));
 
@@ -346,9 +359,52 @@ public class AccountVerificationTest {
         }
 
         @Test
+        void the_notice_is_claimed_for_the_address_over_the_configured_window() {
+            when(spi.findByEmail("test@test.fr")).thenReturn(Optional.of(owner()));
+
+            service().create(newcomer());
+
+            verify(noticeLog).claim("test@test.fr", NOW, NOW.minus(NOTICE_WINDOW));
+        }
+
+        @Test
+        void no_second_notice_is_sent_inside_the_window_and_the_caller_notices_nothing() {
+            when(spi.findByEmail("test@test.fr")).thenReturn(Optional.of(owner()));
+            when(noticeLog.claim(any(), any(), any())).thenReturn(false);
+
+            Assertions.assertDoesNotThrow(() -> service().create(newcomer()));
+
+            verify(emailingSpi, never()).sendSignupAttemptEmail(any());
+            verify(spi, never()).save(any());
+        }
+
+        @Test
+        void a_taken_address_gives_the_same_silent_answer_even_when_the_pseudo_is_taken_too() {
+            when(spi.findByEmail("test@test.fr")).thenReturn(Optional.of(owner()));
+            when(noticeLog.claim(any(), any(), any())).thenReturn(true);
+
+            Assertions.assertDoesNotThrow(() -> service().create(newcomer()));
+
+            verify(checker, never()).pseudoIsAvailable(any());
+            verify(emailingSpi).sendSignupAttemptEmail(any());
+        }
+
+        @Test
+        void an_address_taken_between_the_look_up_and_the_insert_is_handled_as_a_taken_address() {
+            Account owner = owner();
+            when(spi.findByEmail("test@test.fr")).thenReturn(Optional.empty(), Optional.of(owner));
+            when(spi.save(any(Account.class))).thenThrow(new EmailAlreadyUsedException());
+            when(noticeLog.claim(any(), any(), any())).thenReturn(true);
+
+            Assertions.assertDoesNotThrow(() -> service().create(newcomer()));
+
+            verify(emailingSpi, never()).sendAccountValidationEmail(any());
+            verify(emailingSpi).sendSignupAttemptEmail(owner);
+        }
+
+        @Test
         void the_password_is_hashed_whether_or_not_the_address_is_taken() {
-            when(spi.findByEmail("test@test.fr")).thenReturn(Optional.of(
-                    Account.builder().pseudo("owner").email("test@test.fr").password("hash").build()));
+            when(spi.findByEmail("test@test.fr")).thenReturn(Optional.of(owner()));
 
             service().create(newcomer());
 
@@ -357,8 +413,8 @@ public class AccountVerificationTest {
 
         @Test
         void a_notice_that_cannot_be_sent_is_not_reported_to_the_caller() {
-            when(spi.findByEmail("test@test.fr")).thenReturn(Optional.of(
-                    Account.builder().pseudo("owner").email("test@test.fr").password("hash").build()));
+            when(spi.findByEmail("test@test.fr")).thenReturn(Optional.of(owner()));
+            when(noticeLog.claim(any(), any(), any())).thenReturn(true);
             doThrow(new EmailNotSendException()).when(emailingSpi).sendSignupAttemptEmail(any());
 
             Assertions.assertDoesNotThrow(() -> service().create(newcomer()));

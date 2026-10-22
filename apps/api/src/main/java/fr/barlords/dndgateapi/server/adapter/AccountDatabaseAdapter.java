@@ -2,6 +2,10 @@ package fr.barlords.dndgateapi.server.adapter;
 
 
 import fr.barlords.dndgateapi.domain.functional.exception.ConcurrentUpdateException;
+import fr.barlords.dndgateapi.domain.functional.exception.account.EmailAlreadyUsedException;
+import fr.barlords.dndgateapi.domain.functional.exception.account.PseudoAlreadyUsedException;
+import org.springframework.core.NestedExceptionUtils;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
@@ -29,6 +33,16 @@ public class AccountDatabaseAdapter implements AccountPersistenceSpi {
             return AccountEntityMapper.toDomain(repository.saveAndFlush(AccountEntityMapper.fromDomain(o)));
         } catch (ObjectOptimisticLockingFailureException e) {
             throw new ConcurrentUpdateException(e);
+        } catch (DataIntegrityViolationException e) {
+            // Two simultaneous registrations: the unique index of the address or of the pseudo refused the second
+            String message = String.valueOf(NestedExceptionUtils.getMostSpecificCause(e).getMessage());
+            if (message.contains("accounts_email")) {
+                throw new EmailAlreadyUsedException();
+            }
+            if (message.contains("accounts_pseudo")) {
+                throw new PseudoAlreadyUsedException();
+            }
+            throw e;
         }
     }
 

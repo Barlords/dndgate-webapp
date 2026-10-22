@@ -526,6 +526,28 @@ class FlywayMigrationIntegrationTest {
         Assertions.assertEquals("13", flyway(url, null).info().current().getVersion().getVersion());
     }
 
+    // ---- V15: one signup notice per address and per window (review v2, point 31) ----
+
+    @Test
+    void the_signup_notice_table_is_added_without_touching_existing_accounts_and_keeps_one_row_per_address() throws Exception {
+        String url = newDatabase();
+        flyway(url, "14").migrate();
+        try (Connection connection = connect(url)) {
+            insertAccountWithEmail(connection, "Alice", "alice@mail.com", null);
+        }
+
+        flyway(url, null).migrate();
+
+        try (Connection connection = connect(url)) {
+            Assertions.assertEquals(1, count(connection, "select count(*) from accounts"), "no account lost");
+            Assertions.assertEquals(0, count(connection, "select count(*) from signup_notices"));
+            execute(connection, "insert into signup_notices (email_hash, sent_at) values (?, now())", "a".repeat(64));
+            Assertions.assertThrows(SQLException.class,
+                    () -> execute(connection, "insert into signup_notices (email_hash, sent_at) values (?, now())", "a".repeat(64)));
+            Assertions.assertEquals(1, count(connection, "select count(*) from pg_indexes where indexname = 'idx_signup_notices_sent_at'"));
+        }
+    }
+
     private static String stringValue(Connection connection, String sql) throws SQLException {
         try (Statement statement = connection.createStatement(); ResultSet rows = statement.executeQuery(sql)) {
             rows.next();

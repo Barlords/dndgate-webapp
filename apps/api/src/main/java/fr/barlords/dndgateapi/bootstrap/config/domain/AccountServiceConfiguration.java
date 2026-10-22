@@ -17,6 +17,7 @@ import fr.barlords.dndgateapi.bootstrap.config.TransactionalAccountAnonymizer;
 import fr.barlords.dndgateapi.bootstrap.config.TransactionalAccountUpdater;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.OpaqueTokenSpi;
+import fr.barlords.dndgateapi.domain.port.out.SignupNoticeLogSpi;
 import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.SessionPersistenceSpi;
 import org.springframework.beans.factory.annotation.Value;
@@ -58,10 +59,21 @@ public class AccountServiceConfiguration {
             AccountModifierService accountModifierService,
             EmailingSpi emailingSpi,
             Clock clock,
-            @Value("${security.verification.ttl:PT24H}") Duration verificationCodeTtl
+            @Value("${security.verification.ttl:PT24H}") Duration verificationCodeTtl,
+            SignupNoticeLogSpi noticeLog,
+            @Value("${security.signup-notice.window:PT24H}") Duration noticeWindow
     ) {
         return new AccountCreatorService(spi, accountCheckerService, accountModifierService, emailingSpi,
-                clock, verificationCodeTtl);
+                clock, verificationCodeTtl, noticeLog, noticeWindow);
+    }
+
+    @Bean
+    public SignupNoticeCleanerApi signupNoticeCleanerApi(
+            SignupNoticeLogSpi noticeLog,
+            Clock clock,
+            @Value("${security.signup-notice.window:PT24H}") Duration noticeWindow
+    ) {
+        return new SignupNoticeCleanerService(noticeLog, clock, noticeWindow);
     }
 
     @Bean
