@@ -7,6 +7,12 @@ public interface EmailingSpi {
 
     void sendAccountValidationEmail(Account account);
 
+    /**
+     * Sent to the owner of an address somebody tried to register with: registering answers the same whether the
+     * address is known or not, so this mail is the only place the owner learns about it.
+     */
+    void sendSignupAttemptEmail(Account owner);
+
     /** Sent to the address the account asked to switch to ({@code pendingEmail}), with the link that confirms it. */
     void sendEmailChangeEmail(Account account);
 

@@ -213,7 +213,7 @@ class OptimisticLockingIntegrationTest extends ApiIntegrationTestSupport {
         List<ResponseEntity<String>> responses = responsesInParallel(calls);
 
         for (ResponseEntity<String> response : responses) {
-            boolean created = response.getStatusCode().value() == 201;
+            boolean created = response.getStatusCode().value() == 201 || response.getStatusCode().value() == 200;
             boolean changedMeanwhile = response.getStatusCode().value() == 409
                     && ConcurrentUpdateException.EXCEPTION_MESSAGE.equals(body(response).get("detail").asString());
             Assertions.assertTrue(created || changedMeanwhile, response.toString());

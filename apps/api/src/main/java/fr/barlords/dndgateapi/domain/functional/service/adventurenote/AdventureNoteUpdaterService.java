@@ -21,7 +21,7 @@ public class AdventureNoteUpdaterService implements AdventureNoteUpdaterApi {
     private final AdventureOwnerVerifierService adventureOwnerVerifierService;
 
     @Override
-    public AdventureNote update(UUID accountId, UUID adventureId, AdventureNote adventureNote) {
+    public AdventureNote update(UUID accountId, AdventureNote adventureNote) {
         AdventureNote previousAdventureNote = spi.findById(adventureNote.getId())
                 .orElseThrow(AdventureNoteNotFoundException::new);
 

@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -93,7 +95,7 @@ class RatingIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(409, rate(player, master, 5).getStatusCode().value());
 
         // the average was not inflated by the refused attempt
-        Assertions.assertEquals("3.0", call(HttpMethod.GET, "/ratings/mean?accountId=" + master.id(),
+        Assertions.assertEquals("{\"average\":3.0,\"count\":1}", call(HttpMethod.GET, "/ratings/mean?accountId=" + master.id(),
                 player.token(), null).getBody());
     }
 
@@ -106,7 +108,7 @@ class RatingIntegrationTest extends ApiIntegrationTestSupport {
         call(HttpMethod.PUT, "/ratings", player.token(), Map.of("accountTargetedId", master.id().toString(), "rate", 2));
         call(HttpMethod.PUT, "/ratings", player.token(), Map.of("accountTargetedId", master.id().toString(), "rate", 4));
 
-        Assertions.assertEquals("4.0", call(HttpMethod.GET, "/ratings/mean?accountId=" + master.id(),
+        Assertions.assertEquals("{\"average\":4.0,\"count\":1}", call(HttpMethod.GET, "/ratings/mean?accountId=" + master.id(),
                 stranger.token(), null).getBody());
     }
 
@@ -119,21 +121,6 @@ class RatingIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     // ---- who can read / change what ----
-
-    @Test
-    void only_the_author_can_change_a_rating() {
-        startAdventure();
-        UUID ratingId = UUID.fromString(body(rate(player, master, 2)).get("id").asString());
-
-        Assertions.assertEquals(403, call(HttpMethod.PATCH, "/ratings/" + ratingId, master.token(), Map.of("rate", 5))
-                .getStatusCode().value());
-        Assertions.assertEquals(403, call(HttpMethod.PATCH, "/ratings/" + ratingId, stranger.token(), Map.of("rate", 5))
-                .getStatusCode().value());
-        Assertions.assertEquals(200, call(HttpMethod.PATCH, "/ratings/" + ratingId, player.token(), Map.of("rate", 5))
-                .getStatusCode().value());
-        Assertions.assertEquals(400, call(HttpMethod.PATCH, "/ratings/" + ratingId, player.token(), Map.of("rate", 9))
-                .getStatusCode().value());
-    }
 
     @Test
     void the_detail_of_received_ratings_is_only_readable_by_the_rated_account() {
@@ -168,10 +155,10 @@ class RatingIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     void a_second_rating_slipping_past_the_check_is_stopped_by_the_database() {
         // what two simultaneous requests do: both found no rating, both write
-        ratings.save(Rating.builder().emitterId(player.id()).accountTargetedId(master.id()).rate(4).build());
+        ratings.save(Rating.builder().emitterId(player.id()).accountTargetedId(master.id()).rate(4).createdAt(Instant.now()).build());
 
         Assertions.assertThrows(RatingAlreadyExistsException.class,
-                () -> ratings.save(Rating.builder().emitterId(player.id()).accountTargetedId(master.id()).rate(2).build()));
+                () -> ratings.save(Rating.builder().emitterId(player.id()).accountTargetedId(master.id()).rate(2).createdAt(Instant.now()).build()));
 
         Assertions.assertEquals(1, jdbc.queryForObject("select count(*) from rating where emitter_id = ? and target_id = ?",
                 Integer.class, player.id(), master.id()));
@@ -186,5 +173,39 @@ class RatingIntegrationTest extends ApiIntegrationTestSupport {
                 stranger.token(), null).getStatusCode().value());
         Assertions.assertEquals(401, call(HttpMethod.GET, "/ratings/mean?accountId=" + master.id(),
                 null, null).getStatusCode().value());
+    }
+
+    @Test
+    void received_ratings_come_newest_first_with_their_creation_date() {
+        TestAccount first = registerAndLogin();
+        TestAccount second = registerAndLogin();
+        TestAccount third = registerAndLogin();
+        insertRating(first, "2026-01-01T10:00:00Z", 1);
+        insertRating(third, "2026-03-01T10:00:00Z", 3);
+        insertRating(second, "2026-02-01T10:00:00Z", 2);
+
+        ResponseEntity<String> page = call(HttpMethod.GET, "/ratings?targetedAccountId=" + master.id(), master.token(), null);
+
+        Assertions.assertEquals(200, page.getStatusCode().value(), page.getBody());
+        var content = body(page).get("content");
+        Assertions.assertEquals(List.of(3, 2, 1), List.of(content.get(0).get("rate").asInt(), content.get(1).get("rate").asInt(), content.get(2).get("rate").asInt()));
+        Assertions.assertEquals("2026-03-01T10:00:00Z", content.get(0).get("createdAt").asString());
+    }
+
+    @Test
+    void a_new_rating_is_dated_by_the_server_clock() {
+        startAdventure();
+        Instant before = Instant.now().minusSeconds(5);
+
+        ResponseEntity<String> created = rate(player, master, 4);
+
+        Instant createdAt = Instant.parse(body(created).get("createdAt").asString());
+        Assertions.assertTrue(createdAt.isAfter(before) && createdAt.isBefore(Instant.now().plusSeconds(5)), createdAt.toString());
+        Assertions.assertEquals(1, jdbc.queryForObject("select count(*) from rating where emitter_id = ? and created_at is not null", Integer.class, player.id()));
+    }
+
+    private void insertRating(TestAccount emitter, String createdAt, int rate) {
+        jdbc.update("insert into rating (id, emitter_id, target_id, rate, created_at) values (?, ?, ?, ?, ?::timestamptz)",
+                UUID.randomUUID(), emitter.id(), master.id(), rate, createdAt);
     }
 }

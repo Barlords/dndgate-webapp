@@ -37,6 +37,15 @@ public class EmailContentBuilder {
                         "link", escape(link))));
     }
 
+    /** Goes to the owner of an address somebody tried to register with: no code, only a way to log in. */
+    public EmailContent signupAttempt(Account owner) {
+        return new EmailContent(
+                templates.render("signup-attempt.subject", Map.of()),
+                templates.render("signup-attempt.html", Map.of(
+                        "pseudo", escape(owner.getPseudo()),
+                        "link", escape(webBaseUrl + "/login"))));
+    }
+
     /** Goes to the new address: the link carries it, and the code that only its owner receives. */
     public EmailContent emailChange(Account account) {
         String link = webBaseUrl + "/confirm-email?email=" + encode(account.getPendingEmail())

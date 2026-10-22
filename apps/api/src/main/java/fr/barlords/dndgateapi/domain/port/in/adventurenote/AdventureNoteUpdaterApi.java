@@ -6,6 +6,6 @@ import java.util.UUID;
 
 public interface AdventureNoteUpdaterApi {
 
-    AdventureNote update(UUID accountId, UUID adventureId, AdventureNote adventureNote);
+    AdventureNote update(UUID accountId, AdventureNote adventureNote);
 
 }

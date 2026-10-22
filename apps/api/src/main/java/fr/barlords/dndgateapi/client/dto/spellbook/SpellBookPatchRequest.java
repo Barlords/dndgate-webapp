@@ -1,13 +1,13 @@
 package fr.barlords.dndgateapi.client.dto.spellbook;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.NotBlank;
+import fr.barlords.dndgateapi.client.validator.Patterns;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public record SpellBookPatchRequest(
-        @NotBlank @Size(min = 1, max = 255) String name,
-        @NotBlank @Size(min = 1, max = 5000) String description
+        @Pattern(regexp = Patterns.NOT_BLANK) @Size(max = 255) String name,
+        @Pattern(regexp = Patterns.NOT_BLANK) @Size(max = 5000) String description
 ) {
 }

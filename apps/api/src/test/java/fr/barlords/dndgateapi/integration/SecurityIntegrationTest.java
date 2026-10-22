@@ -40,7 +40,7 @@ class SecurityIntegrationTest extends ApiIntegrationTestSupport {
     void wrong_password_is_refused() {
         TestAccount account = registerAndLogin();
 
-        Assertions.assertEquals(404,
+        Assertions.assertEquals(401,
                 call(HttpMethod.POST, "/accounts/login", null, Map.of("pseudo", account.pseudo(), "password", "wrong-password")).getStatusCode().value());
     }
 
@@ -162,7 +162,7 @@ class SecurityIntegrationTest extends ApiIntegrationTestSupport {
                 call(HttpMethod.GET, "/messages?adventureId=" + adventureId, stranger.token(), null).getStatusCode().value());
 
         ResponseEntity<String> sent = call(HttpMethod.POST, "/messages", owner.token(), message);
-        Assertions.assertEquals(200, sent.getStatusCode().value(), sent.getBody());
+        Assertions.assertEquals(201, sent.getStatusCode().value(), sent.getBody());
 
         ResponseEntity<String> read = call(HttpMethod.GET, "/messages?adventureId=" + adventureId, owner.token(), null);
         Assertions.assertEquals(200, read.getStatusCode().value());

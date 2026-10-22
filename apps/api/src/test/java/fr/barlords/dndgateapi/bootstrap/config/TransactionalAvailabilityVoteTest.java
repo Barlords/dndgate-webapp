@@ -1,5 +1,6 @@
 package fr.barlords.dndgateapi.bootstrap.config;
 
+import fr.barlords.dndgateapi.domain.functional.model.Upserted;
 import fr.barlords.dndgateapi.domain.functional.model.planning.Availability;
 import fr.barlords.dndgateapi.domain.port.in.planning.AvailabilityUpdaterApi;
 import org.junit.jupiter.api.Assertions;
@@ -42,10 +43,10 @@ class TransactionalAvailabilityVoteTest {
             if (calls.incrementAndGet() == 1) {
                 throw new DataIntegrityViolationException("duplicate key");
             }
-            return availability;
+            return Upserted.created(availability);
         });
 
-        Assertions.assertSame(vote, service.createOrUpdate(accountId, vote));
+        Assertions.assertSame(vote, service.createOrUpdate(accountId, vote).value());
         Assertions.assertEquals(2, calls.get());
     }
 

@@ -1,5 +1,6 @@
 package fr.barlords.dndgateapi.bootstrap.config;
 
+import fr.barlords.dndgateapi.domain.functional.model.Upserted;
 import fr.barlords.dndgateapi.domain.functional.model.planning.Planning;
 import fr.barlords.dndgateapi.domain.port.in.planning.PlanningUpdaterApi;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +22,7 @@ public class TransactionalPlanningUpdater implements PlanningUpdaterApi {
     private final RetryingTransaction transaction;
 
     @Override
-    public Planning createOrUpdate(UUID accountId, Planning planning) {
+    public Upserted<Planning> createOrUpdate(UUID accountId, Planning planning) {
         return transaction.execute(() -> delegate.createOrUpdate(accountId, planning), DataIntegrityViolationException.class);
     }
 }

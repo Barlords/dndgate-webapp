@@ -66,7 +66,7 @@ public class AccountErrorHandler {
 
     @ExceptionHandler(AccountCredentialNotFoundException.class)
     public ProblemDetail handleAccountCredentialNotFoundException() {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, AccountCredentialNotFoundException.EXCEPTION_MESSAGE);
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, AccountCredentialNotFoundException.EXCEPTION_MESSAGE);
     }
 
     @ExceptionHandler(AccountNotFoundException.class)

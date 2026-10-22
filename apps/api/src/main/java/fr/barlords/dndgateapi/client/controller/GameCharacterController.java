@@ -116,7 +116,7 @@ public class GameCharacterController {
     // PATCH //
 
     @PatchMapping("/{id}")
-    @ResponseStatus(CREATED)
+    @ResponseStatus(OK)
     public GameCharacterDto patchGameCharacter(
             @PathVariable String id,
             @Valid @RequestBody GameCharacterPatchRequest request) {

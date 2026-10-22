@@ -1,5 +1,6 @@
 package fr.barlords.dndgateapi.domain.functional.service.planning;
 
+import fr.barlords.dndgateapi.domain.functional.model.Upserted;
 import fr.barlords.dndgateapi.domain.functional.model.planning.Availability;
 import fr.barlords.dndgateapi.domain.port.in.planning.AvailabilityUpdaterApi;
 import fr.barlords.dndgateapi.domain.port.out.AvailabilityPersistenceSpi;
@@ -18,7 +19,7 @@ public class AvailabilityUpdaterService implements AvailabilityUpdaterApi {
     private final PlanningVisibilityVerifierService planningVisibilityVerifierService;
 
     @Override
-    public Availability createOrUpdate(UUID accountId, Availability availability) {
+    public Upserted<Availability> createOrUpdate(UUID accountId, Availability availability) {
         planningVisibilityVerifierService.verify(accountId, availability.getPlanningId());
 
         // A caller can only vote for itself, whatever the account id sent by the client
@@ -27,11 +28,11 @@ public class AvailabilityUpdaterService implements AvailabilityUpdaterApi {
         List<Availability> existing = spi.findByAccountIdAndPlanningId(accountId, own.getPlanningId());
 
         if (existing.isEmpty()) {
-            return spi.save(own);
+            return Upserted.created(spi.save(own));
         }
 
         // At most one vote exists per (planning, account): it keeps its id and gets the new dates
-        return spi.save(existing.get(0).withAvailabilityDates(own.getAvailabilityDates()));
+        return Upserted.updated(spi.save(existing.get(0).withAvailabilityDates(own.getAvailabilityDates())));
     }
 
 }

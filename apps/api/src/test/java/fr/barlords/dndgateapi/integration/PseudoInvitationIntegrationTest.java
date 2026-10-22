@@ -52,7 +52,7 @@ class PseudoInvitationIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount invited = registerAndLogin();
         UUID adventureId = createAdventure(master, "PRIVATE");
 
-        Assertions.assertEquals(200, status(HttpMethod.POST, invitePath(adventureId, invited.pseudo()), master, null));
+        Assertions.assertEquals(202, status(HttpMethod.POST, invitePath(adventureId, invited.pseudo()), master, null));
 
         ArgumentCaptor<Account> receiver = ArgumentCaptor.forClass(Account.class);
         Mockito.verify(emailingSpi).sendInvitationCodeEmail(ArgumentMatchers.any(), receiver.capture(), ArgumentMatchers.any());
@@ -65,7 +65,7 @@ class PseudoInvitationIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount invited = registerAndLogin();
         UUID adventureId = createAdventure(master, "PRIVATE");
 
-        Assertions.assertEquals(200, status(HttpMethod.POST, invitePath(adventureId, invited.pseudo().toUpperCase()), master, null));
+        Assertions.assertEquals(202, status(HttpMethod.POST, invitePath(adventureId, invited.pseudo().toUpperCase()), master, null));
     }
 
     @Test

@@ -421,6 +421,30 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    // ---- V13: rating creation date (review v2, point 47) ----
+
+    @Test
+    void existing_ratings_get_a_creation_date_and_the_column_refuses_null_afterwards() throws Exception {
+        Fixture fixture = databaseOnVersion11();
+        flyway(fixture.url(), "12").migrate();
+        UUID rating = UUID.randomUUID();
+        try (Connection connection = connect(fixture.url())) {
+            execute(connection, "insert into rating (id, emitter_id, target_id, rate) values (?, ?, ?, 4)",
+                    rating, fixture.player(), fixture.master());
+        }
+
+        flyway(fixture.url(), null).migrate();
+
+        try (Connection connection = connect(fixture.url())) {
+            Assertions.assertEquals(1, count(connection, "select count(*) from rating where id = ? and created_at is not null", rating));
+            Assertions.assertEquals("timestamp with time zone", stringValue(connection,
+                    "select data_type from information_schema.columns where table_name = 'rating' and column_name = 'created_at'"));
+            Assertions.assertThrows(SQLException.class, () -> execute(connection,
+                    "insert into rating (id, emitter_id, target_id, rate, created_at) values (?, ?, ?, 3, null)",
+                    UUID.randomUUID(), fixture.master(), fixture.player()));
+        }
+    }
+
     @Test
     void once_up_to_date_the_database_itself_refuses_what_the_code_used_to_check() throws Exception {
         String url = newDatabase();
@@ -434,7 +458,7 @@ class FlywayMigrationIntegrationTest {
             insertAccount(connection, player, "Player");
             insertAdventure(connection, adventure, master, "PUBLIC", "CODE000001");
             execute(connection, "insert into adventure_players (adventure_id, player_id) values (?, ?)", adventure, player);
-            execute(connection, "insert into rating (id, emitter_id, target_id, rate) values (?, ?, ?, 4)", UUID.randomUUID(), player, master);
+            execute(connection, "insert into rating (id, emitter_id, target_id, rate, created_at) values (?, ?, ?, 4, now())", UUID.randomUUID(), player, master);
 
             Assertions.assertThrows(SQLException.class, () -> insertAdventure(connection, UUID.randomUUID(), ghost, "PUBLIC", null), "creator");
             Assertions.assertThrows(SQLException.class, () -> insertAdventure(connection, UUID.randomUUID(), master, "PUBLIC", "CODE000001"), "code");
@@ -451,6 +475,76 @@ class FlywayMigrationIntegrationTest {
             Assertions.assertThrows(SQLException.class,
                     () -> execute(connection, "insert into master_claims (id, adventure_id, candidate_id, created_at, expires_at, status) "
                             + "values (?, ?, ?, now(), now(), 'OPEN')", UUID.randomUUID(), adventure, ghost), "claim candidate");
+        }
+    }
+
+
+    // ---- V14: case-insensitive e-mail addresses (review v2, point 32) ----
+
+    private static void insertAccountWithEmail(Connection connection, String pseudo, String email, String pendingEmail) throws SQLException {
+        execute(connection, "insert into accounts (id, email, password, pseudo, activated, pending_email) values (?, ?, 'hash', ?, true, ?)",
+                UUID.randomUUID(), email, pseudo, pendingEmail);
+    }
+
+    @Test
+    void existing_addresses_are_lower_cased_and_the_database_refuses_a_case_variant_afterwards() throws Exception {
+        String url = newDatabase();
+        flyway(url, "13").migrate();
+        try (Connection connection = connect(url)) {
+            insertAccountWithEmail(connection, "Alice", "Alice@Mail.COM", "New.Alice@Mail.COM");
+            insertAccountWithEmail(connection, "Bob", "bob@mail.com", null);
+        }
+
+        flyway(url, null).migrate();
+
+        try (Connection connection = connect(url)) {
+            Assertions.assertEquals(2, count(connection, "select count(*) from accounts"), "no row lost");
+            Assertions.assertEquals("alice@mail.com", stringValue(connection, "select email from accounts where pseudo = 'Alice'"));
+            Assertions.assertEquals("new.alice@mail.com", stringValue(connection, "select pending_email from accounts where pseudo = 'Alice'"));
+            Assertions.assertEquals(1, count(connection, "select count(*) from accounts where pseudo = 'Bob' and pending_email is null"));
+            Assertions.assertThrows(SQLException.class, () -> insertAccountWithEmail(connection, "Carol", "ALICE@mail.com", null));
+        }
+    }
+
+    @Test
+    void two_addresses_that_differ_only_by_case_stop_the_migration_and_leave_the_database_untouched() throws Exception {
+        String url = newDatabase();
+        flyway(url, "13").migrate();
+        try (Connection connection = connect(url)) {
+            insertAccountWithEmail(connection, "Alice", "Bob@Mail.com", null);
+            insertAccountWithEmail(connection, "Bobby", "bob@mail.com", null);
+        }
+
+        FlywayException failure = Assertions.assertThrows(FlywayException.class, () -> flyway(url, null).migrate());
+
+        Assertions.assertTrue(failure.getMessage().contains("V14 stopped") && failure.getMessage().contains("bob@mail.com"), failure.getMessage());
+        try (Connection connection = connect(url)) {
+            Assertions.assertEquals("Bob@Mail.com", stringValue(connection, "select email from accounts where pseudo = 'Alice'"),
+                    "nothing was lower-cased");
+            Assertions.assertEquals(0, count(connection, "select count(*) from pg_indexes where indexname = 'accounts_email_lower_key'"));
+        }
+        Assertions.assertEquals("13", flyway(url, null).info().current().getVersion().getVersion());
+    }
+
+    // ---- V15: one signup notice per address and per window (review v2, point 31) ----
+
+    @Test
+    void the_signup_notice_table_is_added_without_touching_existing_accounts_and_keeps_one_row_per_address() throws Exception {
+        String url = newDatabase();
+        flyway(url, "14").migrate();
+        try (Connection connection = connect(url)) {
+            insertAccountWithEmail(connection, "Alice", "alice@mail.com", null);
+        }
+
+        flyway(url, null).migrate();
+
+        try (Connection connection = connect(url)) {
+            Assertions.assertEquals(1, count(connection, "select count(*) from accounts"), "no account lost");
+            Assertions.assertEquals(0, count(connection, "select count(*) from signup_notices"));
+            execute(connection, "insert into signup_notices (email_hash, sent_at) values (?, now())", "a".repeat(64));
+            Assertions.assertThrows(SQLException.class,
+                    () -> execute(connection, "insert into signup_notices (email_hash, sent_at) values (?, now())", "a".repeat(64)));
+            Assertions.assertEquals(1, count(connection, "select count(*) from pg_indexes where indexname = 'idx_signup_notices_sent_at'"));
         }
     }
 

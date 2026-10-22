@@ -52,6 +52,11 @@ public class EmailingAdapter implements EmailingSpi {
     }
 
     @Override
+    public void sendSignupAttemptEmail(Account owner) {
+        enqueue(owner.getEmail(), contentBuilder.signupAttempt(owner));
+    }
+
+    @Override
     public void sendEmailChangeEmail(Account account) {
         enqueue(account.getPendingEmail(), contentBuilder.emailChange(account));
     }

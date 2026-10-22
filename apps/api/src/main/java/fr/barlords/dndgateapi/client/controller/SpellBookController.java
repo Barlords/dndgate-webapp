@@ -172,7 +172,7 @@ public class SpellBookController {
     // PATCH //
 
     @PatchMapping("/{id}")
-    @ResponseStatus(CREATED)
+    @ResponseStatus(OK)
     public SpellBookDto patchSpellBook(
             @PathVariable String id,
             @Valid @RequestBody SpellBookPatchRequest request) {

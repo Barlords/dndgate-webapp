@@ -119,7 +119,7 @@ class InvitationLimitIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount invited = registerAndLogin();
         UUID adventureId = createAdventure(master, "PRIVATE");
 
-        Assertions.assertEquals(200, invite(master, adventureId, invited).getStatusCode().value());
+        Assertions.assertEquals(202, invite(master, adventureId, invited).getStatusCode().value());
         ResponseEntity<String> again = invite(master, adventureId, invited);
 
         Assertions.assertEquals(429, again.getStatusCode().value());
@@ -140,9 +140,9 @@ class InvitationLimitIntegrationTest extends ApiIntegrationTestSupport {
         UUID second = createAdventure(master, "PRIVATE");
         UUID others = createAdventure(otherMaster, "PRIVATE");
 
-        Assertions.assertEquals(200, invite(master, first, invited).getStatusCode().value());
-        Assertions.assertEquals(200, invite(master, second, invited).getStatusCode().value());
-        Assertions.assertEquals(200, invite(otherMaster, others, invited).getStatusCode().value());
+        Assertions.assertEquals(202, invite(master, first, invited).getStatusCode().value());
+        Assertions.assertEquals(202, invite(master, second, invited).getStatusCode().value());
+        Assertions.assertEquals(202, invite(otherMaster, others, invited).getStatusCode().value());
     }
 
     @Test
@@ -150,11 +150,11 @@ class InvitationLimitIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount master = registerAndLogin();
         TestAccount invited = registerAndLogin();
         UUID adventureId = createAdventure(master, "PRIVATE");
-        Assertions.assertEquals(200, invite(master, adventureId, invited).getStatusCode().value());
+        Assertions.assertEquals(202, invite(master, adventureId, invited).getStatusCode().value());
 
         jdbc.update("update sent_invitations set sent_at = now() - interval '25 hours' where sender_id = ?", master.id());
 
-        Assertions.assertEquals(200, invite(master, adventureId, invited).getStatusCode().value());
+        Assertions.assertEquals(202, invite(master, adventureId, invited).getStatusCode().value());
     }
 
     // ---- 3 invitations per sender and per hour in this context ----
@@ -164,7 +164,7 @@ class InvitationLimitIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount master = registerAndLogin();
         UUID adventureId = createAdventure(master, "PRIVATE");
         for (int i = 0; i < 3; i++) {
-            Assertions.assertEquals(200, invite(master, adventureId, registerAndLogin()).getStatusCode().value());
+            Assertions.assertEquals(202, invite(master, adventureId, registerAndLogin()).getStatusCode().value());
         }
 
         ResponseEntity<String> refused = invite(master, adventureId, registerAndLogin());
@@ -184,11 +184,11 @@ class InvitationLimitIntegrationTest extends ApiIntegrationTestSupport {
         UUID busyAdventure = createAdventure(busy, "PRIVATE");
         UUID otherAdventure = createAdventure(other, "PRIVATE");
         for (int i = 0; i < 3; i++) {
-            Assertions.assertEquals(200, invite(busy, busyAdventure, registerAndLogin()).getStatusCode().value());
+            Assertions.assertEquals(202, invite(busy, busyAdventure, registerAndLogin()).getStatusCode().value());
         }
 
         Assertions.assertEquals(429, invite(busy, busyAdventure, registerAndLogin()).getStatusCode().value());
-        Assertions.assertEquals(200, invite(other, otherAdventure, registerAndLogin()).getStatusCode().value());
+        Assertions.assertEquals(202, invite(other, otherAdventure, registerAndLogin()).getStatusCode().value());
     }
 
     @Test
@@ -196,13 +196,13 @@ class InvitationLimitIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount master = registerAndLogin();
         UUID adventureId = createAdventure(master, "PRIVATE");
         for (int i = 0; i < 3; i++) {
-            Assertions.assertEquals(200, invite(master, adventureId, registerAndLogin()).getStatusCode().value());
+            Assertions.assertEquals(202, invite(master, adventureId, registerAndLogin()).getStatusCode().value());
         }
         Assertions.assertEquals(429, invite(master, adventureId, registerAndLogin()).getStatusCode().value());
 
         jdbc.update("update sent_invitations set sent_at = now() - interval '61 minutes' where sender_id = ?", master.id());
 
-        Assertions.assertEquals(200, invite(master, adventureId, registerAndLogin()).getStatusCode().value());
+        Assertions.assertEquals(202, invite(master, adventureId, registerAndLogin()).getStatusCode().value());
     }
 
     // ---- housekeeping ----
@@ -211,8 +211,8 @@ class InvitationLimitIntegrationTest extends ApiIntegrationTestSupport {
     void the_nightly_purge_forgets_invitations_older_than_the_longest_window_only() {
         TestAccount master = registerAndLogin();
         UUID adventureId = createAdventure(master, "PRIVATE");
-        Assertions.assertEquals(200, invite(master, adventureId, registerAndLogin()).getStatusCode().value());
-        Assertions.assertEquals(200, invite(master, adventureId, registerAndLogin()).getStatusCode().value());
+        Assertions.assertEquals(202, invite(master, adventureId, registerAndLogin()).getStatusCode().value());
+        Assertions.assertEquals(202, invite(master, adventureId, registerAndLogin()).getStatusCode().value());
         jdbc.update("update sent_invitations set sent_at = now() - interval '25 hours' where id = "
                 + "(select id from sent_invitations where sender_id = ? limit 1)", master.id());
 
@@ -225,7 +225,7 @@ class InvitationLimitIntegrationTest extends ApiIntegrationTestSupport {
     void deleting_the_adventure_forgets_its_invitations() {
         TestAccount master = registerAndLogin();
         UUID adventureId = createAdventure(master, "PRIVATE");
-        Assertions.assertEquals(200, invite(master, adventureId, registerAndLogin()).getStatusCode().value());
+        Assertions.assertEquals(202, invite(master, adventureId, registerAndLogin()).getStatusCode().value());
 
         Assertions.assertEquals(204, call(HttpMethod.DELETE, "/adventures/" + adventureId, master.token(),
                 Map.of("confirmation", "Quest")).getStatusCode().value());

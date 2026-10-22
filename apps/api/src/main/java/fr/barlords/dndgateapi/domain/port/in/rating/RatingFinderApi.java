@@ -4,6 +4,7 @@ import fr.barlords.dndgateapi.domain.functional.model.pagination.Page;
 import fr.barlords.dndgateapi.domain.functional.model.pagination.PageRequest;
 
 import fr.barlords.dndgateapi.domain.functional.model.Rating;
+import fr.barlords.dndgateapi.domain.functional.model.RatingSummary;
 
 import java.util.List;
 import java.util.Optional;
@@ -24,6 +25,6 @@ public interface RatingFinderApi {
     /**
      * The average is public: it is displayed next to the pseudo of every participant.
      */
-    Optional<Double> findAverageRatingOfAccount(UUID targetedAccountId);
+    RatingSummary summarizeRatingsOfAccount(UUID targetedAccountId);
 
 }

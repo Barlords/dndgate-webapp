@@ -191,7 +191,7 @@ class WebSocketAccessRevocationIntegrationTest extends ApiIntegrationTestSupport
         String text = "line-" + UUID.randomUUID();
         ResponseEntity<String> sent = call(HttpMethod.POST, "/messages", author.token(),
                 Map.of("adventureId", adventureId.toString(), "content", text));
-        Assertions.assertEquals(200, sent.getStatusCode().value(), sent.getBody());
+        Assertions.assertEquals(201, sent.getStatusCode().value(), sent.getBody());
         return text;
     }
 

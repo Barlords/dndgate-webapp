@@ -80,14 +80,13 @@ public class HistoricalNoteController {
     // PATCH //
 
     @PatchMapping("/{id}")
-    @ResponseStatus(CREATED)
+    @ResponseStatus(OK)
     public HistoricalNoteDto patchHistoricalNote(
             @PathVariable String id,
             @Valid @RequestBody HistoricalNotePatchRequest request) {
         return HistoricalNoteDtoMapper.toDto(
                 historicalNoteUpdaterApi.update(
                         authVerifierService.currentAccountId(),
-                        request.adventureId(),
                         HistoricalNoteDtoMapper.patchRequestToDomain(request).withId(UuidValidator.validate(id))
                 )
         );

@@ -2,6 +2,11 @@ package fr.barlords.dndgateapi.server.adapter;
 
 
 import fr.barlords.dndgateapi.domain.functional.exception.ConcurrentUpdateException;
+import fr.barlords.dndgateapi.domain.functional.exception.account.EmailAlreadyUsedException;
+import fr.barlords.dndgateapi.domain.functional.exception.account.PseudoAlreadyUsedException;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.core.NestedExceptionUtils;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
@@ -13,11 +18,20 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class AccountDatabaseAdapter implements AccountPersistenceSpi {
+
+    private static final Set<String> EMAIL_CONSTRAINTS = Set.of("accounts_email_key", "accounts_email_lower_key");
+
+    private static final Set<String> PSEUDO_CONSTRAINTS = Set.of("accounts_pseudo_key", "accounts_pseudo_lower_key");
+
+    private static final Pattern VIOLATED_CONSTRAINT = Pattern.compile("violates unique constraint \"([^\"]+)\"");
 
     private final AccountRepository repository;
 
@@ -29,7 +43,32 @@ public class AccountDatabaseAdapter implements AccountPersistenceSpi {
             return AccountEntityMapper.toDomain(repository.saveAndFlush(AccountEntityMapper.fromDomain(o)));
         } catch (ObjectOptimisticLockingFailureException e) {
             throw new ConcurrentUpdateException(e);
+        } catch (DataIntegrityViolationException e) {
+            // Two simultaneous registrations: the unique index of the address or of the pseudo refused the second
+            String constraint = constraintName(e);
+            if (EMAIL_CONSTRAINTS.contains(constraint)) {
+                throw new EmailAlreadyUsedException();
+            }
+            if (PSEUDO_CONSTRAINTS.contains(constraint)) {
+                throw new PseudoAlreadyUsedException();
+            }
+            throw e;
         }
+    }
+
+    /**
+     * The name of the constraint that refused the row, never read from the free text of the message: that text also
+     * holds the refused value ("Key (pseudo)=(accounts_email_key)"), which a person chooses.
+     */
+    private static String constraintName(DataIntegrityViolationException e) {
+        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException violation && violation.getConstraintName() != null) {
+                return violation.getConstraintName();
+            }
+        }
+        // Only the quoted name after the fixed wording, never the detail line
+        Matcher matcher = VIOLATED_CONSTRAINT.matcher(String.valueOf(NestedExceptionUtils.getMostSpecificCause(e).getMessage()));
+        return matcher.find() ? matcher.group(1) : null;
     }
 
     @Override

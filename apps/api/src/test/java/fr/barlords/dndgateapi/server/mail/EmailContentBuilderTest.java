@@ -50,6 +50,21 @@ class EmailContentBuilderTest {
         Assertions.assertFalse(mail.html().contains("com//verify"));
     }
 
+    // ================= the notice of a registration attempt =================
+
+    @Test
+    void the_notice_of_an_attempt_names_the_owner_and_carries_no_code_nor_link_to_verify() {
+        EmailContent mail = builder.signupAttempt(Account.builder().pseudo("<b>Gandalf</b>").email("g@middle.earth")
+                .verificationCode("abc123").build());
+
+        Assertions.assertEquals("Tentative d'inscription avec votre adresse", mail.subject());
+        Assertions.assertTrue(mail.html().contains("&lt;b&gt;Gandalf&lt;/b&gt;"), mail.html());
+        Assertions.assertFalse(mail.html().contains("abc123"), mail.html());
+        Assertions.assertFalse(mail.html().contains("verify-email"), mail.html());
+        Assertions.assertFalse(mail.html().contains("validation"), "no invitation to ask for a validation mail: " + mail.html());
+        Assertions.assertTrue(mail.html().contains("href=\"https://dndgate.example.com/login\""), mail.html());
+    }
+
     // ================= the link of the address change mail =================
 
     private Account waitingFor(String pseudo, String newEmail, String code) {

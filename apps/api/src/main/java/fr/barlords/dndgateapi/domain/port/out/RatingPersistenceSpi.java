@@ -17,4 +17,6 @@ public interface RatingPersistenceSpi extends PersistenceSpi<Rating, UUID> {
     Optional<Rating> findByEmitterIdAndTargetedAccountId(UUID emitterId, UUID targetedAccountId);
 
     Optional<Double> computeAverageRatingOfAccount(UUID targetedAccountId);
+
+    long countRatingsOfAccount(UUID targetedAccountId);
 }

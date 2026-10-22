@@ -7,6 +7,7 @@ import fr.barlords.dndgateapi.domain.port.out.RatingPersistenceSpi;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Clock;
 import java.util.UUID;
 
 @Slf4j
@@ -17,6 +18,8 @@ public class RatingCreatorService implements RatingCreatorApi {
 
     private final RatingEligibilityService ratingEligibilityService;
 
+    private final Clock clock;
+
     @Override
     public Rating create(UUID accountId, Rating rating) {
         ratingEligibilityService.verify(accountId, rating.getAccountTargetedId());
@@ -25,7 +28,7 @@ public class RatingCreatorService implements RatingCreatorApi {
             throw new RatingAlreadyExistsException();
         }
 
-        return spi.save(rating.withEmitterId(accountId));
+        return spi.save(rating.withEmitterId(accountId).withCreatedAt(clock.instant()));
     }
 
 }

@@ -1,5 +1,7 @@
 package fr.barlords.dndgateapi.client.controller;
 
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import fr.barlords.dndgateapi.client.dto.planning.AvailabilityCreationRequest;
 import fr.barlords.dndgateapi.client.dto.planning.AvailabilityDto;
@@ -10,12 +12,15 @@ import fr.barlords.dndgateapi.client.mapper.PlanningDtoMapper;
 import fr.barlords.dndgateapi.client.service.AuthVerifierService;
 import fr.barlords.dndgateapi.client.validator.UuidValidator;
 import fr.barlords.dndgateapi.domain.functional.exception.planning.PlanningNotFoundException;
+import fr.barlords.dndgateapi.domain.functional.model.Upserted;
 import fr.barlords.dndgateapi.domain.functional.model.planning.Availability;
+import fr.barlords.dndgateapi.domain.functional.model.planning.Planning;
 import fr.barlords.dndgateapi.domain.port.in.planning.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -70,13 +75,15 @@ public class PlanningController {
                 .orElseThrow(PlanningNotFoundException::new);
     }
 
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Created"),
+            @ApiResponse(responseCode = "200", description = "Updated")})
     @PutMapping
-    @ResponseStatus(CREATED)
-    public PlanningDto putPlanning(@Valid @RequestBody PlanningCreationRequest request) {
-        return PlanningDtoMapper.toDto(
-                planningUpdaterApi.createOrUpdate(
-                        authVerifierService.currentAccountId(),
-                        PlanningDtoMapper.creationRequestToDomain(request)));
+    public ResponseEntity<PlanningDto> putPlanning(@Valid @RequestBody PlanningCreationRequest request) {
+        Upserted<Planning> result = planningUpdaterApi.createOrUpdate(
+                authVerifierService.currentAccountId(),
+                PlanningDtoMapper.creationRequestToDomain(request));
+        return ResponseEntity.status(result.created() ? CREATED : OK).body(PlanningDtoMapper.toDto(result.value()));
     }
 
 
@@ -102,13 +109,15 @@ public class PlanningController {
                 .collect(Collectors.toList());
     }
 
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Created"),
+            @ApiResponse(responseCode = "200", description = "Updated")})
     @PutMapping("/availability")
-    @ResponseStatus(CREATED)
-    public AvailabilityDto putAvailability(@Valid @RequestBody AvailabilityCreationRequest request) {
-        return AvailabilityDtoMapper.toDto(
-                availabilityUpdaterApi.createOrUpdate(
-                        authVerifierService.currentAccountId(),
-                        AvailabilityDtoMapper.creationRequestToDomain(request)));
+    public ResponseEntity<AvailabilityDto> putAvailability(@Valid @RequestBody AvailabilityCreationRequest request) {
+        Upserted<Availability> result = availabilityUpdaterApi.createOrUpdate(
+                authVerifierService.currentAccountId(),
+                AvailabilityDtoMapper.creationRequestToDomain(request));
+        return ResponseEntity.status(result.created() ? CREATED : OK).body(AvailabilityDtoMapper.toDto(result.value()));
     }
 
 }

@@ -51,7 +51,7 @@ public class RatingDatabaseAdapter implements RatingPersistenceSpi {
     @Override
     @Transactional
     public Page<Rating> findByTargetedAccountId(UUID targetedAccountId, PageRequest request) {
-        return PageMapper.toDomain(repository.findAllByTargetId(targetedAccountId, PageMapper.toPageable(request, Sort.by("id"))), request,
+        return PageMapper.toDomain(repository.findAllByTargetId(targetedAccountId, PageMapper.toPageable(request, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")))), request,
                 RatingEntityMapper::toDomain);
     }
 
@@ -65,5 +65,11 @@ public class RatingDatabaseAdapter implements RatingPersistenceSpi {
     @Transactional
     public Optional<Double> computeAverageRatingOfAccount(UUID targetedAccountId) {
         return repository.findAverageRatingByAccountId(targetedAccountId);
+    }
+
+    @Override
+    @Transactional
+    public long countRatingsOfAccount(UUID targetedAccountId) {
+        return repository.countByTargetId(targetedAccountId);
     }
 }

@@ -21,6 +21,8 @@ public interface RatingRepository extends JpaRepository<RatingEntity, UUID> {
 
     Optional<RatingEntity> findByEmitterIdAndTargetId(UUID emitterId, UUID targetId);
 
+    long countByTargetId(UUID targetId);
+
     Page<RatingEntity> findAllByTargetId(UUID targetId, Pageable pageable);
 
     @Query("SELECT AVG(r.rate) FROM RatingEntity r WHERE r.targetId = :accountId")

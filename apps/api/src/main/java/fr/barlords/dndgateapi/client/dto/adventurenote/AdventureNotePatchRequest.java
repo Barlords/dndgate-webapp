@@ -9,11 +9,9 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
-import java.util.UUID;
 
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public record AdventureNotePatchRequest(
-        UUID adventureId,
         @Pattern(regexp = Patterns.NOT_BLANK) @Size(max = 5000) String content,
         @ValidDate LocalDate date,
         NoteVisibility visibility

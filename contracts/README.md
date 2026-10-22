@@ -20,6 +20,10 @@ Ce que le test garantit en plus :
 - les réponses sont du JSON ;
 - aucun couple de routes ne peut désigner la même URL.
 
+## `asyncapi.yaml` : les sujets WebSocket
+
+`asyncapi.yaml` décrit ce que l'API diffuse en WebSocket (STOMP) : `/topic/adventure/chat/{adventureId}` (un `MessageDto`) et `/topic/adventure/webrtc/{adventureId}` (un `WebRTCMessage`), ainsi que la connexion, les droits d'abonnement et leurs limites. Contrairement à `openapi.yaml`, il est **écrit à la main** ; ses charges utiles pointent vers les schémas de `openapi.yaml`, un message n'a donc qu'une définition. `AsyncApiContractTest` vérifie que le fichier suit le code : les adresses des deux sujets sont celles que `AdventureTopics` accepte, chaque charge utile pointe un schéma qui existe dans `openapi.yaml`, la limite d'abonnements (`x-subscriptions-per-connection`) est celle de `limits.websocket.subscriptions-per-connection`, et le serveur de développement (port, chemin de contexte, point d'entrée `/ws` de `WebSocketConfig`) est celui de la configuration ; `BroadcastPayloadTest` vérifie que les contrôleurs diffusent bien ces types. Le texte descriptif (règles d'accès, événements qui coupent un abonnement) n'est pas vérifié. Un nouveau sujet se déclare dans ce fichier.
+
 L'API ne sert pas ce contrat en production (`springdoc.api-docs.enabled=false`) ; en développement : `GET /dndgate-api/v3/api-docs` (ou `.yaml`).
 
 Limites connues : une création de personnage est un `multipart/form-data` dont la partie JSON n'a pas d'`encoding` explicite, et les `DELETE` portent un corps de confirmation ; certains générateurs demandent un réglage pour ces deux cas.

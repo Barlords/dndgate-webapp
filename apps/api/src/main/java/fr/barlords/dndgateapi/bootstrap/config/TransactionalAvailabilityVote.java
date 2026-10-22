@@ -1,6 +1,7 @@
 package fr.barlords.dndgateapi.bootstrap.config;
 
 import fr.barlords.dndgateapi.domain.functional.exception.ConcurrentUpdateException;
+import fr.barlords.dndgateapi.domain.functional.model.Upserted;
 import fr.barlords.dndgateapi.domain.functional.model.planning.Availability;
 import fr.barlords.dndgateapi.domain.port.in.planning.AvailabilityUpdaterApi;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +24,7 @@ public class TransactionalAvailabilityVote implements AvailabilityUpdaterApi {
     private final RetryingTransaction transaction;
 
     @Override
-    public Availability createOrUpdate(UUID accountId, Availability availability) {
+    public Upserted<Availability> createOrUpdate(UUID accountId, Availability availability) {
         return transaction.execute(() -> delegate.createOrUpdate(accountId, availability),
                 DataIntegrityViolationException.class, ConcurrentUpdateException.class);
     }

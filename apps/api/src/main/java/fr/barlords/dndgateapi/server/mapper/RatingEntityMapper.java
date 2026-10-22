@@ -11,6 +11,7 @@ public interface RatingEntityMapper {
                 .emitterId(entity.getEmitterId())
                 .accountTargetedId(entity.getTargetId())
                 .rate(entity.getRate())
+                .createdAt(entity.getCreatedAt())
                 .build();
     }
 
@@ -20,6 +21,7 @@ public interface RatingEntityMapper {
                 .emitterId(domain.getEmitterId())
                 .targetId(domain.getAccountTargetedId())
                 .rate(domain.getRate())
+                .createdAt(domain.getCreatedAt())
                 .build();
     }
 

@@ -1,23 +1,27 @@
 package fr.barlords.dndgateapi.client.controller;
 
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import fr.barlords.dndgateapi.client.dto.PageDto;
 import fr.barlords.dndgateapi.domain.functional.model.pagination.PageRequest;
 
 import fr.barlords.dndgateapi.client.dto.rating.RatingCreationRequest;
 import fr.barlords.dndgateapi.client.dto.rating.RatingDto;
-import fr.barlords.dndgateapi.client.dto.rating.RatingPatchRequest;
+import fr.barlords.dndgateapi.client.dto.rating.RatingMeanDto;
 import fr.barlords.dndgateapi.client.mapper.RatingDtoMapper;
 import fr.barlords.dndgateapi.client.service.AuthVerifierService;
 import fr.barlords.dndgateapi.client.validator.UuidValidator;
 import fr.barlords.dndgateapi.domain.functional.exception.rating.RatingNotFoundException;
+import fr.barlords.dndgateapi.domain.functional.model.Rating;
+import fr.barlords.dndgateapi.domain.functional.model.Upserted;
 import fr.barlords.dndgateapi.domain.port.in.rating.RatingCreatorApi;
 import fr.barlords.dndgateapi.domain.port.in.rating.RatingFinderApi;
-import fr.barlords.dndgateapi.domain.port.in.rating.RatingPatcherApi;
 import fr.barlords.dndgateapi.domain.port.in.rating.RatingUpdaterApi;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -34,8 +38,6 @@ public class RatingController {
     private final AuthVerifierService authVerifierService;
 
     private final RatingCreatorApi ratingCreatorApi;
-
-    private final RatingPatcherApi ratingPatcherApi;
 
     private final RatingUpdaterApi ratingUpdaterApi;
 
@@ -65,9 +67,8 @@ public class RatingController {
 
     @GetMapping("/mean")
     @ResponseStatus(OK)
-    public Double getMeanRateOfAccount(@RequestParam String accountId) {
-        return ratingFinderApi.findAverageRatingOfAccount(UuidValidator.validate(accountId))
-                .orElse(0.0);
+    public RatingMeanDto getMeanRateOfAccount(@RequestParam String accountId) {
+        return RatingDtoMapper.toDto(ratingFinderApi.summarizeRatingsOfAccount(UuidValidator.validate(accountId)));
     }
 
     @PostMapping
@@ -79,22 +80,15 @@ public class RatingController {
                         RatingDtoMapper.creationRequestToDomain(request)));
     }
 
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Created"),
+            @ApiResponse(responseCode = "200", description = "Updated")})
     @PutMapping
-    @ResponseStatus(CREATED)
-    public RatingDto putRating(@Valid @RequestBody RatingCreationRequest request) {
-        return RatingDtoMapper.toDto(
-                ratingUpdaterApi.createOrUpdate(
-                        authVerifierService.currentAccountId(),
-                        RatingDtoMapper.creationRequestToDomain(request)));
-    }
-
-    @PatchMapping("/{id}")
-    @ResponseStatus(OK)
-    public RatingDto patchRate(@PathVariable String id, @Valid @RequestBody RatingPatchRequest request) {
-        return RatingDtoMapper.toDto(
-                ratingPatcherApi.patch(
-                        authVerifierService.currentAccountId(),
-                        RatingDtoMapper.patchRequestToDomain(request).withId(UuidValidator.validate(id))));
+    public ResponseEntity<RatingDto> putRating(@Valid @RequestBody RatingCreationRequest request) {
+        Upserted<Rating> result = ratingUpdaterApi.createOrUpdate(
+                authVerifierService.currentAccountId(),
+                RatingDtoMapper.creationRequestToDomain(request));
+        return ResponseEntity.status(result.created() ? CREATED : OK).body(RatingDtoMapper.toDto(result.value()));
     }
 
 }

@@ -1,5 +1,6 @@
 package fr.barlords.dndgateapi.domain.functional.service.planning;
 
+import fr.barlords.dndgateapi.domain.functional.model.Upserted;
 import fr.barlords.dndgateapi.domain.functional.model.planning.Planning;
 import fr.barlords.dndgateapi.domain.functional.service.adventure.AdventureOwnerVerifierService;
 import fr.barlords.dndgateapi.domain.port.in.planning.PlanningUpdaterApi;
@@ -18,14 +19,12 @@ public class PlanningUpdaterService implements PlanningUpdaterApi {
     private final AdventureOwnerVerifierService adventureOwnerVerifierService;
 
     @Override
-    public Planning createOrUpdate(UUID accountId, Planning planning) {
+    public Upserted<Planning> createOrUpdate(UUID accountId, Planning planning) {
         adventureOwnerVerifierService.verify(accountId, planning.getAdventureId());
 
-        Planning toSave = spi.findByAdventureId(planning.getAdventureId())
-                .map(existing -> existing.withPropositionDates(planning.getPropositionDates()))
-                .orElse(planning);
-
-        return spi.save(toSave);
+        return spi.findByAdventureId(planning.getAdventureId())
+                .map(existing -> Upserted.updated(spi.save(existing.withPropositionDates(planning.getPropositionDates()))))
+                .orElseGet(() -> Upserted.created(spi.save(planning)));
     }
 
 }

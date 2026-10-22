@@ -78,7 +78,12 @@ class WebSocketSecurityIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     private CompletableFuture<String> subscribe(StompSession session, String destination) {
-        CompletableFuture<String> received = new CompletableFuture<>();
+        return subscribeFrame(session, destination).thenApply(String::valueOf);
+    }
+
+    /** The frame as the JSON object the client reads off the wire. */
+    private CompletableFuture<Map<?, ?>> subscribeFrame(StompSession session, String destination) {
+        CompletableFuture<Map<?, ?>> received = new CompletableFuture<>();
         session.subscribe(destination, new StompFrameHandler() {
             @Override
             public Type getPayloadType(StompHeaders headers) {
@@ -87,7 +92,7 @@ class WebSocketSecurityIntegrationTest extends ApiIntegrationTestSupport {
 
             @Override
             public void handleFrame(StompHeaders headers, Object payload) {
-                received.complete(String.valueOf(payload));
+                received.complete((Map<?, ?>) payload);
             }
         });
         return received;
@@ -146,16 +151,22 @@ class WebSocketSecurityIntegrationTest extends ApiIntegrationTestSupport {
         UUID adventureId = createAdventure(owner, "PUBLIC");
 
         StompSession session = connectAuthenticated(owner.token());
-        CompletableFuture<String> received = subscribe(session, "/topic/adventure/chat/" + adventureId);
+        CompletableFuture<Map<?, ?>> received = subscribeFrame(session, "/topic/adventure/chat/" + adventureId);
         // let the subscription be registered on the broker before publishing
         TimeUnit.MILLISECONDS.sleep(500);
 
         var sent = call(HttpMethod.POST, "/messages", owner.token(), Map.of("adventureId", adventureId.toString(),
                 "content", "hello table"));
-        Assertions.assertEquals(200, sent.getStatusCode().value(), sent.getBody());
+        Assertions.assertEquals(201, sent.getStatusCode().value(), sent.getBody());
 
-        String payload = received.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
-        Assertions.assertTrue(payload.contains("hello table"), payload);
+        Map<?, ?> frame = received.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        String payload = String.valueOf(frame);
+        Assertions.assertEquals("hello table", frame.get("content"), payload);
+        // the topic carries the MessageDto the route answers with: same identifier, sender and date
+        var created = body(sent);
+        Assertions.assertEquals(created.get("id").asString(), frame.get("id"), payload);
+        Assertions.assertEquals(created.get("senderId").asString(), frame.get("senderId"), payload);
+        Assertions.assertEquals(created.get("sendDate").asString(), frame.get("sendDate"), payload);
     }
 
     @Test

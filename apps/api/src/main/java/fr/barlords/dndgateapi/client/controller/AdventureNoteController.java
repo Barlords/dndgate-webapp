@@ -80,14 +80,13 @@ public class AdventureNoteController {
     // PATCH //
 
     @PatchMapping("/{id}")
-    @ResponseStatus(CREATED)
+    @ResponseStatus(OK)
     public AdventureNoteDto patchAdventureNote(
             @PathVariable String id,
             @Valid @RequestBody AdventureNotePatchRequest request) {
         return AdventureNoteDtoMapper.toDto(
                 adventureNoteUpdaterApi.update(
                         authVerifierService.currentAccountId(),
-                        request.adventureId(),
                         AdventureNoteDtoMapper.patchRequestToDomain(request).withId(UuidValidator.validate(id))
                 )
         );

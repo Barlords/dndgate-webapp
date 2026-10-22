@@ -61,7 +61,7 @@ class AccountUpdateIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(403, update(account, attack).getStatusCode().value());
 
         Assertions.assertEquals(200, login(account.pseudo(), account.password()), "the real password still works");
-        Assertions.assertEquals(404, login(account.pseudo(), "thief-password"));
+        Assertions.assertEquals(401, login(account.pseudo(), "thief-password"));
         Assertions.assertEquals(200, me(account.token()), "403 and not 401: the session stays open");
         Assertions.assertEquals(account.pseudo() + "@test.fr",
                 jdbc.queryForObject("select email from accounts where id = ?", String.class, account.id()));
@@ -137,7 +137,7 @@ class AccountUpdateIntegrationTest extends ApiIntegrationTestSupport {
 
         Assertions.assertEquals(401, me(account.token()));
         Assertions.assertEquals(401, me(otherDevice.token()));
-        Assertions.assertEquals(404, login(account.pseudo(), account.password()));
+        Assertions.assertEquals(401, login(account.pseudo(), account.password()));
         Assertions.assertEquals(200, login(account.pseudo(), "another-password"));
     }
 

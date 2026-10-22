@@ -2,20 +2,19 @@ package fr.barlords.dndgateapi.bootstrap.config.domain;
 
 import fr.barlords.dndgateapi.bootstrap.config.RetryingTransaction;
 import fr.barlords.dndgateapi.bootstrap.config.TransactionalRatingUpdater;
-import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
 import fr.barlords.dndgateapi.domain.functional.service.rating.RatingCreatorService;
 import fr.barlords.dndgateapi.domain.functional.service.rating.RatingEligibilityService;
 import fr.barlords.dndgateapi.domain.functional.service.rating.RatingFinderService;
-import fr.barlords.dndgateapi.domain.functional.service.rating.RatingPatcherService;
 import fr.barlords.dndgateapi.domain.functional.service.rating.RatingUpdaterService;
 import fr.barlords.dndgateapi.domain.port.in.rating.RatingCreatorApi;
 import fr.barlords.dndgateapi.domain.port.in.rating.RatingFinderApi;
-import fr.barlords.dndgateapi.domain.port.in.rating.RatingPatcherApi;
 import fr.barlords.dndgateapi.domain.port.in.rating.RatingUpdaterApi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.RatingPersistenceSpi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.time.Clock;
 
 @Configuration
 public class RatingServiceConfiguration {
@@ -30,9 +29,10 @@ public class RatingServiceConfiguration {
     @Bean
     public RatingCreatorApi ratingCreatorApi(
             RatingPersistenceSpi spi,
-            RatingEligibilityService ratingEligibilityService
+            RatingEligibilityService ratingEligibilityService,
+            Clock clock
     ) {
-        return new RatingCreatorService(spi, ratingEligibilityService);
+        return new RatingCreatorService(spi, ratingEligibilityService, clock);
     }
 
     @Bean
@@ -43,20 +43,13 @@ public class RatingServiceConfiguration {
     }
 
     @Bean
-    public RatingPatcherApi ratingPatcherApi(
-            RatingPersistenceSpi spi,
-            CurrentAccountService currentAccountService
-    ) {
-        return new RatingPatcherService(spi, currentAccountService);
-    }
-
-    @Bean
     public RatingUpdaterApi ratingUpdaterApi(
             RatingPersistenceSpi spi,
             RatingEligibilityService ratingEligibilityService,
-            RetryingTransaction transaction
+            RetryingTransaction transaction,
+            Clock clock
     ) {
-        return new TransactionalRatingUpdater(new RatingUpdaterService(spi, ratingEligibilityService), transaction);
+        return new TransactionalRatingUpdater(new RatingUpdaterService(spi, ratingEligibilityService, clock), transaction);
     }
 
 }

@@ -54,7 +54,7 @@ public class AdventureController {
         );
     }
     @PatchMapping("/{id}")
-    @ResponseStatus(CREATED)
+    @ResponseStatus(OK)
     public AdventureDto updateAdventure(@PathVariable String id,
                                        @Valid @RequestBody AdventurePatchRequest request) {
         return AdventureDtoMapper.toDto(
@@ -126,7 +126,7 @@ public class AdventureController {
     }
 
     @PostMapping("/{id}/invitations/{pseudo}")
-    @ResponseStatus(OK)
+    @ResponseStatus(ACCEPTED)
     public void invitePlayer(
             @PathVariable String id,
             @PathVariable String pseudo

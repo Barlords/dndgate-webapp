@@ -2,6 +2,7 @@ package fr.barlords.dndgateapi.bootstrap.config;
 
 import fr.barlords.dndgateapi.domain.port.in.account.LoginFailureCleanerApi;
 import fr.barlords.dndgateapi.domain.port.in.account.SessionCleanerApi;
+import fr.barlords.dndgateapi.domain.port.in.account.SignupNoticeCleanerApi;
 import fr.barlords.dndgateapi.domain.port.in.adventure.InvitationLogCleanerApi;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
@@ -19,6 +20,8 @@ public class SessionCleanupScheduler {
 
     private final LoginFailureCleanerApi loginFailureCleanerApi;
 
+    private final SignupNoticeCleanerApi signupNoticeCleanerApi;
+
     @Scheduled(cron = "${security.session.cleanup-cron:0 30 3 * * *}")
     public void purgeExpiredSessions() {
         sessionCleanerApi.purgeExpired();
@@ -32,6 +35,11 @@ public class SessionCleanupScheduler {
     @Scheduled(cron = "${security.session.cleanup-cron:0 30 3 * * *}")
     public void purgeOldLoginFailures() {
         loginFailureCleanerApi.purgeExpired();
+    }
+
+    @Scheduled(cron = "${security.session.cleanup-cron:0 30 3 * * *}")
+    public void purgeOldSignupNotices() {
+        signupNoticeCleanerApi.purgeExpired();
     }
 
 }

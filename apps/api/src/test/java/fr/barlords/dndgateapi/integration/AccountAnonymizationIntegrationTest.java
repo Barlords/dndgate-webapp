@@ -98,7 +98,7 @@ class AccountAnonymizationIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(401, status(HttpMethod.GET, "/accounts/me", account, null));
         Assertions.assertEquals(401, call(HttpMethod.POST, "/accounts/refresh", null,
                 Map.of("refreshToken", account.refreshToken())).getStatusCode().value());
-        Assertions.assertEquals(404, call(HttpMethod.POST, "/accounts/login", null,
+        Assertions.assertEquals(401, call(HttpMethod.POST, "/accounts/login", null,
                 Map.of("pseudo", account.pseudo(), "password", account.password())).getStatusCode().value());
     }
 
@@ -115,9 +115,13 @@ class AccountAnonymizationIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount account = registerAndLogin();
         deleteAccount(account);
 
-        Assertions.assertEquals(201, call(HttpMethod.POST, "/accounts", null,
+        Assertions.assertEquals(202, call(HttpMethod.POST, "/accounts", null,
                 Map.of("email", account.pseudo() + "@test.fr", "password", "password123", "pseudo", account.pseudo()))
                 .getStatusCode().value());
+
+        // Signup always answers 202: only the database tells that the account was really created again
+        Assertions.assertEquals(1, jdbc.queryForObject("select count(*) from accounts where pseudo = ?", Integer.class, account.pseudo()));
+        Assertions.assertEquals(1, jdbc.queryForObject("select count(*) from accounts where email = ?", Integer.class, account.pseudo() + "@test.fr"));
     }
 
     @Test
@@ -279,7 +283,7 @@ class AccountAnonymizationIntegrationTest extends ApiIntegrationTestSupport {
 
         deleteAccount(player);
 
-        Assertions.assertEquals("4.0", call(HttpMethod.GET, "/ratings/mean?accountId=" + master.id(),
+        Assertions.assertEquals("{\"average\":4.0,\"count\":1}", call(HttpMethod.GET, "/ratings/mean?accountId=" + master.id(),
                 master.token(), null).getBody());
     }
 }

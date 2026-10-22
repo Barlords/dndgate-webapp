@@ -108,7 +108,7 @@ abstract class ApiIntegrationTestSupport {
         String email = pseudo + "@test.fr";
         String password = "password-" + suffix;
 
-        Assertions.assertEquals(201, call(HttpMethod.POST, "/accounts", null,
+        Assertions.assertEquals(202, call(HttpMethod.POST, "/accounts", null,
                 Map.of("email", email, "password", password, "pseudo", pseudo)).getStatusCode().value());
 
         String code = jdbc.queryForObject("select verification_code from accounts where pseudo = ?", String.class, pseudo);

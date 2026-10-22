@@ -154,7 +154,7 @@ class MasterTransferIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(stranger.id(), ownerId());
         Assertions.assertTrue(players().contains(master.id()), "the former master is now a player");
         Assertions.assertFalse(adventure().get("masterVacant").asBoolean());
-        Assertions.assertEquals(201, status(stranger, HttpMethod.PATCH, adventurePath, Map.of("name", "Renamed")));
+        Assertions.assertEquals(200, status(stranger, HttpMethod.PATCH, adventurePath, Map.of("name", "Renamed")));
         Assertions.assertEquals(403, status(master, HttpMethod.PATCH, adventurePath, Map.of("name", "Back")));
     }
 
@@ -295,7 +295,7 @@ class MasterTransferIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertFalse(players().contains(first.id()));
         Assertions.assertTrue(players().contains(master.id()), "the former master takes the seat that was freed");
         Assertions.assertFalse(adventure().get("masterVacant").asBoolean());
-        Assertions.assertEquals(201, status(first, HttpMethod.PATCH, adventurePath, Map.of("name", "Reclaimed")));
+        Assertions.assertEquals(200, status(first, HttpMethod.PATCH, adventurePath, Map.of("name", "Reclaimed")));
     }
 
     @Test

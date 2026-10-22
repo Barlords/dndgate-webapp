@@ -2,6 +2,7 @@ package fr.barlords.dndgateapi.bootstrap.config;
 
 import fr.barlords.dndgateapi.domain.functional.exception.rating.RatingAlreadyExistsException;
 import fr.barlords.dndgateapi.domain.functional.model.Rating;
+import fr.barlords.dndgateapi.domain.functional.model.Upserted;
 import fr.barlords.dndgateapi.domain.port.in.rating.RatingUpdaterApi;
 import lombok.RequiredArgsConstructor;
 
@@ -21,7 +22,7 @@ public class TransactionalRatingUpdater implements RatingUpdaterApi {
     private final RetryingTransaction transaction;
 
     @Override
-    public Rating createOrUpdate(UUID accountId, Rating rating) {
+    public Upserted<Rating> createOrUpdate(UUID accountId, Rating rating) {
         return transaction.execute(() -> delegate.createOrUpdate(accountId, rating), RatingAlreadyExistsException.class);
     }
 }

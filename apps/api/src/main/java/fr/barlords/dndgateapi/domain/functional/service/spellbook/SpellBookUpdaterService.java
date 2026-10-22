@@ -21,8 +21,8 @@ public class SpellBookUpdaterService implements SpellBookUpdaterApi {
         SpellBook previousSpellBook = spellBookOwnerVerifierService.verify(accountId, spellBook.getId());
 
         SpellBook patchedSpellBook = previousSpellBook
-                .withName(spellBook.getName())
-                .withDescription(spellBook.getDescription());
+                .withName(spellBook.getName() != null ? spellBook.getName() : previousSpellBook.getName())
+                .withDescription(spellBook.getDescription() != null ? spellBook.getDescription() : previousSpellBook.getDescription());
 
         return spi.save(patchedSpellBook);
     }

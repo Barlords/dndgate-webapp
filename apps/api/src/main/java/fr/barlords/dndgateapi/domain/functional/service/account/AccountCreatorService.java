@@ -1,7 +1,9 @@
 package fr.barlords.dndgateapi.domain.functional.service.account;
 
 import fr.barlords.dndgateapi.domain.functional.exception.EmailNotSendException;
+import fr.barlords.dndgateapi.domain.functional.exception.account.EmailAlreadyUsedException;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
+import fr.barlords.dndgateapi.domain.port.out.SignupNoticeLogSpi;
 import fr.barlords.dndgateapi.domain.functional.service.RandomStringGenerator;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountCreatorApi;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
@@ -11,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.Optional;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -29,16 +33,38 @@ public class AccountCreatorService implements AccountCreatorApi {
     /** How long the code sent by e-mail works. */
     private final Duration verificationCodeTtl;
 
-    @Override
-    public Account create(Account account) {
-        accountCheckerService.pseudoIsAvailable(account);
-        accountCheckerService.emailIsAvailable(account);
+    private final SignupNoticeLogSpi noticeLog;
 
-        Account toSave = accountModifierService.encodePassword(account)
+    /** How long a notice blocks the next one for the same address. */
+    private final Duration noticeWindow;
+
+    @Override
+    public void create(Account account) {
+        // The pseudo comes first and is public: a taken pseudo answers 409 whatever the address, so the answer
+        // can never tell whether the address is registered (checking the address first would be an oracle)
+        accountCheckerService.pseudoIsAvailable(account);
+
+        // Hashed before the address is looked at: both answers cost the same time, the hash being the slow part
+        Account encoded = accountModifierService.encodePassword(account);
+
+        Optional<Account> owner = spi.findByEmail(account.getEmail());
+        if (owner.isPresent()) {
+            tellTheOwner(owner.get());
+            return;
+        }
+
+        Account toSave = encoded
                 .withVerificationCode(RandomStringGenerator.generateAlphanumericString(Account.VERIFICATION_CODE_LENGTH))
                 .withVerificationExpiresAt(clock.instant().plus(verificationCodeTtl));
 
-        Account savedAccount = spi.save(toSave);
+        Account savedAccount;
+        try {
+            savedAccount = spi.save(toSave);
+        } catch (EmailAlreadyUsedException e) {
+            // Somebody registered the same address between the look-up and the insert: same answer as above
+            spi.findByEmail(account.getEmail()).ifPresent(this::tellTheOwner);
+            return;
+        }
 
         try {
             emailSenderSpi.sendAccountValidationEmail(savedAccount);
@@ -47,8 +73,19 @@ public class AccountCreatorService implements AccountCreatorApi {
             // cannot log in. The person can ask for the mail again.
             log.warn("The validation e-mail of account {} could not be sent", savedAccount.getId(), e);
         }
+    }
 
-        return savedAccount;
+    /** At most one notice per address per window: the answer to the caller never depends on it. */
+    private void tellTheOwner(Account owner) {
+        Instant now = clock.instant();
+        if (!noticeLog.claim(owner.getEmail(), now, now.minus(noticeWindow))) {
+            return;
+        }
+        try {
+            emailSenderSpi.sendSignupAttemptEmail(owner);
+        } catch (EmailNotSendException e) {
+            log.warn("The notice of a registration attempt for account {} could not be sent", owner.getId(), e);
+        }
     }
 
 }
