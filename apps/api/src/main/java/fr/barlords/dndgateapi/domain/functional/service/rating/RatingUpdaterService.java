@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.rating;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.model.Rating;
 import fr.barlords.dndgateapi.domain.port.in.rating.RatingUpdaterApi;
 import fr.barlords.dndgateapi.domain.port.out.RatingPersistenceSpi;
@@ -25,7 +24,7 @@ public class RatingUpdaterService implements RatingUpdaterApi {
                 .map(previous -> previous.withRate(rating.getRate()))
                 .orElseGet(() -> rating.withEmitterId(accountId));
 
-        return spi.save(toSave).getOrElseThrow(DataNotSaveException::new);
+        return spi.save(toSave);
     }
 
 }

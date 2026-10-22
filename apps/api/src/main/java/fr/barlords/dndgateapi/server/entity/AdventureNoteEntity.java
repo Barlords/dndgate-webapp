@@ -36,4 +36,9 @@ public class AdventureNoteEntity implements Serializable {
     @Column(name = "visibility", nullable = false)
     @Enumerated(EnumType.STRING)
     private NoteVisibility noteVisibility;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
 }

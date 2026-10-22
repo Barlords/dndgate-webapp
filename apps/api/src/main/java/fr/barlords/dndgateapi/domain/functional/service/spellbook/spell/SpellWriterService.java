@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.spellbook.spell;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.QuantityLimitExceededException;
 import fr.barlords.dndgateapi.domain.functional.model.SpellBook;
 import fr.barlords.dndgateapi.domain.functional.service.spellbook.SpellBookOwnerVerifierService;
@@ -34,7 +33,6 @@ public class SpellWriterService implements SpellWriterApi {
         }
         updatedSpellList.add(spellIndex);
 
-        return spi.save(spellBook.withSpellList(updatedSpellList))
-                .getOrElseThrow(DataNotSaveException::new);
+        return spi.save(spellBook.withSpellList(updatedSpellList));
     }
 }

@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.account;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.EmailNotSendException;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.functional.service.RandomStringGenerator;
@@ -50,8 +49,7 @@ public class AccountVerificationResenderService implements AccountVerificationRe
     private void sendNewCode(Account account) {
         Account renewed = spi.save(account
                         .withVerificationCode(RandomStringGenerator.generateAlphanumericString(Account.VERIFICATION_CODE_LENGTH))
-                        .withVerificationExpiresAt(clock.instant().plus(codeTtl)))
-                .getOrElseThrow(DataNotSaveException::new);
+                        .withVerificationExpiresAt(clock.instant().plus(codeTtl)));
 
         try {
             emailingSpi.sendAccountValidationEmail(renewed);

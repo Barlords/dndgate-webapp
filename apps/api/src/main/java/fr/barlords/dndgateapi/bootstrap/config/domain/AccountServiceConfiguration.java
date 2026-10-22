@@ -1,6 +1,7 @@
 package fr.barlords.dndgateapi.bootstrap.config.domain;
 
 import fr.barlords.dndgateapi.domain.port.out.AuditSpi;
+import fr.barlords.dndgateapi.domain.port.out.MasterClaimPersistenceSpi;
 import fr.barlords.dndgateapi.domain.functional.service.adventure.master.MasterTransferNotifier;
 
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
@@ -13,6 +14,7 @@ import fr.barlords.dndgateapi.domain.port.out.LoginFailureSpi;
 import fr.barlords.dndgateapi.domain.port.out.PasswordHasherSpi;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
 import fr.barlords.dndgateapi.bootstrap.config.TransactionalAccountAnonymizer;
+import fr.barlords.dndgateapi.bootstrap.config.TransactionalAccountUpdater;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.OpaqueTokenSpi;
 import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
@@ -20,6 +22,7 @@ import fr.barlords.dndgateapi.domain.port.out.SessionPersistenceSpi;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -65,6 +68,7 @@ public class AccountServiceConfiguration {
     public AccountAnonymizerApi accountAnonymizerApi(
             AccountPersistenceSpi accounts,
             AdventurePersistenceSpi adventures,
+            MasterClaimPersistenceSpi masterClaims,
             SpellBookPersistenceSpi spellBooks,
             PasswordHasherSpi passwordHasher,
             OpaqueTokenSpi opaqueTokenSpi,
@@ -73,11 +77,13 @@ public class AccountServiceConfiguration {
             MasterTransferNotifier masterTransferNotifier,
             Clock clock,
             AuditSpi audit,
-            LoginFailureSpi loginFailures
+            LoginFailureSpi loginFailures,
+            PlatformTransactionManager transactionManager
     ) {
         return new TransactionalAccountAnonymizer(new AccountAnonymizerService(
-                accounts, adventures, spellBooks, passwordHasher, opaqueTokenSpi, accountPasswordVerifierService,
-                accountSessionRevokerApi, masterTransferNotifier, clock, audit, loginFailures));
+                accounts, adventures, masterClaims, spellBooks, passwordHasher, opaqueTokenSpi,
+                accountPasswordVerifierService,
+                accountSessionRevokerApi, masterTransferNotifier, clock, audit, loginFailures), transactionManager);
     }
 
     @Bean
@@ -97,10 +103,12 @@ public class AccountServiceConfiguration {
             AccountSessionRevokerApi accountSessionRevokerApi,
             EmailingSpi emailingSpi,
             Clock clock,
-            @Value("${security.verification.ttl:PT24H}") Duration emailChangeCodeTtl
+            @Value("${security.verification.ttl:PT24H}") Duration emailChangeCodeTtl,
+            PlatformTransactionManager transactionManager
     ) {
-        return new AccountUpdaterService(spi, currentAccountService, accountCheckerService, accountModifierService,
-                accountPasswordVerifierService, accountSessionRevokerApi, emailingSpi, clock, emailChangeCodeTtl);
+        return new TransactionalAccountUpdater(new AccountUpdaterService(spi, currentAccountService, accountCheckerService,
+                accountModifierService, accountPasswordVerifierService, accountSessionRevokerApi, emailingSpi, clock,
+                emailChangeCodeTtl), transactionManager);
     }
 
     @Bean

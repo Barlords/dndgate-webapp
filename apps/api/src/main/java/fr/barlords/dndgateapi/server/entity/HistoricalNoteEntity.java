@@ -31,4 +31,9 @@ public class HistoricalNoteEntity implements Serializable {
 
     @Column(name = "date", nullable = false)
     private LocalDate date;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
 }

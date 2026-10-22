@@ -2,7 +2,6 @@ package fr.barlords.dndgateapi.domain.functional.service.account;
 
 import fr.barlords.dndgateapi.domain.port.out.AuditSpi;
 import fr.barlords.dndgateapi.domain.port.out.LoginFailureSpi;
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.AccountNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.WrongPasswordException;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
@@ -11,10 +10,13 @@ import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.functional.service.adventure.master.MasterTransferNotifier;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureStatus;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureVisibility;
+import fr.barlords.dndgateapi.domain.functional.model.adventure.master.MasterClaim;
+import fr.barlords.dndgateapi.domain.functional.model.adventure.master.MasterClaimStatus;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountAnonymizerApi;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountSessionRevokerApi;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.MasterClaimPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.OpaqueTokenSpi;
 import fr.barlords.dndgateapi.domain.port.out.PasswordHasherSpi;
 import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
@@ -24,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -37,6 +40,8 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
     private final AccountPersistenceSpi accounts;
 
     private final AdventurePersistenceSpi adventures;
+
+    private final MasterClaimPersistenceSpi masterClaims;
 
     private final SpellBookPersistenceSpi spellBooks;
 
@@ -58,22 +63,41 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
 
     @Override
     public void anonymize(UUID accountId, String password, ClientAddress client) {
+        verify(accountId, password, client).ifPresent(this::apply);
+    }
+
+    /**
+     * First step of {@link #anonymize}: reads the account and checks the password (a wrong one is counted as a failed
+     * login), so that it can run before the transaction of the anonymization opens.
+     *
+     * @return the account to anonymize, or nothing when it already is (its last sessions are ended)
+     */
+    public Optional<Account> verify(UUID accountId, String password, ClientAddress client) {
         Account account = accounts.findById(accountId)
                 .orElseThrow(AccountNotFoundException::new);
 
         if (account.isAnonymized()) {
             sessionRevoker.logoutAll(accountId);
-            return;
+            return Optional.empty();
         }
 
         passwordVerifier.verify(account, password, client, WrongPasswordException::new);
+        return Optional.of(account);
+    }
+
+    /**
+     * Second step of {@link #anonymize}, to run in one transaction. The account keeps the version read by
+     * {@link #verify}: if it changed since, its save is refused and nothing is kept.
+     */
+    public void apply(Account account) {
+        UUID accountId = account.getId();
 
         abortOwnedAdventuresThatHaveNotStarted(accountId);
         freeSeatsInAdventuresThatHaveNotStarted(accountId);
+        cancelOpenMasterClaims(account);
         deleteSpellBooks(accountId);
 
-        accounts.save(anonymousVersionOf(account))
-                .getOrElseThrow(DataNotSaveException::new);
+        accounts.save(anonymousVersionOf(account));
 
         loginFailures.deleteByAccount(accountId);
 
@@ -105,12 +129,10 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
             if (adventure.isOpenToNewPlayers()) {
                 adventures.save(adventure
                                 .withStatus(AdventureStatus.ABORT)
-                                .withVisibility(AdventureVisibility.PRIVATE))
-                        .getOrElseThrow(DataNotSaveException::new);
+                                .withVisibility(AdventureVisibility.PRIVATE));
             } else if (adventure.isTransferable() && !adventure.isMasterVacant()) {
                 // A running adventure goes on: the players can invite a new master or vote for one among them
-                Adventure vacant = adventures.save(adventure.withMasterVacantSince(clock.instant()))
-                        .getOrElseThrow(DataNotSaveException::new);
+                Adventure vacant = adventures.save(adventure.withMasterVacantSince(clock.instant()));
                 masterTransferNotifier.masterAccountDeleted(vacant);
             }
         }
@@ -122,9 +144,23 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
             if (adventure.isOpenToNewPlayers()) {
                 List<UUID> players = new ArrayList<>(adventure.getPlayers());
                 players.remove(accountId);
-                adventures.save(adventure.withPlayers(players))
-                        .getOrElseThrow(DataNotSaveException::new);
+                adventures.save(adventure.withPlayers(players));
             }
+        }
+    }
+
+    /** An account that no longer exists cannot become game master: its votes end, like a voluntary cancel. */
+    private void cancelOpenMasterClaims(Account account) {
+        for (MasterClaim claim : masterClaims.findOpenByCandidateId(account.getId())) {
+            masterClaims.save(claim.withStatus(MasterClaimStatus.CANCELLED));
+
+            adventures.findById(claim.getAdventureId()).ifPresent(adventure -> {
+                List<UUID> voters = adventure.getPlayers().stream()
+                        .filter(player -> !player.equals(account.getId()))
+                        .toList();
+                // The mails leave after the commit, with the pseudo as it is now
+                masterTransferNotifier.claimCancelled(adventure, account.getId(), voters);
+            });
         }
     }
 

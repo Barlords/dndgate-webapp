@@ -5,7 +5,6 @@ import fr.barlords.dndgateapi.domain.functional.model.pagination.PageRequest;
 import fr.barlords.dndgateapi.server.mapper.PageMapper;
 import org.springframework.data.domain.Sort;
 
-import fr.barlords.dndgateapi.domain.ApplicationError;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureConcurrentModificationException;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
@@ -14,7 +13,6 @@ import fr.barlords.dndgateapi.server.repository.AdventureNoteRepository;
 import fr.barlords.dndgateapi.server.repository.AdventureRepository;
 import fr.barlords.dndgateapi.server.repository.GameCharacterRepository;
 import fr.barlords.dndgateapi.server.repository.HistoricalNoteRepository;
-import io.vavr.control.Either;
 import lombok.RequiredArgsConstructor;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
@@ -23,8 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import static io.vavr.API.Try;
 
 @Service
 @RequiredArgsConstructor
@@ -43,12 +39,13 @@ public class AdventureDatabaseAdapter implements AdventurePersistenceSpi {
 
     @Override
     @Transactional
-    public Either<ApplicationError, Adventure> save(Adventure o) {
+    public Adventure save(Adventure o) {
         // Flushed here so that a concurrent change is detected now, not later when the transaction commits
-        return Try(() -> repository.saveAndFlush(AdventureEntityMapper.fromDomain(o)))
-                .toEither()
-                .mapLeft(throwable -> failure(o, throwable))
-                .map(AdventureEntityMapper::toDomain);
+        try {
+            return AdventureEntityMapper.toDomain(repository.saveAndFlush(AdventureEntityMapper.fromDomain(o)));
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new AdventureConcurrentModificationException(e);
+        }
     }
 
     @Override
@@ -113,13 +110,6 @@ public class AdventureDatabaseAdapter implements AdventurePersistenceSpi {
     @Transactional
     public Adventure update(Adventure o) {
         return AdventureEntityMapper.toDomain(repository.saveAndFlush(AdventureEntityMapper.fromDomain(o)));
-    }
-
-    private ApplicationError failure(Adventure adventure, Throwable throwable) {
-        if (throwable instanceof ObjectOptimisticLockingFailureException) {
-            throw new AdventureConcurrentModificationException(throwable);
-        }
-        return new ApplicationError("Error while writing to the database", null, adventure, throwable);
     }
 
     @Override

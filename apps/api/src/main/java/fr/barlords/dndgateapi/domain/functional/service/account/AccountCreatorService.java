@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.account;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.EmailNotSendException;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.functional.service.RandomStringGenerator;
@@ -39,8 +38,7 @@ public class AccountCreatorService implements AccountCreatorApi {
                 .withVerificationCode(RandomStringGenerator.generateAlphanumericString(Account.VERIFICATION_CODE_LENGTH))
                 .withVerificationExpiresAt(clock.instant().plus(verificationCodeTtl));
 
-        Account savedAccount = spi.save(toSave)
-                .getOrElseThrow(DataNotSaveException::new);
+        Account savedAccount = spi.save(toSave);
 
         try {
             emailSenderSpi.sendAccountValidationEmail(savedAccount);

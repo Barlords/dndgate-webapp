@@ -46,4 +46,8 @@ public class GameCharacterEntity implements Serializable {
     @Column(name = "picture_path", nullable = false)
     private String picturePath;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
 }

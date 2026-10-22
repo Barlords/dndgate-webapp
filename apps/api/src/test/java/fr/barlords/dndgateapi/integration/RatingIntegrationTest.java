@@ -1,8 +1,12 @@
 package fr.barlords.dndgateapi.integration;
 
+import fr.barlords.dndgateapi.domain.functional.exception.rating.RatingAlreadyExistsException;
+import fr.barlords.dndgateapi.domain.functional.model.Rating;
+import fr.barlords.dndgateapi.domain.port.out.RatingPersistenceSpi;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 
@@ -33,6 +37,9 @@ class RatingIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(200, call(HttpMethod.POST, "/adventures/" + adventureId + "/join", player.token(), null)
                 .getStatusCode().value());
     }
+
+    @Autowired
+    private RatingPersistenceSpi ratings;
 
     private void startAdventure() {
         Assertions.assertEquals(200, call(HttpMethod.PUT, "/adventures/" + adventureId + "/status", master.token(),
@@ -156,6 +163,18 @@ class RatingIntegrationTest extends ApiIntegrationTestSupport {
         // nothing given from the master to the player yet
         String missing = "/ratings/between?emitterId=" + master.id() + "&targetedAccountId=" + player.id();
         Assertions.assertEquals(404, call(HttpMethod.GET, missing, master.token(), null).getStatusCode().value());
+    }
+
+    @Test
+    void a_second_rating_slipping_past_the_check_is_stopped_by_the_database() {
+        // what two simultaneous requests do: both found no rating, both write
+        ratings.save(Rating.builder().emitterId(player.id()).accountTargetedId(master.id()).rate(4).build());
+
+        Assertions.assertThrows(RatingAlreadyExistsException.class,
+                () -> ratings.save(Rating.builder().emitterId(player.id()).accountTargetedId(master.id()).rate(2).build()));
+
+        Assertions.assertEquals(1, jdbc.queryForObject("select count(*) from rating where emitter_id = ? and target_id = ?",
+                Integer.class, player.id(), master.id()));
     }
 
     @Test

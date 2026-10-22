@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.historicnote;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.QuantityLimitExceededException;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.note.HistoricalNote;
@@ -31,7 +30,6 @@ public class HistoricalNoteCreatorService implements HistoricalNoteCreatorApi {
             throw QuantityLimitExceededException.historicalNotes(limits.historicalNotesPerAdventure());
         }
 
-        return spi.save(historicalNote.withAdventure(adventure))
-                .getOrElseThrow(DataNotSaveException::new);
+        return spi.save(historicalNote.withAdventure(adventure));
     }
 }

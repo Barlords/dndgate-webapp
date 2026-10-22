@@ -1,12 +1,12 @@
 package fr.barlords.dndgateapi.server.adapter;
 
-import fr.barlords.dndgateapi.domain.ApplicationError;
+import fr.barlords.dndgateapi.domain.functional.exception.ConcurrentUpdateException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import fr.barlords.dndgateapi.domain.functional.model.planning.Availability;
 import fr.barlords.dndgateapi.domain.port.out.AvailabilityPersistenceSpi;
 import fr.barlords.dndgateapi.server.entity.AvailabilityEntity;
 import fr.barlords.dndgateapi.server.mapper.AvailabilityEntityMapper;
 import fr.barlords.dndgateapi.server.repository.AvailabilityRepository;
-import io.vavr.control.Either;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,12 +24,12 @@ public class AvailabilityDatabaseAdapter implements AvailabilityPersistenceSpi {
 
     @Override
     @Transactional
-    public Either<ApplicationError, Availability> save(Availability o){
+    public Availability save(Availability o) {
+        // Flushed here so that a concurrent change is detected now, not later when the transaction commits
         try {
-            AvailabilityEntity savedEntity = repository.save(AvailabilityEntityMapper.fromDomain(o));
-            return Either.right(AvailabilityEntityMapper.toDomain(savedEntity));
-        } catch (Exception e) {
-            return Either.left(new ApplicationError("Error during database write", null, o, e));
+            return AvailabilityEntityMapper.toDomain(repository.saveAndFlush(AvailabilityEntityMapper.fromDomain(o)));
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new ConcurrentUpdateException(e);
         }
     }
 

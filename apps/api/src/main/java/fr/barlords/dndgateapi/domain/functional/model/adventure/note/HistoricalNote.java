@@ -24,4 +24,8 @@ public class HistoricalNote {
 
     @With
     LocalDate date;
+
+    /** Version read from the storage, null while the note has never been saved: it detects concurrent changes. */
+    @With
+    Long version;
 }

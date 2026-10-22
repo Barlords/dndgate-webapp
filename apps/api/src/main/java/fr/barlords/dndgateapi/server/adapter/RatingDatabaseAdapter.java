@@ -5,20 +5,18 @@ import fr.barlords.dndgateapi.domain.functional.model.pagination.PageRequest;
 import fr.barlords.dndgateapi.server.mapper.PageMapper;
 import org.springframework.data.domain.Sort;
 
-import fr.barlords.dndgateapi.domain.ApplicationError;
 import fr.barlords.dndgateapi.domain.functional.model.Rating;
 import fr.barlords.dndgateapi.domain.port.out.RatingPersistenceSpi;
 import fr.barlords.dndgateapi.server.mapper.RatingEntityMapper;
 import fr.barlords.dndgateapi.server.repository.RatingRepository;
-import io.vavr.control.Either;
+import fr.barlords.dndgateapi.domain.functional.exception.rating.RatingAlreadyExistsException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
-
-import static io.vavr.API.Try;
 
 @Service
 @RequiredArgsConstructor
@@ -28,11 +26,14 @@ public class RatingDatabaseAdapter implements RatingPersistenceSpi {
 
     @Override
     @Transactional
-    public Either<ApplicationError, Rating> save(Rating o) {
-        return Try(() -> repository.save(RatingEntityMapper.fromDomain(o)))
-                .toEither()
-                .mapLeft(throwable -> new ApplicationError("Error while writing to the database", null, o, throwable))
-                .map(RatingEntityMapper::toDomain);
+    public Rating save(Rating o) {
+        try {
+            // Flushed here so that the unique (emitter, target) index answers now, not when the transaction commits
+            return RatingEntityMapper.toDomain(repository.saveAndFlush(RatingEntityMapper.fromDomain(o)));
+        } catch (DataIntegrityViolationException e) {
+            // Two requests passed the "already rated" check together: the unique index let only one through
+            throw new RatingAlreadyExistsException();
+        }
     }
 
     @Override

@@ -1,5 +1,8 @@
 package fr.barlords.dndgateapi.bootstrap.config.domain;
 
+import fr.barlords.dndgateapi.bootstrap.config.RetryingTransaction;
+import fr.barlords.dndgateapi.bootstrap.config.TransactionalSpellDeleter;
+import fr.barlords.dndgateapi.bootstrap.config.TransactionalSpellWriter;
 import fr.barlords.dndgateapi.domain.port.out.AuditSpi;
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
 import fr.barlords.dndgateapi.domain.functional.service.spellbook.*;
@@ -69,17 +72,19 @@ public class SpellBookServiceConfiguration {
     public SpellWriterApi spellWriterApi(
             SpellBookPersistenceSpi spi,
             SpellBookOwnerVerifierService spellBookOwnerVerifierService,
-            QuantityLimits quantityLimits
+            QuantityLimits quantityLimits,
+            RetryingTransaction transaction
     ) {
-        return new SpellWriterService(spi, spellBookOwnerVerifierService, quantityLimits);
+        return new TransactionalSpellWriter(new SpellWriterService(spi, spellBookOwnerVerifierService, quantityLimits), transaction);
     }
 
     @Bean
     public SpellDeleterApi spellDeleterApi(
             SpellBookPersistenceSpi spi,
-            SpellBookOwnerVerifierService spellBookOwnerVerifierService
+            SpellBookOwnerVerifierService spellBookOwnerVerifierService,
+            RetryingTransaction transaction
     ) {
-        return new SpellDeleterService(spi, spellBookOwnerVerifierService);
+        return new TransactionalSpellDeleter(new SpellDeleterService(spi, spellBookOwnerVerifierService), transaction);
     }
 
 }

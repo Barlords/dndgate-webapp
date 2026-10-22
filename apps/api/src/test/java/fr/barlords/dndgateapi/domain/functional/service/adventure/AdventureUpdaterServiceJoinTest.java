@@ -14,7 +14,6 @@ import fr.barlords.dndgateapi.domain.port.in.account.AccountFinderApi;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureFinderApi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
-import io.vavr.control.Either;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -82,7 +81,7 @@ public class AdventureUpdaterServiceJoinTest {
     }
 
     private void saveReturnsWhatItReceives() {
-        when(spi.save(any(Adventure.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(spi.save(any(Adventure.class))).thenAnswer(i -> i.getArguments()[0]);
     }
 
     // ---- by id ----

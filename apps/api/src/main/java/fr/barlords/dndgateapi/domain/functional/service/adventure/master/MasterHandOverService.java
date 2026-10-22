@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.adventure.master;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountFinderApi;
 import fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi;
@@ -51,7 +50,7 @@ public class MasterHandOverService {
 
         invitations.deleteByAdventureId(adventure.getId());
 
-        Adventure saved = adventures.save(handedOver).getOrElseThrow(DataNotSaveException::new);
+        Adventure saved = adventures.save(handedOver);
         notifier.masterChanged(saved, formerMasterId);
 
         if (!saved.isParticipant(formerMasterId)) {

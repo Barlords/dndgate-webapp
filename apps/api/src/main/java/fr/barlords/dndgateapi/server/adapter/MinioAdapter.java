@@ -1,6 +1,7 @@
 package fr.barlords.dndgateapi.server.adapter;
 
 import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
+import fr.barlords.dndgateapi.server.audit.AfterCommit;
 import io.minio.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +44,17 @@ public class MinioAdapter implements MinioSpi {
                 GetObjectArgs.builder().bucket(bucketName).object(filename).build())) {
             return ByteBuffer.wrap(IOUtils.toByteArray(response));
         }
+    }
+
+    @Override
+    public void deleteAfterCommit(String path) {
+        AfterCommit.run(() -> {
+            try {
+                deleteFile(path);
+            } catch (Exception e) {
+                log.warn("The file {} could not be removed and is left behind", path, e);
+            }
+        });
     }
 
     public void deleteFile(String path) throws Exception {

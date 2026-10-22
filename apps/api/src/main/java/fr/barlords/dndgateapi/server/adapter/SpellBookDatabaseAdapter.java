@@ -1,11 +1,11 @@
 package fr.barlords.dndgateapi.server.adapter;
 
-import fr.barlords.dndgateapi.domain.ApplicationError;
+import fr.barlords.dndgateapi.domain.functional.exception.ConcurrentUpdateException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import fr.barlords.dndgateapi.domain.functional.model.SpellBook;
 import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
 import fr.barlords.dndgateapi.server.mapper.SpellBookEntityMapper;
 import fr.barlords.dndgateapi.server.repository.SpellBookRepository;
-import io.vavr.control.Either;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,8 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import static io.vavr.API.Try;
 
 @Service
 @RequiredArgsConstructor
@@ -24,11 +22,13 @@ public class SpellBookDatabaseAdapter implements SpellBookPersistenceSpi {
 
     @Override
     @Transactional
-    public Either<ApplicationError, SpellBook> save(SpellBook o) {
-        return Try(() -> repository.save(SpellBookEntityMapper.fromDomain(o)))
-                .toEither()
-                .mapLeft(throwable -> new ApplicationError("Error while writing to the database", null, o, throwable))
-                .map(SpellBookEntityMapper::toDomain);
+    public SpellBook save(SpellBook o) {
+        // Flushed here so that a concurrent change is detected now, not later when the transaction commits
+        try {
+            return SpellBookEntityMapper.toDomain(repository.saveAndFlush(SpellBookEntityMapper.fromDomain(o)));
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new ConcurrentUpdateException(e);
+        }
     }
 
     @Override

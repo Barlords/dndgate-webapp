@@ -2,7 +2,6 @@ package fr.barlords.dndgateapi.domain.functional.service.gamecharacter;
 
 import java.util.Objects;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.model.GameCharacter;
 import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterUpdaterApi;
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
@@ -30,7 +29,6 @@ public class GameCharacterUpdaterService implements GameCharacterUpdaterApi {
                 .withPersonality(Objects.requireNonNullElse(gameCharacter.getPersonality(), previousGameCharacter.getPersonality()))
                 .withBackground(Objects.requireNonNullElse(gameCharacter.getBackground(), previousGameCharacter.getBackground()));
 
-        return spi.save(patchedGameCharacter)
-                .getOrElseThrow(DataNotSaveException::new);
+        return spi.save(patchedGameCharacter);
     }
 }

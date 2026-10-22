@@ -12,13 +12,15 @@ import fr.barlords.dndgateapi.domain.functional.model.account.ClientAddress;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureStatus;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureVisibility;
+import fr.barlords.dndgateapi.domain.functional.model.adventure.master.MasterClaim;
+import fr.barlords.dndgateapi.domain.functional.model.adventure.master.MasterClaimStatus;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountSessionRevokerApi;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.MasterClaimPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.OpaqueTokenSpi;
 import fr.barlords.dndgateapi.domain.port.out.PasswordHasherSpi;
 import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
-import io.vavr.control.Either;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,6 +58,9 @@ public class AccountAnonymizerServiceTest {
     private AdventurePersistenceSpi adventures;
 
     @Mock
+    private MasterClaimPersistenceSpi masterClaims;
+
+    @Mock
     private SpellBookPersistenceSpi spellBooks;
 
     @Mock
@@ -87,15 +92,17 @@ public class AccountAnonymizerServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new AccountAnonymizerService(accounts, adventures, spellBooks, passwordHasher, opaqueTokens,
+        service = new AccountAnonymizerService(accounts, adventures, masterClaims, spellBooks, passwordHasher, opaqueTokens,
                 passwordVerifier, sessionRevoker, notifier, Clock.fixed(NOW, ZoneOffset.UTC), audit, loginFailures);
         lenient().when(accounts.findById(account.getId())).thenReturn(Optional.of(account));
         lenient().when(opaqueTokens.generate()).thenReturn("random-secret");
         lenient().when(passwordHasher.hash("random-secret")).thenReturn("unusable-hash");
-        lenient().when(accounts.save(any(Account.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
-        lenient().when(adventures.save(any(Adventure.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        lenient().when(accounts.save(any(Account.class))).thenAnswer(i -> i.getArguments()[0]);
+        lenient().when(adventures.save(any(Adventure.class))).thenAnswer(i -> i.getArguments()[0]);
         lenient().when(adventures.findAllByCreatorId(account.getId())).thenReturn(List.of());
         lenient().when(adventures.findAllByPlayersId(account.getId())).thenReturn(List.of());
+        lenient().when(masterClaims.findOpenByCandidateId(account.getId())).thenReturn(List.of());
+        lenient().when(masterClaims.save(any(MasterClaim.class))).thenAnswer(i -> i.getArguments()[0]);
         lenient().when(spellBooks.findByOwnerId(account.getId())).thenReturn(List.of());
     }
 
@@ -268,6 +275,22 @@ public class AccountAnonymizerServiceTest {
         Assertions.assertEquals(AdventureStatus.ONGOING, saved.getValue().getStatus());
         Assertions.assertEquals(ongoing.getPlayers(), saved.getValue().getPlayers());
         verify(notifier).masterAccountDeleted(saved.getValue());
+    }
+
+    @Test
+    void the_open_votes_of_the_account_as_a_candidate_are_cancelled_and_the_voters_are_told() {
+        UUID other = UUID.randomUUID();
+        Adventure ongoing = adventure(AdventureStatus.ONGOING, UUID.randomUUID(), account.getId(), other)
+                .withMasterVacantSince(NOW);
+        MasterClaim claim = MasterClaim.builder().adventureId(ongoing.getId()).candidateId(account.getId())
+                .createdAt(NOW).expiresAt(NOW.plusSeconds(60)).build();
+        when(masterClaims.findOpenByCandidateId(account.getId())).thenReturn(List.of(claim));
+        when(adventures.findById(ongoing.getId())).thenReturn(Optional.of(ongoing));
+
+        service.anonymize(account.getId(), "password", CLIENT);
+
+        verify(masterClaims).save(claim.withStatus(MasterClaimStatus.CANCELLED));
+        verify(notifier).claimCancelled(ongoing, account.getId(), List.of(other));
     }
 
     // ---- adventures the account plays in ----

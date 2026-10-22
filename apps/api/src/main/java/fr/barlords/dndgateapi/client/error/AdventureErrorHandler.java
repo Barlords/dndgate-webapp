@@ -7,7 +7,9 @@ import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureInP
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureNotJoinableException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureOwnerException;
+import fr.barlords.dndgateapi.domain.functional.exception.adventure.InvalidStatusTransitionException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.InvitationRateLimitException;
+import fr.barlords.dndgateapi.domain.functional.exception.adventure.MaxPlayerBelowPlayersException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.PlayerNotInAdventureException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.PlayersAlreadyInAdventureException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.note.AdventureNoteNotFoundException;
@@ -65,6 +67,16 @@ public class AdventureErrorHandler {
     @ExceptionHandler(PlayersAlreadyInAdventureException.class)
     public ProblemDetail handlePlayersAlreadyInAdventureException() {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, PlayersAlreadyInAdventureException.EXCEPTION_MESSAGE);
+    }
+
+    @ExceptionHandler(InvalidStatusTransitionException.class)
+    public ProblemDetail handleInvalidStatusTransitionException(InvalidStatusTransitionException exception) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+    }
+
+    @ExceptionHandler(MaxPlayerBelowPlayersException.class)
+    public ProblemDetail handleMaxPlayerBelowPlayersException(MaxPlayerBelowPlayersException exception) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
     }
 
     @ExceptionHandler(InvitationRateLimitException.class)

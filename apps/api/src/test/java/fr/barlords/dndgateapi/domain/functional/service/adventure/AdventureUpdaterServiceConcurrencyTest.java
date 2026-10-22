@@ -12,7 +12,6 @@ import fr.barlords.dndgateapi.domain.port.in.account.AccountFinderApi;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureFinderApi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
-import io.vavr.control.Either;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -87,7 +86,7 @@ class AdventureUpdaterServiceConcurrencyTest {
                 .thenReturn(Optional.of(stale), Optional.of(fresh));
         when(spi.save(any(Adventure.class)))
                 .thenThrow(new AdventureConcurrentModificationException(null))
-                .thenAnswer(i -> Either.right(i.getArguments()[0]));
+                .thenAnswer(i -> i.getArguments()[0]);
 
         Adventure joined = service.joinAdventure(stale.getId(), candidate.getId());
 
@@ -134,7 +133,7 @@ class AdventureUpdaterServiceConcurrencyTest {
         when(adventureFinderApi.findById(stale.getId())).thenReturn(Optional.of(stale), Optional.of(fresh));
         when(spi.save(any(Adventure.class)))
                 .thenThrow(new AdventureConcurrentModificationException(null))
-                .thenAnswer(i -> Either.right(i.getArguments()[0]));
+                .thenAnswer(i -> i.getArguments()[0]);
 
         Adventure left = service.quitAdventure(stale.getId(), candidate.getId());
 

@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.spellbook;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.QuantityLimitExceededException;
 import fr.barlords.dndgateapi.domain.functional.model.SpellBook;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
@@ -34,7 +33,6 @@ public class SpellBookImporterService implements SpellBookImporterApi {
             throw QuantityLimitExceededException.spells(limits.spellsPerSpellBook());
         }
 
-        return spi.save(spellBook.withOwner(account))
-                .getOrElseThrow(DataNotSaveException::new);
+        return spi.save(spellBook.withOwner(account));
     }
 }

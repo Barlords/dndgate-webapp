@@ -13,6 +13,7 @@ public interface AvailabilityEntityMapper {
                 .planningId(entity.getPlanningId())
                 .accountId(entity.getAccountId())
                 .availabilityDates(new ArrayList<>(entity.getAvailabilityDates()))
+                .version(entity.getVersion())
                 .build();
     }
 
@@ -22,6 +23,7 @@ public interface AvailabilityEntityMapper {
         entity.setPlanningId(domain.getPlanningId());
         entity.setAccountId(domain.getAccountId());
         entity.setAvailabilityDates(new ArrayList<>(domain.getAvailabilityDates()));
+        entity.setVersion(domain.getVersion());
         return entity;
     }
 }

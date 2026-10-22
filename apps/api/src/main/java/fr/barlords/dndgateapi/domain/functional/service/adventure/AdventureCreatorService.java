@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.adventure;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.QuantityLimitExceededException;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
@@ -31,8 +30,7 @@ public class AdventureCreatorService implements AdventureCreatorApi {
             throw QuantityLimitExceededException.activeAdventures(limits.activeAdventuresPerMaster());
         }
 
-        return spi.save(adventure.withOwnerId(owner.getId()))
-                .getOrElseThrow(DataNotSaveException::new);
+        return spi.save(adventure.withOwnerId(owner.getId()));
     }
 
 }

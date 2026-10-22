@@ -5,12 +5,10 @@ import fr.barlords.dndgateapi.domain.functional.model.pagination.PageRequest;
 import fr.barlords.dndgateapi.server.mapper.PageMapper;
 import org.springframework.data.domain.Sort;
 
-import fr.barlords.dndgateapi.domain.ApplicationError;
 import fr.barlords.dndgateapi.domain.functional.model.Message;
 import fr.barlords.dndgateapi.domain.port.out.MessagePersistenceSpi;
 import fr.barlords.dndgateapi.server.mapper.MessageEntityMapper;
 import fr.barlords.dndgateapi.server.repository.MessageRepository;
-import io.vavr.control.Either;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,8 +17,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import static io.vavr.API.Try;
 
 @Service
 @RequiredArgsConstructor
@@ -32,11 +28,8 @@ public class MessageDatabaseAdapter implements MessagePersistenceSpi {
 
     @Override
     @Transactional
-    public Either<ApplicationError, Message> save(Message o) {
-        return Try(() -> repository.save(MessageEntityMapper.fromDomain(o)))
-                .toEither()
-                .mapLeft(throwable -> new ApplicationError("Error while writing to the database", null, o, throwable))
-                .map(MessageEntityMapper::toDomain);
+    public Message save(Message o) {
+        return MessageEntityMapper.toDomain(repository.save(MessageEntityMapper.fromDomain(o)));
     }
 
     @Override

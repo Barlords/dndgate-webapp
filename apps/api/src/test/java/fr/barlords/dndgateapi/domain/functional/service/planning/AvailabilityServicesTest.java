@@ -1,12 +1,9 @@
 package fr.barlords.dndgateapi.domain.functional.service.planning;
 
-import fr.barlords.dndgateapi.domain.ApplicationError;
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.planning.PlanningNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.model.planning.Availability;
 import fr.barlords.dndgateapi.domain.port.in.planning.AvailabilityUpdaterApi;
 import fr.barlords.dndgateapi.domain.port.out.AvailabilityPersistenceSpi;
-import io.vavr.control.Either;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,7 +44,7 @@ class AvailabilityServicesTest {
         AvailabilityUpdaterService service = new AvailabilityUpdaterService(spi, verifier);
         when(spi.findByAccountIdAndPlanningId(accountId, planningId)).thenReturn(List.of());
         Availability stored = Availability.builder().planningId(planningId).accountId(accountId).availabilityDates(newDates).build();
-        when(spi.save(any())).thenReturn(Either.right(stored));
+        when(spi.save(any())).thenReturn(stored);
 
         Assertions.assertSame(stored, service.createOrUpdate(accountId, received()));
 
@@ -62,7 +59,7 @@ class AvailabilityServicesTest {
         Availability previous = Availability.builder().planningId(planningId).accountId(accountId)
                 .availabilityDates(List.of(LocalDate.of(2027, 2, 1))).build();
         when(spi.findByAccountIdAndPlanningId(accountId, planningId)).thenReturn(List.of(previous));
-        when(spi.save(any())).thenAnswer(call -> Either.right(call.getArgument(0)));
+        when(spi.save(any())).thenAnswer(call -> call.getArgument(0));
 
         Availability result = service.createOrUpdate(accountId, received());
 
@@ -74,9 +71,9 @@ class AvailabilityServicesTest {
     void a_failed_write_is_reported() {
         AvailabilityUpdaterService service = new AvailabilityUpdaterService(spi, verifier);
         when(spi.findByAccountIdAndPlanningId(accountId, planningId)).thenReturn(List.of());
-        when(spi.save(any())).thenReturn(Either.left(new ApplicationError("boom", null, null, null)));
+        when(spi.save(any())).thenThrow(new IllegalStateException("db down"));
 
-        Assertions.assertThrows(DataNotSaveException.class, () -> service.createOrUpdate(accountId, received()));
+        Assertions.assertThrows(IllegalStateException.class, () -> service.createOrUpdate(accountId, received()));
     }
 
     @Test
@@ -104,7 +101,7 @@ class AvailabilityServicesTest {
     void the_visibility_of_the_planning_is_checked_for_the_caller() {
         AvailabilityUpdaterService service = new AvailabilityUpdaterService(spi, verifier);
         when(spi.findByAccountIdAndPlanningId(accountId, planningId)).thenReturn(List.of());
-        when(spi.save(any())).thenAnswer(call -> Either.right(call.getArgument(0)));
+        when(spi.save(any())).thenAnswer(call -> call.getArgument(0));
 
         service.createOrUpdate(accountId, received());
 

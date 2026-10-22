@@ -26,4 +26,8 @@ public class Availability {
     @Builder.Default
     @With
     List<LocalDate> availabilityDates = new ArrayList<>();
+
+    /** Version read from the storage, null while the vote has never been saved: it detects concurrent changes. */
+    @With
+    Long version;
 }

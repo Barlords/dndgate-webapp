@@ -91,7 +91,7 @@ public class DeletersConfirmationTest {
 
         service.deleteById(owner.getId(), character.getId(), "Gandalf");
         verify(characters).deleteById(character.getId());
-        verify(minioSpi).deleteFile("account/1/g.png");
+        verify(minioSpi).deleteAfterCommit("account/1/g.png");
     }
 
     @Test

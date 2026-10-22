@@ -7,7 +7,6 @@ import fr.barlords.dndgateapi.domain.port.in.account.AccountFinderApi;
 import fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MasterInvitationPersistenceSpi;
-import io.vavr.control.Either;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -55,7 +54,7 @@ class MasterHandOverServiceTest {
     @BeforeEach
     void setUp() {
         service = new MasterHandOverService(adventures, invitations, accountFinderApi, notifier, accessRevocation);
-        when(adventures.save(any(Adventure.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(adventures.save(any(Adventure.class))).thenAnswer(i -> i.getArguments()[0]);
     }
 
     private Adventure adventure(int maxPlayer, UUID... players) {

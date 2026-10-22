@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.planning;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.model.planning.Availability;
 import fr.barlords.dndgateapi.domain.port.in.planning.AvailabilityUpdaterApi;
 import fr.barlords.dndgateapi.domain.port.out.AvailabilityPersistenceSpi;
@@ -28,12 +27,11 @@ public class AvailabilityUpdaterService implements AvailabilityUpdaterApi {
         List<Availability> existing = spi.findByAccountIdAndPlanningId(accountId, own.getPlanningId());
 
         if (existing.isEmpty()) {
-            return spi.save(own).getOrElseThrow(DataNotSaveException::new);
+            return spi.save(own);
         }
 
         // At most one vote exists per (planning, account): it keeps its id and gets the new dates
-        return spi.save(existing.get(0).withAvailabilityDates(own.getAvailabilityDates()))
-                .getOrElseThrow(DataNotSaveException::new);
+        return spi.save(existing.get(0).withAvailabilityDates(own.getAvailabilityDates()));
     }
 
 }
