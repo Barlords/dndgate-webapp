@@ -170,7 +170,8 @@ public class MasterClaimService implements MasterClaimApi {
         return claim.isOpenAt(now)
                 && adventure.isMasterVacant()
                 && adventure.isTransferable()
-                && adventure.getPlayers().contains(claim.getCandidateId());
+                && adventure.getPlayers().contains(claim.getCandidateId())
+                && !isAnonymous(claim.getCandidateId());
     }
 
     /** The players but the candidate, whose account still exists. */

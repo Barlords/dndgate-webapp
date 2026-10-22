@@ -1,6 +1,7 @@
 package fr.barlords.dndgateapi.bootstrap.config.domain;
 
 import fr.barlords.dndgateapi.domain.port.out.AuditSpi;
+import fr.barlords.dndgateapi.domain.port.out.MasterClaimPersistenceSpi;
 import fr.barlords.dndgateapi.domain.functional.service.adventure.master.MasterTransferNotifier;
 
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
@@ -65,6 +66,7 @@ public class AccountServiceConfiguration {
     public AccountAnonymizerApi accountAnonymizerApi(
             AccountPersistenceSpi accounts,
             AdventurePersistenceSpi adventures,
+            MasterClaimPersistenceSpi masterClaims,
             SpellBookPersistenceSpi spellBooks,
             PasswordHasherSpi passwordHasher,
             OpaqueTokenSpi opaqueTokenSpi,
@@ -76,7 +78,8 @@ public class AccountServiceConfiguration {
             LoginFailureSpi loginFailures
     ) {
         return new TransactionalAccountAnonymizer(new AccountAnonymizerService(
-                accounts, adventures, spellBooks, passwordHasher, opaqueTokenSpi, accountPasswordVerifierService,
+                accounts, adventures, masterClaims, spellBooks, passwordHasher, opaqueTokenSpi,
+                accountPasswordVerifierService,
                 accountSessionRevokerApi, masterTransferNotifier, clock, audit, loginFailures));
     }
 

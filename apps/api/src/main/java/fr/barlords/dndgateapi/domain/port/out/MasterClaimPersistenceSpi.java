@@ -2,6 +2,7 @@ package fr.barlords.dndgateapi.domain.port.out;
 
 import fr.barlords.dndgateapi.domain.functional.model.adventure.master.MasterClaim;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -15,4 +16,7 @@ public interface MasterClaimPersistenceSpi {
 
     /** The claim of the adventure that has not been closed, even if its time is over (the caller decides). */
     Optional<MasterClaim> findOpenByAdventureId(UUID adventureId);
+
+    /** The claims the account made as a candidate that have not been closed, even if their time is over. */
+    List<MasterClaim> findOpenByCandidateId(UUID candidateId);
 }

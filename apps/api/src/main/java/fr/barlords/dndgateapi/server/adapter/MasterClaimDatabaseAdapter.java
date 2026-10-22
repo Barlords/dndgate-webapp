@@ -13,6 +13,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -40,5 +41,12 @@ public class MasterClaimDatabaseAdapter implements MasterClaimPersistenceSpi {
     @Transactional
     public Optional<MasterClaim> findOpenByAdventureId(UUID adventureId) {
         return repository.findByAdventureIdAndStatus(adventureId, MasterClaimStatus.OPEN).map(MasterClaimEntityMapper::toDomain);
+    }
+
+    @Override
+    @Transactional
+    public List<MasterClaim> findOpenByCandidateId(UUID candidateId) {
+        return repository.findAllByCandidateIdAndStatus(candidateId, MasterClaimStatus.OPEN).stream()
+                .map(MasterClaimEntityMapper::toDomain).toList();
     }
 }

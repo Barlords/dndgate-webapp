@@ -155,6 +155,17 @@ class MasterTransferNotificationIntegrationTest extends ApiIntegrationTestSuppor
     }
 
     @Test
+    void when_the_candidate_deletes_the_account_the_voters_are_told_the_vote_is_cancelled() {
+        stepDown();
+        claim(first);
+        clearInvocations(emailingSpi);
+
+        deleteAccount(first);
+
+        Assertions.assertEquals(Map.of(second.id(), List.of(MasterTransferEvent.CLAIM_CANCELLED)), told());
+    }
+
+    @Test
     void a_refused_request_tells_nobody() {
         claim(first);
         vote(second, true);

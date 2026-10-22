@@ -175,11 +175,12 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
 - [x] Corrigé : `@NotBlank` sur `spellIndex` (400 sur `{}` ou texte blanc), pas de validation contre le SRD ; test + contrôle par mutation.
 - Correctif : `@NotBlank`. À décider : valider l'identifiant contre la liste des sorts du SRD (voir le point 58).
 
-### 38. Un candidat dont le compte est supprimé peut devenir MJ — *lu*
-- [ ] `AccountAnonymizerService` ne touche pas aux votes ouverts. Le candidat reste dans les joueurs d'une aventure en cours (historique), et `MasterClaimService.isStillValid` (ligne 169) ne vérifie pas que son compte existe encore.
+### 38. Un candidat dont le compte est supprimé peut devenir MJ — *corrigé*
+- [x] `AccountAnonymizerService` ne touche pas aux votes ouverts. Le candidat reste dans les joueurs d'une aventure en cours (historique), et `MasterClaimService.isStillValid` (ligne 169) ne vérifie pas que son compte existe encore.
   Si les autres approuvent, le rôle est donné à un **compte anonymisé** : l'aventure a de nouveau un MJ (plus de « vacance »), que personne ne peut plus jouer ni remplacer.
 - Même sans aller au vote, le vote ouvert bloque toute autre demande pendant 7 jours.
 - Correctif : l'anonymisation annule les votes où le compte est candidat ; `isStillValid` exclut un candidat anonymisé ; test d'intégration du scénario.
+- Corrigé : `AccountAnonymizerService` passe en `CANCELLED` les votes ouverts dont le compte est candidat (nouveau `MasterClaimPersistenceSpi.findOpenByCandidateId`) et prévient les votants par `claimCancelled`, comme un abandon volontaire, avant l'anonymisation du compte pour que le pseudo soit encore celui de la personne ; les e-mails attendent le commit (`EmailingAdapter`). `MasterClaimService.isStillValid` exige aussi que le candidat ne soit pas anonymisé : un vote resté ouvert est annulé au premier vote, le rôle n'est jamais donné. Tests : `AccountAnonymizerServiceTest`, `MasterClaimServiceTest`, `MasterTransferIntegrationTest` (suppression par le candidat puis nouvelle demande immédiate ; vote ouvert pour un compte anonymisé inséré en base), `MasterTransferNotificationIntegrationTest` ; contrôle par mutation fait sur les deux changements (annulation retirée : 3 tests rouges ; condition `isStillValid` retirée : 2 tests rouges). Non fait : nettoyage des votes déjà ouverts pour des comptes anonymisés avant le correctif (ils sont annulés au premier vote ou à la prochaine demande, ou expirent).
 
 ### 39. Images supprimées avant que la base ait validé — *lu*
 - [ ] `GameCharacterDeleterService` supprime l'image dans MinIO, **puis** la ligne en base. Si MinIO est en panne, le personnage ne peut plus être supprimé (500). Si la base refuse, le personnage reste mais sans image.
@@ -308,7 +309,7 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
 
 ### 55. Tests manquants — *lu*
 - Aucun test unitaire pour : services des grimoires (sauf la création), planning et disponibilités, évaluations (création, mise à jour, `PATCH`), modification, suppression et lecture des personnages, services des notes.
-- Aucun test d'intégration pour : (faits : import et export de grimoire (36, `SpellBookImportExportIntegrationTest`), vote multiple (29), modification de la date d'une note (28), chemin encodé et limite par IP (25), date d'un message (30)) abonnement WebSocket après départ de l'aventure (33), statut d'aventure à rebours (34, fait : `AdventureStatusIntegrationTest`), second planning pour une aventure (35).
+- Aucun test d'intégration pour : (faits : vote ouvert d'un candidat supprimé (38, `MasterTransferIntegrationTest`), import et export de grimoire (36, `SpellBookImportExportIntegrationTest`), vote multiple (29), modification de la date d'une note (28), chemin encodé et limite par IP (25), date d'un message (30)) abonnement WebSocket après départ de l'aventure (33), statut d'aventure à rebours (34, fait : `AdventureStatusIntegrationTest`), second planning pour une aventure (35).
 - La marge de couverture est de 0,5 point (v1) : chaque correctif de ce rapport doit arriver avec son test, et suivre la méthode habituelle (réintroduire le défaut, vérifier que le test devient rouge, restaurer).
 
 ---

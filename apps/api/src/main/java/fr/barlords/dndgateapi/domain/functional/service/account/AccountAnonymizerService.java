@@ -10,10 +10,13 @@ import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.functional.service.adventure.master.MasterTransferNotifier;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureStatus;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureVisibility;
+import fr.barlords.dndgateapi.domain.functional.model.adventure.master.MasterClaim;
+import fr.barlords.dndgateapi.domain.functional.model.adventure.master.MasterClaimStatus;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountAnonymizerApi;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountSessionRevokerApi;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.MasterClaimPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.OpaqueTokenSpi;
 import fr.barlords.dndgateapi.domain.port.out.PasswordHasherSpi;
 import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
@@ -36,6 +39,8 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
     private final AccountPersistenceSpi accounts;
 
     private final AdventurePersistenceSpi adventures;
+
+    private final MasterClaimPersistenceSpi masterClaims;
 
     private final SpellBookPersistenceSpi spellBooks;
 
@@ -69,6 +74,7 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
 
         abortOwnedAdventuresThatHaveNotStarted(accountId);
         freeSeatsInAdventuresThatHaveNotStarted(accountId);
+        cancelOpenMasterClaims(account);
         deleteSpellBooks(accountId);
 
         accounts.save(anonymousVersionOf(account));
@@ -120,6 +126,21 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
                 players.remove(accountId);
                 adventures.save(adventure.withPlayers(players));
             }
+        }
+    }
+
+    /** An account that no longer exists cannot become game master: its votes end, like a voluntary cancel. */
+    private void cancelOpenMasterClaims(Account account) {
+        for (MasterClaim claim : masterClaims.findOpenByCandidateId(account.getId())) {
+            masterClaims.save(claim.withStatus(MasterClaimStatus.CANCELLED));
+
+            adventures.findById(claim.getAdventureId()).ifPresent(adventure -> {
+                List<UUID> voters = adventure.getPlayers().stream()
+                        .filter(player -> !player.equals(account.getId()))
+                        .toList();
+                // The mails leave after the commit, with the pseudo as it is now
+                masterTransferNotifier.claimCancelled(adventure, account.getId(), voters);
+            });
         }
     }
 

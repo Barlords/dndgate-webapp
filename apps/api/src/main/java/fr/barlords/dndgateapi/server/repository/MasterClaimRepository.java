@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -15,4 +16,6 @@ import java.util.UUID;
 public interface MasterClaimRepository extends JpaRepository<MasterClaimEntity, UUID> {
 
     Optional<MasterClaimEntity> findByAdventureIdAndStatus(UUID adventureId, MasterClaimStatus status);
+
+    List<MasterClaimEntity> findAllByCandidateIdAndStatus(UUID candidateId, MasterClaimStatus status);
 }
