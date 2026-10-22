@@ -21,6 +21,5 @@ public interface AccountRepository extends JpaRepository<AccountEntity, UUID> {
 
     List<AccountEntity> findAllByPendingEmail(String pendingEmail);
 
-    Optional<AccountEntity> findByVerificationCode(String code);
 
 }

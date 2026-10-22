@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -30,6 +31,20 @@ public interface PendingSignupRepository extends JpaRepository<PendingSignupEnti
                          @Param("passwordHash") String passwordHash, @Param("codeHash") String codeHash,
                          @Param("createdAt") Instant createdAt, @Param("expiresAt") Instant expiresAt,
                          @Param("recentSince") Instant recentSince);
+
+    Optional<PendingSignupEntity> findByEmail(String email);
+
+    /** One statement: of two simultaneous renewals only one finds the signup old enough. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update PendingSignupEntity s set s.codeHash = :codeHash, s.createdAt = :createdAt, s.expiresAt = :expiresAt "
+            + "where s.email = :email and s.createdAt <= :recentSince")
+    int renewUnlessRecent(@Param("email") String email, @Param("codeHash") String codeHash,
+                          @Param("createdAt") Instant createdAt, @Param("expiresAt") Instant expiresAt,
+                          @Param("recentSince") Instant recentSince);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("delete from PendingSignupEntity s where s.email = :email and s.codeHash = :codeHash")
+    int deleteByEmailAndCodeHash(@Param("email") String email, @Param("codeHash") String codeHash);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("delete from PendingSignupEntity s where s.expiresAt < :now")

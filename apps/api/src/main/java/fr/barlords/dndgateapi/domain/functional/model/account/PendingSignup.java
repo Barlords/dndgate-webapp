@@ -45,6 +45,18 @@ public class PendingSignup {
     @With
     Instant expiresAt;
 
+    /**
+     * True when the code is the one that was mailed and has not expired. The digests are compared in constant time,
+     * so that the comparison cannot be used to guess the code one character at a time.
+     */
+    public boolean hasValidCode(String code, Instant now) {
+        if (code == null || codeHash == null || expiresAt == null || !expiresAt.isAfter(now)) {
+            return false;
+        }
+        return MessageDigest.isEqual(
+                codeHash.getBytes(StandardCharsets.UTF_8), hashOf(code).getBytes(StandardCharsets.UTF_8));
+    }
+
     /** What is stored in place of a code: the code is long and random, so a plain digest is enough. */
     public static String hashOf(String code) {
         try {

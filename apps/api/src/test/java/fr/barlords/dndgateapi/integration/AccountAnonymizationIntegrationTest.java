@@ -78,12 +78,11 @@ class AccountAnonymizationIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(204, deleteAccount(account));
 
         Map<String, Object> row = jdbc.queryForMap(
-                "select pseudo, email, password, activated, verification_code, anonymized_at from accounts where id = ?", account.id());
+                "select pseudo, email, password, activated, anonymized_at from accounts where id = ?", account.id());
         Assertions.assertTrue(row.get("pseudo").toString().startsWith("deleted-"));
         Assertions.assertTrue(row.get("email").toString().endsWith("@anonymized.invalid"));
         Assertions.assertNotEquals(account.password(), row.get("password"));
         Assertions.assertEquals(false, row.get("activated"));
-        Assertions.assertNull(row.get("verification_code"));
         Assertions.assertNotNull(row.get("anonymized_at"));
         Assertions.assertEquals(0, jdbc.queryForObject("select count(*) from accounts where pseudo = ? or email = ?",
                 Integer.class, account.pseudo(), oldEmail));

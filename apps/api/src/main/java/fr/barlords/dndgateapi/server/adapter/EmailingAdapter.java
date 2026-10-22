@@ -48,11 +48,6 @@ public class EmailingAdapter implements EmailingSpi {
     }
 
     @Override
-    public void sendAccountValidationEmail(Account account) {
-        enqueue(account.getEmail(), contentBuilder.accountValidation(account));
-    }
-
-    @Override
     public void sendSignupConfirmationEmail(PendingSignup signup, String code) {
         enqueue(signup.getEmail(), contentBuilder.signupConfirmation(signup, code));
     }

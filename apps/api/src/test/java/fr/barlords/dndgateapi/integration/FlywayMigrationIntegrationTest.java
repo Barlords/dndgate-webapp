@@ -548,6 +548,95 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    // ---- V17: the unverified accounts become pending signups (review v2, point 59) ----
+
+    private static void insertUnverifiedAccount(Connection connection, UUID id, String pseudo, String code, String expiresAt) throws SQLException {
+        execute(connection, "insert into accounts (id, email, password, pseudo, activated, verification_code, verification_expires_at) "
+                        + "values (?, ?, 'legacy-hash', ?, false, ?, " + expiresAt + ")",
+                id, pseudo.toLowerCase() + "@mail.com", pseudo, code);
+    }
+
+    private static String sha256Hex(String text) throws Exception {
+        return java.util.HexFormat.of().formatHex(
+                java.security.MessageDigest.getInstance("SHA-256").digest(text.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+    }
+
+    @Test
+    void the_unverified_accounts_become_pending_signups_and_the_others_are_left_alone() throws Exception {
+        String url = newDatabase();
+        flyway(url, "16").migrate();
+        UUID withExpiry = UUID.randomUUID();
+        UUID withoutExpiry = UUID.randomUUID();
+        try (Connection connection = connect(url)) {
+            insertUnverifiedAccount(connection, withExpiry, "Alice", "alicecode", "timestamp with time zone '2030-01-02 03:04:05+00'");
+            insertUnverifiedAccount(connection, withoutExpiry, "Bob", "bobcode", "null");
+            insertAccountWithEmail(connection, "Carol", "carol@mail.com", null);
+            // an anonymized account is not activated either, and has no code: it is not a signup
+            execute(connection, "insert into accounts (id, email, password, pseudo, activated, anonymized_at) "
+                    + "values (?, 'x@anonymized.invalid', 'h', 'deleted-x', false, now())", UUID.randomUUID());
+        }
+
+        flyway(url, null).migrate();
+
+        try (Connection connection = connect(url)) {
+            Assertions.assertEquals(2, count(connection, "select count(*) from accounts"), "only the activated and the anonymized remain");
+            Assertions.assertEquals(0, count(connection, "select count(*) from accounts where pseudo in ('Alice', 'Bob')"));
+            Assertions.assertEquals(2, count(connection, "select count(*) from pending_signups"));
+            Assertions.assertEquals("alice@mail.com", stringValue(connection, "select email from pending_signups where pseudo = 'Alice'"));
+            Assertions.assertEquals("legacy-hash", stringValue(connection, "select password_hash from pending_signups where pseudo = 'Alice'"));
+            Assertions.assertEquals(sha256Hex("alicecode"), stringValue(connection, "select code_hash from pending_signups where pseudo = 'Alice'"));
+            Assertions.assertEquals(sha256Hex("bobcode"), stringValue(connection, "select code_hash from pending_signups where pseudo = 'Bob'"));
+            Assertions.assertEquals(1, count(connection,
+                    "select count(*) from pending_signups where pseudo = 'Alice' and expires_at = timestamp with time zone '2030-01-02 03:04:05+00'"),
+                    "the expiry is kept");
+            Assertions.assertEquals(1, count(connection,
+                    "select count(*) from pending_signups where pseudo = 'Bob' and expires_at > now() + interval '23 hours' "
+                            + "and expires_at < now() + interval '25 hours'"), "no expiry: one more day from now");
+            Assertions.assertEquals(0, count(connection, "select count(*) from information_schema.columns "
+                    + "where table_name = 'accounts' and column_name in ('verification_code', 'verification_expires_at')"));
+        }
+    }
+
+    @Test
+    void an_unverified_account_that_owns_data_stops_the_migration_and_is_named() throws Exception {
+        String url = newDatabase();
+        flyway(url, "16").migrate();
+        UUID owner = UUID.randomUUID();
+        UUID harmless = UUID.randomUUID();
+        try (Connection connection = connect(url)) {
+            insertUnverifiedAccount(connection, owner, "Dave", "davecode", "now()");
+            insertUnverifiedAccount(connection, harmless, "Erin", "erincode", "now()");
+            insertAdventure(connection, UUID.randomUUID(), owner, "PUBLIC", "CODE000002");
+        }
+
+        FlywayException failure = Assertions.assertThrows(FlywayException.class, () -> flyway(url, null).migrate());
+
+        Assertions.assertTrue(failure.getMessage().contains("dave@mail.com"), failure.getMessage());
+        Assertions.assertTrue(failure.getMessage().contains("adventure.creator_id"), failure.getMessage());
+        try (Connection connection = connect(url)) {
+            Assertions.assertEquals(2, count(connection, "select count(*) from accounts"), "nothing deleted");
+            Assertions.assertEquals(0, count(connection, "select count(*) from pending_signups"), "nothing converted");
+        }
+        Assertions.assertEquals("16", flyway(url, null).info().current().getVersion().getVersion());
+    }
+
+    @Test
+    void an_unverified_account_with_a_session_stops_the_migration() throws Exception {
+        String url = newDatabase();
+        flyway(url, "16").migrate();
+        UUID account = UUID.randomUUID();
+        try (Connection connection = connect(url)) {
+            insertUnverifiedAccount(connection, account, "Frank", "frankcode", "now()");
+            execute(connection, "insert into sessions (id, account_id, created_at, expires_at) values (?, ?, now(), now() + interval '1 day')",
+                    UUID.randomUUID(), account);
+        }
+
+        FlywayException failure = Assertions.assertThrows(FlywayException.class, () -> flyway(url, null).migrate());
+
+        Assertions.assertTrue(failure.getMessage().contains("frank@mail.com"), failure.getMessage());
+        Assertions.assertTrue(failure.getMessage().contains("sessions.account_id"), failure.getMessage());
+    }
+
     private static String stringValue(Connection connection, String sql) throws SQLException {
         try (Statement statement = connection.createStatement(); ResultSet rows = statement.executeQuery(sql)) {
             rows.next();

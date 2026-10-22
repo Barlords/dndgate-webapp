@@ -27,17 +27,6 @@ public class EmailContentBuilder {
         this.webBaseUrl = webBaseUrl.endsWith("/") ? webBaseUrl.substring(0, webBaseUrl.length() - 1) : webBaseUrl;
     }
 
-    public EmailContent accountValidation(Account account) {
-        String link = webBaseUrl + "/verify-email?email=" + encode(account.getEmail())
-                + "&code=" + encode(account.getVerificationCode());
-
-        return new EmailContent(
-                templates.render("account-validation.subject", Map.of()),
-                templates.render("account-validation.html", Map.of(
-                        "pseudo", escape(account.getPseudo()),
-                        "link", escape(link))));
-    }
-
     /** Goes to the address of a pending signup: the link carries the address and the clear code. */
     public EmailContent signupConfirmation(PendingSignup signup, String code) {
         String link = webBaseUrl + "/verify-email?email=" + encode(signup.getEmail())

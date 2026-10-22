@@ -15,6 +15,7 @@ import fr.barlords.dndgateapi.domain.port.out.PasswordHasherSpi;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
 import fr.barlords.dndgateapi.bootstrap.config.TransactionalAccountAnonymizer;
 import fr.barlords.dndgateapi.bootstrap.config.TransactionalAccountUpdater;
+import fr.barlords.dndgateapi.bootstrap.config.TransactionalAccountVerifier;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.OpaqueTokenSpi;
 import fr.barlords.dndgateapi.domain.port.out.PendingSignupPersistenceSpi;
@@ -220,20 +221,22 @@ public class AccountServiceConfiguration {
 
     @Bean
     public AccountVerifierApi accountVerifierApi(
-            AccountPersistenceSpi spi,
-            Clock clock
+            AccountPersistenceSpi accounts,
+            PendingSignupPersistenceSpi pendingSignups,
+            Clock clock,
+            PlatformTransactionManager transactionManager
     ) {
-        return new AccountVerifierService(spi, clock);
+        return new TransactionalAccountVerifier(new AccountVerifierService(accounts, pendingSignups, clock), transactionManager);
     }
 
     @Bean
     public AccountVerificationResenderApi accountVerificationResenderApi(
-            AccountPersistenceSpi spi,
+            PendingSignupPersistenceSpi pendingSignups,
             EmailingSpi emailingSpi,
             Clock clock,
             @Value("${security.verification.ttl:PT24H}") Duration verificationCodeTtl,
             @Value("${security.verification.resend-cooldown:PT1M}") Duration resendCooldown
     ) {
-        return new AccountVerificationResenderService(spi, emailingSpi, clock, verificationCodeTtl, resendCooldown);
+        return new AccountVerificationResenderService(pendingSignups, emailingSpi, clock, verificationCodeTtl, resendCooldown);
     }
 }

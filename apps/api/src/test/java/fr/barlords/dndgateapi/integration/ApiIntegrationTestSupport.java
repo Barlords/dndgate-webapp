@@ -1,12 +1,11 @@
 package fr.barlords.dndgateapi.integration;
 
 import fr.barlords.dndgateapi.bootstrap.DndGateApiApplication;
-import fr.barlords.dndgateapi.domain.functional.model.account.Account;
-import fr.barlords.dndgateapi.domain.functional.service.RandomStringGenerator;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
-import fr.barlords.dndgateapi.domain.port.out.PasswordHasherSpi;
 import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
 import org.junit.jupiter.api.Assertions;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -78,9 +77,6 @@ abstract class ApiIntegrationTestSupport {
     @Autowired
     JdbcTemplate jdbc;
 
-    @Autowired
-    PasswordHasherSpi passwordHasher;
-
     final JsonMapper json = JsonMapper.builder().build();
 
     RestClient client() {
@@ -113,9 +109,7 @@ abstract class ApiIntegrationTestSupport {
         String pseudo = "account" + suffix;
         String password = "password-" + suffix;
 
-        // Signing up (POST /accounts) only records a pending signup since point 59, and the confirmation does not
-        // create the account yet (task 2): the account is inserted directly, then logged in over HTTP.
-        insertAccount(pseudo, pseudo + "@test.fr", password, true);
+        createAccount(pseudo, pseudo + "@test.fr", password);
 
         ResponseEntity<String> login = call(HttpMethod.POST, "/accounts/login", null, Map.of("pseudo", pseudo, "password", password));
         Assertions.assertEquals(200, login.getStatusCode().value(), login.getBody());
@@ -125,25 +119,23 @@ abstract class ApiIntegrationTestSupport {
                 node.get("token").asString(), node.get("refreshToken").asString());
     }
 
-    /** An account straight in the database, with a real password hash: what the confirmation of a signup will produce. */
-    UUID insertAccount(String pseudo, String email, String password, boolean activated) {
-        UUID id = UUID.randomUUID();
-        jdbc.update("insert into accounts (id, email, password, pseudo, activated, version) values (?, ?, ?, ?, ?, 0)",
-                id, email, passwordHasher.hash(password), pseudo, activated);
-        return id;
+    /**
+     * The real signup flow, without the login: POST /accounts, the clear code read from the mail the mock "sent", then
+     * POST /accounts/verify. Every test that needs an account goes through it, so that the regression net keeps
+     * exercising the signup end to end.
+     */
+    void createAccount(String pseudo, String email, String password) {
+        Assertions.assertEquals(202, call(HttpMethod.POST, "/accounts", null,
+                Map.of("email", email, "password", password, "pseudo", pseudo)).getStatusCode().value());
+        Assertions.assertEquals(204, verifyEmail(email, lastSignupCode(email)));
     }
 
-    /**
-     * An account that is not verified yet, as the sign up used to leave it: its code is in clear in the row and in the
-     * mail the mock "sent". Only the tests of the confirmation and of the resend (replaced in task 2) need one.
-     */
-    Account insertUnverifiedAccount(String pseudo, String email) {
-        UUID id = insertAccount(pseudo, email, "password123", false);
-        String code = RandomStringGenerator.generateAlphanumericString(Account.VERIFICATION_CODE_LENGTH);
-        jdbc.update("update accounts set verification_code = ?, verification_expires_at = now() + interval '24 hours' where id = ?", code, id);
-        Account account = Account.builder().id(id).email(email).pseudo(pseudo).verificationCode(code).build();
-        emailingSpi.sendAccountValidationEmail(account);
-        return account;
+    /** The clear code of the last confirmation mail that was sent to the address (the only place it exists). */
+    String lastSignupCode(String email) {
+        ArgumentCaptor<String> code = ArgumentCaptor.forClass(String.class);
+        Mockito.verify(emailingSpi, Mockito.atLeastOnce())
+                .sendSignupConfirmationEmail(Mockito.argThat(signup -> signup.getEmail().equals(email)), code.capture());
+        return code.getAllValues().getLast();
     }
 
     /** What the page behind the link of the verification mail does. */

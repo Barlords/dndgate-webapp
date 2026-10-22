@@ -80,7 +80,7 @@ public class AccountCreatorService implements AccountCreatorApi {
             emailSenderSpi.sendSignupConfirmationEmail(signup, code);
         } catch (EmailNotSendException e) {
             // The answer must not depend on it: the person can sign up again once the cooldown has passed
-            log.warn("The confirmation e-mail of pending signup {} could not be sent", signup.getId(), e);
+            log.warn("The confirmation e-mail of a pending signup could not be sent", e);
         }
     }
 

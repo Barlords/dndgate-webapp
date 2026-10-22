@@ -18,8 +18,6 @@ public interface AccountPersistenceSpi extends PersistenceSpi<Account, UUID> {
      */
     List<Account> findAllByPendingEmail(String pendingEmail);
 
-    Optional<Account> findByVerificationCode(String code);
-
     Account update(Account o);
 
 }

@@ -33,7 +33,7 @@ class SignupEnumerationIntegrationTest extends ApiIntegrationTestSupport {
     /** Creates an activated account that owns the address, and returns its pseudo. */
     private String ownerOf(String email) {
         String pseudo = newPseudo();
-        insertAccount(pseudo, email, "password123", true);
+        createAccount(pseudo, email, "password123");
         return pseudo;
     }
 

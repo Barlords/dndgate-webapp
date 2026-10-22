@@ -12,23 +12,23 @@ class EmailContentBuilderTest {
     private final EmailContentBuilder builder = new EmailContentBuilder("https://dndgate.example.com");
 
     private Account account(String pseudo, String email, String code) {
-        return Account.builder().pseudo(pseudo).email(email).verificationCode(code).build();
+        return Account.builder().pseudo(pseudo).email(email).build();
     }
 
     // ================= the link of the verification mail =================
 
     @Test
     void the_link_leads_to_the_web_site_with_the_address_and_the_code() {
-        EmailContent mail = builder.accountValidation(account("Gandalf", "gandalf@middle.earth", "abc123"));
+        EmailContent mail = builder.signupConfirmation(signup("Gandalf", "gandalf@middle.earth"), "abc123");
 
         Assertions.assertTrue(mail.html().contains("href=\"https://dndgate.example.com/verify-email?email=gandalf%40middle.earth&amp;code=abc123\""),
                 mail.html());
-        Assertions.assertEquals("Validation de votre compte", mail.subject());
+        Assertions.assertEquals("Confirmation de votre inscription", mail.subject());
     }
 
     @Test
     void a_plus_sign_in_the_address_is_encoded_so_that_it_is_not_read_as_a_space() {
-        EmailContent mail = builder.accountValidation(account("Gandalf", "gandalf+rpg@middle.earth", "abc123"));
+        EmailContent mail = builder.signupConfirmation(signup("Gandalf", "gandalf+rpg@middle.earth"), "abc123");
 
         Assertions.assertTrue(mail.html().contains("email=gandalf%2Brpg%40middle.earth"), mail.html());
         Assertions.assertFalse(mail.html().contains("gandalf+rpg"));
@@ -36,7 +36,7 @@ class EmailContentBuilderTest {
 
     @Test
     void characters_that_would_break_a_query_string_are_encoded() {
-        EmailContent mail = builder.accountValidation(account("Gandalf", "a&b=c#d@middle.earth", "x y&z"));
+        EmailContent mail = builder.signupConfirmation(signup("Gandalf", "a&b=c#d@middle.earth"), "x y&z");
 
         Assertions.assertTrue(mail.html().contains("email=a%26b%3Dc%23d%40middle.earth"), mail.html());
         Assertions.assertTrue(mail.html().contains("code=x+y%26z"), mail.html());
@@ -45,7 +45,7 @@ class EmailContentBuilderTest {
     @Test
     void a_trailing_slash_in_the_site_address_does_not_double_up() {
         EmailContent mail = new EmailContentBuilder("https://dndgate.example.com/")
-                .accountValidation(account("Gandalf", "g@middle.earth", "abc"));
+                .signupConfirmation(signup("Gandalf", "g@middle.earth"), "abc");
 
         Assertions.assertTrue(mail.html().contains("https://dndgate.example.com/verify-email?"));
         Assertions.assertFalse(mail.html().contains("com//verify"));
@@ -81,12 +81,10 @@ class EmailContentBuilderTest {
 
     @Test
     void the_notice_of_an_attempt_names_the_owner_and_carries_no_code_nor_link_to_verify() {
-        EmailContent mail = builder.signupAttempt(Account.builder().pseudo("<b>Gandalf</b>").email("g@middle.earth")
-                .verificationCode("abc123").build());
+        EmailContent mail = builder.signupAttempt(Account.builder().pseudo("<b>Gandalf</b>").email("g@middle.earth").build());
 
         Assertions.assertEquals("Tentative d'inscription avec votre adresse", mail.subject());
         Assertions.assertTrue(mail.html().contains("&lt;b&gt;Gandalf&lt;/b&gt;"), mail.html());
-        Assertions.assertFalse(mail.html().contains("abc123"), mail.html());
         Assertions.assertFalse(mail.html().contains("verify-email"), mail.html());
         Assertions.assertFalse(mail.html().contains("validation"), "no invitation to ask for a validation mail: " + mail.html());
         Assertions.assertTrue(mail.html().contains("href=\"https://dndgate.example.com/login\""), mail.html());
@@ -121,9 +119,9 @@ class EmailContentBuilderTest {
     // ================= what comes from a person is never markup =================
 
     @Test
-    void a_pseudo_with_markup_stays_text_in_the_verification_mail() {
-        EmailContent mail = builder.accountValidation(
-                account("<script>alert(1)</script><a href=\"https://evil.example\">click</a>", "g@middle.earth", "abc"));
+    void a_pseudo_with_markup_stays_text_in_the_signup_confirmation_mail() {
+        EmailContent mail = builder.signupConfirmation(
+                signup("<script>alert(1)</script><a href=\"https://evil.example\">click</a>", "g@middle.earth"), "abc");
 
         Assertions.assertFalse(mail.html().contains("<script"), mail.html());
         Assertions.assertFalse(mail.html().contains("evil.example\">"), mail.html());
@@ -133,7 +131,7 @@ class EmailContentBuilderTest {
 
     @Test
     void quotes_cannot_close_an_attribute() {
-        EmailContent mail = builder.accountValidation(account("\" onmouseover=\"alert(1)", "g@middle.earth", "abc"));
+        EmailContent mail = builder.signupConfirmation(signup("\" onmouseover=\"alert(1)", "g@middle.earth"), "abc");
 
         Assertions.assertFalse(mail.html().contains("\" onmouseover=\""), mail.html());
         Assertions.assertTrue(mail.html().contains("&quot; onmouseover=&quot;alert(1)"), mail.html());

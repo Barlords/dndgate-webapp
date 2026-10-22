@@ -2650,6 +2650,8 @@ components:
       properties:
         message:
           type: string
+      required:
+      - message
     VerificationRequest:
       type: object
       properties:

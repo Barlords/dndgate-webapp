@@ -219,11 +219,14 @@ Une invitation refusée n'est pas comptée. Les lignes plus anciennes que la plu
 Après l'inscription, un e-mail contient un lien vers **le site web** (`WEB_BASE_URL/verify-email?email=…&code=…`, avec l'adresse et le code encodés).
 La page appelle l'API :
 
-- `POST /accounts/verify` `{ "email": "...", "code": "..." }` : `204` si le code est bon.
-  Un code est **à usage unique**, valable **24 heures** (`security.verification.ttl`), de 24 caractères aléatoires, comparé en temps constant.
-  Un code faux, expiré ou déjà utilisé, ou une adresse inconnue, donnent **la même réponse `400`** : on ne peut pas savoir quelles adresses sont inscrites.
-- `POST /accounts/verification-email` `{ "email": "..." }` : renvoie un nouveau mail (l'ancien code cesse de fonctionner). Répond **toujours `202`**,
-  que l'adresse existe ou non, soit déjà vérifiée ou non. Au plus un mail par minute et par adresse (`security.verification.resend-cooldown`).
+- `POST /accounts/verify` `{ "email": "...", "code": "..." }` : **crée le compte, déjà activé**, à partir de l'inscription en attente (pseudo et mot de passe haché de l'inscription), supprime l'inscription et répond `204`. Tout est fait dans une seule transaction (`TransactionalAccountVerifier`).
+  Un code est **à usage unique**, valable **24 heures** (`security.verification.ttl`), de 24 caractères aléatoires, comparé en temps constant (SHA-256 du code reçu contre celui de la base).
+  Un code faux, expiré ou déjà utilisé, ou une adresse inconnue, donnent **la même réponse `400`** : on ne peut pas savoir quelles adresses sont inscrites. Deviner un code ne détruit pas l'inscription du propriétaire.
+  - Deux confirmations simultanées du même lien : une seule crée le compte (`204`), l'autre voit un code invalide (`400`) : utiliser l'inscription, c'est la supprimer, et une seule requête y parvient.
+  - Pseudo pris entre-temps (par un compte créé depuis, y compris par une confirmation simultanée) : `409` « pseudo déjà utilisé », l'inscription est supprimée (la personne se réinscrit avec un autre pseudo).
+  - Adresse devenue celle d'un compte entre-temps (changement d'adresse confirmé) : même réponse qu'un code invalide (`400`), l'inscription est supprimée.
+  - Aucune erreur `500` dans ces courses : les violations des index uniques de `accounts` (adresse, pseudo) sont traduites.
+- `POST /accounts/verification-email` `{ "email": "..." }` : pour une inscription en attente, génère un **nouveau code** (l'ancien cesse de fonctionner), repart pour 24 h et renvoie le mail. Répond **toujours `202`** avec le même corps, que l'adresse soit en attente, déjà inscrite ou inconnue (dans ces deux derniers cas rien n'est envoyé). Au plus un mail par minute et par adresse (`security.verification.resend-cooldown`), en silence au-delà.
 - `POST /accounts` **ne crée plus de compte** : il enregistre une **inscription en attente** (table `pending_signups`, une par adresse, adresse en minuscules) et envoie le lien de confirmation. Il répond **toujours `202`** avec le même corps fixe `{"message": "One last step before your account is validated: check your e-mail address"}`, que l'adresse soit déjà inscrite ou non, jamais de donnée de compte : l'inscription ne révèle pas les adresses connues.
   - Le pseudo est examiné en premier, **contre les comptes seulement** : un pseudo pris par un compte répond `409` quelle que soit l'adresse (les pseudos sont publics). Le pseudo d'une inscription en attente n'est **pas réservé** : sinon on pourrait sonder une adresse en deux requêtes (un pseudo neuf avec l'adresse visée, puis un sondage de ce pseudo). Le pseudo sera revérifié à la confirmation.
   - Le mot de passe est haché avant que l'adresse soit regardée (les deux branches coûtent pareil).
@@ -233,7 +236,8 @@ La page appelle l'API :
   - Les inscriptions expirées sont purgées chaque nuit (même tâche planifiée que les sessions).
 - Une validation n'est plus un `GET` : suivre un lien (analyseurs de courrier, aperçus) ne modifie rien.
 - Si le mail ne peut pas être envoyé, l'erreur est journalisée et **la réponse reste la même** ; la personne peut se réinscrire après le délai d'une minute.
-- Étape suivante du point 59 (pas encore faite) : `POST /accounts/verify` et `POST /accounts/verification-email` fonctionnent encore sur les comptes non activés d'avant ; ils créeront le compte à partir de l'inscription en attente.
+- Il n'existe plus de compte « créé mais non activé » : un compte existe toujours activé (ou anonymisé). La migration `V17` a converti les anciens comptes non activés en inscriptions en attente (leur code, haché en SQL, et leur expiration sont conservés, 24 h sinon) puis les a supprimés ; elle s'arrête en nommant le compte si l'un d'eux possède des données liées. Les colonnes `verification_code` et `verification_expires_at` de `accounts` ont disparu (le changement d'adresse a ses propres colonnes `pending_email_*`).
+- **Front** : la page `/verify-email` appelle `POST /accounts/verify` ; après `POST /accounts`, afficher le message « vérifiez votre adresse e-mail » (le compte n'existe pas encore, la connexion répond `401` jusqu'à la confirmation) ; la page peut proposer `POST /accounts/verification-email` si le mail n'arrive pas. Un `409` sur `/verify` signifie « pseudo pris entre-temps : se réinscrire avec un autre ».
 
 ### Pseudo et contenu des e-mails
 

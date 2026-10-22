@@ -6,8 +6,6 @@ import fr.barlords.dndgateapi.domain.functional.model.adventure.master.MasterTra
 
 public interface EmailingSpi {
 
-    void sendAccountValidationEmail(Account account);
-
     /**
      * Sent to the address of a pending signup, with the link that confirms it. The code is given apart because only
      * its hash is kept in the signup: this is the only place the clear code exists.
