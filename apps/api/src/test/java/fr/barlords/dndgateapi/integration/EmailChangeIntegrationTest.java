@@ -120,10 +120,14 @@ class EmailChangeIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount account = registerAndLogin();
         String newEmail = newEmailFor(account);
         requestChange(account, newEmail);
-        jdbc.update("update accounts set verification_code = 'registrationcode', verification_expires_at = now() + interval '1 hour' where id = ?", account.id());
+        // somebody signs up with that same address: the code of that pending signup is not the one of the change
+        String signupPseudo = "other" + UUID.randomUUID().toString().substring(0, 8);
+        Assertions.assertEquals(202, call(HttpMethod.POST, "/accounts", null,
+                Map.of("email", newEmail, "password", "password123", "pseudo", signupPseudo)).getStatusCode().value());
+        String registrationCode = lastSignupCode(newEmail);
 
-        Assertions.assertEquals(400, confirm(newEmail, "registrationcode"));
-        Assertions.assertEquals(400, confirm(account.pseudo() + "@test.fr", "registrationcode"));
+        Assertions.assertEquals(400, confirm(newEmail, registrationCode));
+        Assertions.assertEquals(400, confirm(account.pseudo() + "@test.fr", registrationCode));
     }
 
     @Test

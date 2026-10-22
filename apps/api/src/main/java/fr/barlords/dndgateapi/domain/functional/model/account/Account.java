@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.model.account;
 
-import fr.barlords.dndgateapi.domain.functional.service.RandomStringGenerator;
 import lombok.Builder;
 import lombok.Value;
 import lombok.With;
@@ -14,6 +13,7 @@ import java.util.UUID;
 @Builder
 public class Account {
 
+    /** Length of the codes sent by e-mail (signup confirmation, address change). */
     public static final int VERIFICATION_CODE_LENGTH = 24;
 
     @Builder.Default
@@ -32,15 +32,6 @@ public class Account {
     @Builder.Default
     @With
     boolean activated = false;
-
-    /** The secret sent by e-mail to prove that the address belongs to the person. Null once the address is verified. */
-    @Builder.Default
-    @With
-    String verificationCode = RandomStringGenerator.generateAlphanumericString(VERIFICATION_CODE_LENGTH);
-
-    /** After this instant the code no longer works and a new one has to be requested. */
-    @With
-    Instant verificationExpiresAt;
 
     /**
      * The address the owner asked to switch to. It replaces {@link #email} only once its owner followed the link
@@ -65,18 +56,9 @@ public class Account {
     Long version;
 
     /**
-     * True when the code is the one that was sent and has not expired. The comparison takes the same time
+     * True when the code is the one sent to the pending address and has not expired. The comparison takes the same time
      * whatever the number of correct characters, so that it cannot be used to guess the code one character at a time.
      */
-    public boolean hasValidVerificationCode(String code, Instant now) {
-        if (code == null || verificationCode == null || verificationExpiresAt == null || !verificationExpiresAt.isAfter(now)) {
-            return false;
-        }
-        return MessageDigest.isEqual(
-                verificationCode.getBytes(StandardCharsets.UTF_8), code.getBytes(StandardCharsets.UTF_8));
-    }
-
-    /** Same rules as {@link #hasValidVerificationCode}, for the code of the address change. */
     public boolean hasValidPendingEmailCode(String code, Instant now) {
         if (code == null || pendingEmail == null || pendingEmailCode == null
                 || pendingEmailExpiresAt == null || !pendingEmailExpiresAt.isAfter(now)) {

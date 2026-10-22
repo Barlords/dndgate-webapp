@@ -28,9 +28,10 @@ class SecurityIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     @Test
-    void login_is_refused_until_the_account_is_activated() {
+    void login_is_refused_until_the_signup_is_confirmed() {
         String pseudo = "inactive" + UUID.randomUUID().toString().substring(0, 6);
-        call(HttpMethod.POST, "/accounts", null, Map.of("email", pseudo + "@test.fr", "password", "password123", "pseudo", pseudo));
+        Assertions.assertEquals(202, call(HttpMethod.POST, "/accounts", null,
+                Map.of("email", pseudo + "@test.fr", "password", "password123", "pseudo", pseudo)).getStatusCode().value());
 
         Assertions.assertEquals(401,
                 call(HttpMethod.POST, "/accounts/login", null, Map.of("pseudo", pseudo, "password", "password123")).getStatusCode().value());

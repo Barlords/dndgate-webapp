@@ -1,13 +1,14 @@
 package fr.barlords.dndgateapi.domain.functional.service.account;
 
 import fr.barlords.dndgateapi.domain.functional.exception.EmailNotSendException;
-import fr.barlords.dndgateapi.domain.functional.exception.account.EmailAlreadyUsedException;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
-import fr.barlords.dndgateapi.domain.port.out.SignupNoticeLogSpi;
+import fr.barlords.dndgateapi.domain.functional.model.account.PendingSignup;
 import fr.barlords.dndgateapi.domain.functional.service.RandomStringGenerator;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountCreatorApi;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
+import fr.barlords.dndgateapi.domain.port.out.PendingSignupPersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.SignupNoticeLogSpi;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -26,12 +27,17 @@ public class AccountCreatorService implements AccountCreatorApi {
 
     private final AccountModifierService accountModifierService;
 
+    private final PendingSignupPersistenceSpi pendingSignups;
+
     private final EmailingSpi emailSenderSpi;
 
     private final Clock clock;
 
     /** How long the code sent by e-mail works. */
     private final Duration verificationCodeTtl;
+
+    /** Minimum time between two confirmation mails for the same address. */
+    private final Duration resendCooldown;
 
     private final SignupNoticeLogSpi noticeLog;
 
@@ -41,7 +47,8 @@ public class AccountCreatorService implements AccountCreatorApi {
     @Override
     public void create(Account account) {
         // The pseudo comes first and is public: a taken pseudo answers 409 whatever the address, so the answer
-        // can never tell whether the address is registered (checking the address first would be an oracle)
+        // can never tell whether the address is registered (checking the address first would be an oracle).
+        // Only accounts count: the pseudo of a pending signup is not reserved, or it would be a way to probe.
         accountCheckerService.pseudoIsAvailable(account);
 
         // Hashed before the address is looked at: both answers cost the same time, the hash being the slow part
@@ -53,25 +60,27 @@ public class AccountCreatorService implements AccountCreatorApi {
             return;
         }
 
-        Account toSave = encoded
-                .withVerificationCode(RandomStringGenerator.generateAlphanumericString(Account.VERIFICATION_CODE_LENGTH))
-                .withVerificationExpiresAt(clock.instant().plus(verificationCodeTtl));
+        Instant now = clock.instant();
+        String code = RandomStringGenerator.generateAlphanumericString(Account.VERIFICATION_CODE_LENGTH);
+        PendingSignup signup = PendingSignup.builder()
+                .email(account.getEmail())
+                .pseudo(account.getPseudo())
+                .passwordHash(encoded.getPassword())
+                .codeHash(PendingSignup.hashOf(code))
+                .createdAt(now)
+                .expiresAt(now.plus(verificationCodeTtl))
+                .build();
 
-        Account savedAccount;
-        try {
-            savedAccount = spi.save(toSave);
-        } catch (EmailAlreadyUsedException e) {
-            // Somebody registered the same address between the look-up and the insert: same answer as above
-            spi.findByEmail(account.getEmail()).ifPresent(this::tellTheOwner);
+        // A signup younger than the cooldown is kept as it is, in silence: the caller learns nothing either way
+        if (!pendingSignups.saveUnlessRecent(signup, now.minus(resendCooldown))) {
             return;
         }
 
         try {
-            emailSenderSpi.sendAccountValidationEmail(savedAccount);
+            emailSenderSpi.sendSignupConfirmationEmail(signup, code);
         } catch (EmailNotSendException e) {
-            // The account exists: failing here would leave a pseudo and an address taken by someone who
-            // cannot log in. The person can ask for the mail again.
-            log.warn("The validation e-mail of account {} could not be sent", savedAccount.getId(), e);
+            // The answer must not depend on it: the person can sign up again once the cooldown has passed
+            log.warn("The confirmation e-mail of a pending signup could not be sent", e);
         }
     }
 

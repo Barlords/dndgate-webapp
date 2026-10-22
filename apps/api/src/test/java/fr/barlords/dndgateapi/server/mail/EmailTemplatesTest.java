@@ -12,10 +12,10 @@ class EmailTemplatesTest {
 
     @Test
     void the_texts_are_read_in_utf_8_with_their_accents() {
-        String html = templates.render("account-validation.html", Map.of("pseudo", "x", "link", "y"));
+        String html = templates.render("signup-confirmation.html", Map.of("pseudo", "x", "link", "y"));
 
-        Assertions.assertEquals("Validation de votre compte", templates.render("account-validation.subject", Map.of()));
-        Assertions.assertTrue(html.contains("Il vous reste une dernière étape"), html);
+        Assertions.assertEquals("Confirmation de votre inscription", templates.render("signup-confirmation.subject", Map.of()));
+        Assertions.assertTrue(html.contains("Votre compte sera créé quand vous aurez confirmé votre adresse"), html);
         Assertions.assertTrue(html.contains("Si vous n'êtes pas à l'origine"), html);
     }
 

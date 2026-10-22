@@ -116,7 +116,6 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
                 // nobody knows this password, the hash can never match
                 .withPassword(passwordHasher.hash(opaqueTokens.generate()))
                 .withActivated(false)
-                .withVerificationCode(null)
                 .withPendingEmail(null)
                 .withPendingEmailCode(null)
                 .withPendingEmailExpiresAt(null)

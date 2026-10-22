@@ -1,6 +1,7 @@
 package fr.barlords.dndgateapi.server.adapter;
 
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
+import fr.barlords.dndgateapi.domain.functional.model.account.PendingSignup;
 import fr.barlords.dndgateapi.server.mail.EmailContentBuilder;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
@@ -32,7 +33,10 @@ class EmailingAdapterTest {
             mailSender, new EmailContentBuilder("https://dndgate.example.com"), executor, "noreply@dndgate.example.com");
 
     private final Account account = Account.builder()
-            .pseudo("Gandalf").email("gandalf@middle.earth").verificationCode("abc123").build();
+            .pseudo("Gandalf").email("gandalf@middle.earth").build();
+
+    private final PendingSignup signup = PendingSignup.builder()
+            .pseudo("Gandalf").email("gandalf@middle.earth").passwordHash("hash").codeHash("codehash").build();
 
     EmailingAdapterTest() {
         when(mailSender.createMimeMessage()).thenAnswer(call -> new MimeMessage((Session) null));
@@ -53,7 +57,7 @@ class EmailingAdapterTest {
             return null;
         }).when(mailSender).send(any(MimeMessage.class));
 
-        Assertions.assertTimeoutPreemptively(Duration.ofSeconds(3), () -> adapter.sendAccountValidationEmail(account),
+        Assertions.assertTimeoutPreemptively(Duration.ofSeconds(3), () -> adapter.sendSignupConfirmationEmail(signup, "abc123"),
                 "the call must return while the mail server has not answered yet");
 
         Assertions.assertTrue(smtpReached.await(5, TimeUnit.SECONDS), "the mail must still be handed to the server");
@@ -68,7 +72,7 @@ class EmailingAdapterTest {
             throw new MailSendException("connection refused");
         }).when(mailSender).send(any(MimeMessage.class));
 
-        Assertions.assertDoesNotThrow(() -> adapter.sendAccountValidationEmail(account));
+        Assertions.assertDoesNotThrow(() -> adapter.sendSignupConfirmationEmail(signup, "abc123"));
 
         Assertions.assertTrue(attempted.await(5, TimeUnit.SECONDS));
     }
@@ -85,16 +89,32 @@ class EmailingAdapterTest {
             return null;
         }).when(mailSender).send(any(MimeMessage.class));
 
-        adapter.sendAccountValidationEmail(account);
+        adapter.sendSignupConfirmationEmail(signup, "abc123");
         Assertions.assertTrue(busy.await(5, TimeUnit.SECONDS));
 
         // the only worker is busy and the queue has no room
-        Assertions.assertDoesNotThrow(() -> adapter.sendAccountValidationEmail(account));
+        Assertions.assertDoesNotThrow(() -> adapter.sendSignupConfirmationEmail(signup, "abc123"));
         Assertions.assertDoesNotThrow(() -> adapter.sendInvitationCodeEmail(account, account, "code"));
 
         release.countDown();
         executor.shutdown();
         Assertions.assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
         Assertions.assertEquals(1, sent.get());
+    }
+
+    @Test
+    void the_signup_confirmation_is_handed_to_the_mail_server_for_the_address_of_the_signup() throws Exception {
+        CountDownLatch handed = new CountDownLatch(1);
+        doAnswer(call -> {
+            MimeMessage message = call.getArgument(0);
+            Assertions.assertEquals("gandalf@middle.earth", message.getAllRecipients()[0].toString());
+            handed.countDown();
+            return null;
+        }).when(mailSender).send(any(MimeMessage.class));
+
+        adapter.sendSignupConfirmationEmail(
+                PendingSignup.builder().pseudo("Gandalf").email("gandalf@middle.earth").build(), "abc123");
+
+        Assertions.assertTrue(handed.await(5, TimeUnit.SECONDS));
     }
 }

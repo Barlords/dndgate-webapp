@@ -1055,7 +1055,11 @@ paths:
     post:
       tags:
       - Accounts
-      summary: Create account
+      summary: Sign up
+      description: "Records a pending signup and sends the confirmation link: the\
+        \ account only exists once the link is followed. The answer is the same whether\
+        \ the address is free or already registered; only a pseudo already used by\
+        \ an account answers 409."
       operationId: createAccount
       requestBody:
         content:
@@ -1066,6 +1070,10 @@ paths:
       responses:
         "202":
           description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignupAcceptedDto"
         default:
           description: "The error, in the same shape whatever produced it (RFC 9457)."
           content:
@@ -2637,6 +2645,13 @@ components:
       - email
       - password
       - pseudo
+    SignupAcceptedDto:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+      - message
     VerificationRequest:
       type: object
       properties:

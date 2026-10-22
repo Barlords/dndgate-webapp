@@ -115,7 +115,7 @@ class ProblemDetailIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     void an_unexpected_failure_is_a_500_problem_that_reveals_nothing() {
         Mockito.doThrow(new IllegalStateException("secret internal detail")).when(emailingSpi)
-                .sendAccountValidationEmail(ArgumentMatchers.any());
+                .sendSignupConfirmationEmail(ArgumentMatchers.any(), ArgumentMatchers.any());
         String suffix = UUID.randomUUID().toString().substring(0, 8);
 
         ResponseEntity<String> response = call(HttpMethod.POST, "/accounts", null,

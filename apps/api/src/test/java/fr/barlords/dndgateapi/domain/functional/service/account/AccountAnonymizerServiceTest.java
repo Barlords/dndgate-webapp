@@ -140,7 +140,6 @@ public class AccountAnonymizerServiceTest {
         Assertions.assertFalse(anonymous.getEmail().contains("gandalf"));
         Assertions.assertEquals("unusable-hash", anonymous.getPassword());
         Assertions.assertFalse(anonymous.isActivated());
-        Assertions.assertNull(anonymous.getVerificationCode());
         Assertions.assertEquals(NOW, anonymous.getAnonymizedAt());
         Assertions.assertTrue(anonymous.isAnonymized());
     }

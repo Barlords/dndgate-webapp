@@ -1,11 +1,16 @@
 package fr.barlords.dndgateapi.domain.port.out;
 
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
+import fr.barlords.dndgateapi.domain.functional.model.account.PendingSignup;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.master.MasterTransferMessage;
 
 public interface EmailingSpi {
 
-    void sendAccountValidationEmail(Account account);
+    /**
+     * Sent to the address of a pending signup, with the link that confirms it. The code is given apart because only
+     * its hash is kept in the signup: this is the only place the clear code exists.
+     */
+    void sendSignupConfirmationEmail(PendingSignup signup, String code);
 
     /**
      * Sent to the owner of an address somebody tried to register with: registering answers the same whether the

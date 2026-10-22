@@ -78,12 +78,11 @@ class AccountAnonymizationIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(204, deleteAccount(account));
 
         Map<String, Object> row = jdbc.queryForMap(
-                "select pseudo, email, password, activated, verification_code, anonymized_at from accounts where id = ?", account.id());
+                "select pseudo, email, password, activated, anonymized_at from accounts where id = ?", account.id());
         Assertions.assertTrue(row.get("pseudo").toString().startsWith("deleted-"));
         Assertions.assertTrue(row.get("email").toString().endsWith("@anonymized.invalid"));
         Assertions.assertNotEquals(account.password(), row.get("password"));
         Assertions.assertEquals(false, row.get("activated"));
-        Assertions.assertNull(row.get("verification_code"));
         Assertions.assertNotNull(row.get("anonymized_at"));
         Assertions.assertEquals(0, jdbc.queryForObject("select count(*) from accounts where pseudo = ? or email = ?",
                 Integer.class, account.pseudo(), oldEmail));
@@ -119,9 +118,11 @@ class AccountAnonymizationIntegrationTest extends ApiIntegrationTestSupport {
                 Map.of("email", account.pseudo() + "@test.fr", "password", "password123", "pseudo", account.pseudo()))
                 .getStatusCode().value());
 
-        // Signup always answers 202: only the database tells that the account was really created again
-        Assertions.assertEquals(1, jdbc.queryForObject("select count(*) from accounts where pseudo = ?", Integer.class, account.pseudo()));
-        Assertions.assertEquals(1, jdbc.queryForObject("select count(*) from accounts where email = ?", Integer.class, account.pseudo() + "@test.fr"));
+        // Signup always answers 202: only the database tells that the address and the pseudo were free (a pending
+        // signup was recorded, no account exists yet)
+        Assertions.assertEquals(1, jdbc.queryForObject("select count(*) from pending_signups where pseudo = ?", Integer.class, account.pseudo()));
+        Assertions.assertEquals(1, jdbc.queryForObject("select count(*) from pending_signups where email = ?", Integer.class, account.pseudo() + "@test.fr"));
+        Assertions.assertEquals(0, jdbc.queryForObject("select count(*) from accounts where pseudo = ?", Integer.class, account.pseudo()));
     }
 
     @Test

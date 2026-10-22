@@ -15,8 +15,10 @@ import fr.barlords.dndgateapi.domain.port.out.PasswordHasherSpi;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
 import fr.barlords.dndgateapi.bootstrap.config.TransactionalAccountAnonymizer;
 import fr.barlords.dndgateapi.bootstrap.config.TransactionalAccountUpdater;
+import fr.barlords.dndgateapi.bootstrap.config.TransactionalAccountVerifier;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.OpaqueTokenSpi;
+import fr.barlords.dndgateapi.domain.port.out.PendingSignupPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.SignupNoticeLogSpi;
 import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.SessionPersistenceSpi;
@@ -57,14 +59,21 @@ public class AccountServiceConfiguration {
             AccountPersistenceSpi spi,
             AccountCheckerService accountCheckerService,
             AccountModifierService accountModifierService,
+            PendingSignupPersistenceSpi pendingSignups,
             EmailingSpi emailingSpi,
             Clock clock,
             @Value("${security.verification.ttl:PT24H}") Duration verificationCodeTtl,
+            @Value("${security.verification.resend-cooldown:PT1M}") Duration resendCooldown,
             SignupNoticeLogSpi noticeLog,
             @Value("${security.signup-notice.window:PT24H}") Duration noticeWindow
     ) {
-        return new AccountCreatorService(spi, accountCheckerService, accountModifierService, emailingSpi,
-                clock, verificationCodeTtl, noticeLog, noticeWindow);
+        return new AccountCreatorService(spi, accountCheckerService, accountModifierService, pendingSignups, emailingSpi,
+                clock, verificationCodeTtl, resendCooldown, noticeLog, noticeWindow);
+    }
+
+    @Bean
+    public PendingSignupCleanerApi pendingSignupCleanerApi(PendingSignupPersistenceSpi pendingSignups, Clock clock) {
+        return new PendingSignupCleanerService(pendingSignups, clock);
     }
 
     @Bean
@@ -212,20 +221,22 @@ public class AccountServiceConfiguration {
 
     @Bean
     public AccountVerifierApi accountVerifierApi(
-            AccountPersistenceSpi spi,
-            Clock clock
+            AccountPersistenceSpi accounts,
+            PendingSignupPersistenceSpi pendingSignups,
+            Clock clock,
+            PlatformTransactionManager transactionManager
     ) {
-        return new AccountVerifierService(spi, clock);
+        return new TransactionalAccountVerifier(new AccountVerifierService(accounts, pendingSignups, clock), transactionManager);
     }
 
     @Bean
     public AccountVerificationResenderApi accountVerificationResenderApi(
-            AccountPersistenceSpi spi,
+            PendingSignupPersistenceSpi pendingSignups,
             EmailingSpi emailingSpi,
             Clock clock,
             @Value("${security.verification.ttl:PT24H}") Duration verificationCodeTtl,
             @Value("${security.verification.resend-cooldown:PT1M}") Duration resendCooldown
     ) {
-        return new AccountVerificationResenderService(spi, emailingSpi, clock, verificationCodeTtl, resendCooldown);
+        return new AccountVerificationResenderService(pendingSignups, emailingSpi, clock, verificationCodeTtl, resendCooldown);
     }
 }

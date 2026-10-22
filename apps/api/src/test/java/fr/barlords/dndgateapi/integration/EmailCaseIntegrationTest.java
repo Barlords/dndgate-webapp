@@ -23,12 +23,8 @@ class EmailCaseIntegrationTest extends ApiIntegrationTestSupport {
         return call(HttpMethod.POST, "/accounts", null, Map.of("email", email, "password", "password123", "pseudo", pseudo));
     }
 
-    private String verificationCode(String pseudo) {
-        return jdbc.queryForObject("select verification_code from accounts where pseudo = ?", String.class, pseudo);
-    }
-
-    private String emailOf(String pseudo) {
-        return jdbc.queryForObject("select email from accounts where pseudo = ?", String.class, pseudo);
+    private String pendingEmailOf(String pseudo) {
+        return jdbc.queryForObject("select email from pending_signups where pseudo = ?", String.class, pseudo);
     }
 
     private ResponseEntity<String> requestChange(TestAccount account, String newEmail) {
@@ -45,19 +41,20 @@ class EmailCaseIntegrationTest extends ApiIntegrationTestSupport {
         ResponseEntity<String> response = register(pseudo, pseudo + "@Mail.COM");
 
         Assertions.assertEquals(202, response.getStatusCode().value(), response.getBody());
-        Assertions.assertEquals(pseudo + "@mail.com", emailOf(pseudo));
+        Assertions.assertEquals(pseudo + "@mail.com", pendingEmailOf(pseudo));
     }
 
     @Test
     void the_same_address_in_another_case_cannot_open_a_second_account() {
         String first = newPseudo();
         String second = newPseudo();
-        Assertions.assertEquals(202, register(first, first + "@mail.com").getStatusCode().value());
+        createAccount(first, first + "@mail.com", "password123");
 
         ResponseEntity<String> response = register(second, (first + "@Mail.Com").toUpperCase());
 
         Assertions.assertEquals(202, response.getStatusCode().value(), response.getBody());
         Assertions.assertEquals(0, jdbc.queryForObject("select count(*) from accounts where pseudo = ?", Integer.class, second));
+        Assertions.assertEquals(0, jdbc.queryForObject("select count(*) from pending_signups where pseudo = ?", Integer.class, second));
     }
 
     @Test
@@ -65,7 +62,7 @@ class EmailCaseIntegrationTest extends ApiIntegrationTestSupport {
         String pseudo = newPseudo();
         register(pseudo, pseudo + "@mail.com");
 
-        Assertions.assertEquals(204, verifyEmail((pseudo + "@Mail.com").toUpperCase(), verificationCode(pseudo)));
+        Assertions.assertEquals(204, verifyEmail((pseudo + "@Mail.com").toUpperCase(), lastSignupCode(pseudo + "@mail.com")));
 
         Assertions.assertTrue(jdbc.queryForObject("select activated from accounts where pseudo = ?", Boolean.class, pseudo));
     }
@@ -73,16 +70,17 @@ class EmailCaseIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     void the_address_can_be_retyped_in_another_case_to_ask_for_a_new_code() {
         String pseudo = newPseudo();
-        register(pseudo, pseudo + "@mail.com");
-        String before = verificationCode(pseudo);
+        String email = pseudo + "@mail.com";
+        register(pseudo, email);
+        String before = lastSignupCode(email);
         // the mail just sent is old enough for a new one to be allowed
-        jdbc.update("update accounts set verification_expires_at = now() where pseudo = ?", pseudo);
+        jdbc.update("update pending_signups set created_at = now() - interval '2 minutes' where email = ?", email);
 
         ResponseEntity<String> response = call(HttpMethod.POST, "/accounts/verification-email", null,
                 Map.of("email", (pseudo + "@mail.com").toUpperCase()));
 
         Assertions.assertEquals(202, response.getStatusCode().value());
-        Assertions.assertNotEquals(before, verificationCode(pseudo), "a new code was issued");
+        Assertions.assertNotEquals(before, lastSignupCode(email), "a new code was issued");
     }
 
     @Test

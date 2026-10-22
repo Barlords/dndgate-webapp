@@ -4,6 +4,8 @@ import fr.barlords.dndgateapi.bootstrap.DndGateApiApplication;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
 import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
 import org.junit.jupiter.api.Assertions;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -105,14 +107,9 @@ abstract class ApiIntegrationTestSupport {
     TestAccount registerAndLogin() {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         String pseudo = "account" + suffix;
-        String email = pseudo + "@test.fr";
         String password = "password-" + suffix;
 
-        Assertions.assertEquals(202, call(HttpMethod.POST, "/accounts", null,
-                Map.of("email", email, "password", password, "pseudo", pseudo)).getStatusCode().value());
-
-        String code = jdbc.queryForObject("select verification_code from accounts where pseudo = ?", String.class, pseudo);
-        Assertions.assertEquals(204, verifyEmail(email, code));
+        createAccount(pseudo, pseudo + "@test.fr", password);
 
         ResponseEntity<String> login = call(HttpMethod.POST, "/accounts/login", null, Map.of("pseudo", pseudo, "password", password));
         Assertions.assertEquals(200, login.getStatusCode().value(), login.getBody());
@@ -120,6 +117,25 @@ abstract class ApiIntegrationTestSupport {
         JsonNode node = body(login);
         return new TestAccount(UUID.fromString(node.get("accountId").asString()), pseudo, password,
                 node.get("token").asString(), node.get("refreshToken").asString());
+    }
+
+    /**
+     * The real signup flow, without the login: POST /accounts, the clear code read from the mail the mock "sent", then
+     * POST /accounts/verify. Every test that needs an account goes through it, so that the regression net keeps
+     * exercising the signup end to end.
+     */
+    void createAccount(String pseudo, String email, String password) {
+        Assertions.assertEquals(202, call(HttpMethod.POST, "/accounts", null,
+                Map.of("email", email, "password", password, "pseudo", pseudo)).getStatusCode().value());
+        Assertions.assertEquals(204, verifyEmail(email, lastSignupCode(email)));
+    }
+
+    /** The clear code of the last confirmation mail that was sent to the address (the only place it exists). */
+    String lastSignupCode(String email) {
+        ArgumentCaptor<String> code = ArgumentCaptor.forClass(String.class);
+        Mockito.verify(emailingSpi, Mockito.atLeastOnce())
+                .sendSignupConfirmationEmail(Mockito.argThat(signup -> signup.getEmail().equals(email)), code.capture());
+        return code.getAllValues().getLast();
     }
 
     /** What the page behind the link of the verification mail does. */

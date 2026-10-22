@@ -35,11 +35,6 @@ public class AccountEntity implements Serializable {
     @Column(name = "activated", nullable = false)
     private boolean activated;
 
-    @Column(name = "verification_code")
-    private String verificationCode;
-
-    @Column(name = "verification_expires_at")
-    private Instant verificationExpiresAt;
 
     @Column(name = "pending_email")
     private String pendingEmail;

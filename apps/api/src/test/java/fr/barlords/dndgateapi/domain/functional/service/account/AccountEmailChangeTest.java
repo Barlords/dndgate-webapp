@@ -56,7 +56,7 @@ public class AccountEmailChangeTest {
     private EmailingSpi emailingSpi;
 
     private final Account existing = Account.builder().pseudo("usertest").email("old@test.fr").password("hash")
-            .activated(true).verificationCode(null).build();
+            .activated(true).build();
 
     private Account waitingFor(String newEmail, String code, Instant expiresAt) {
         return existing.withPendingEmail(newEmail).withPendingEmailCode(code).withPendingEmailExpiresAt(expiresAt);
@@ -88,9 +88,6 @@ public class AccountEmailChangeTest {
         void an_account_with_no_change_waiting_has_no_valid_code() {
             Assertions.assertFalse(existing.hasValidPendingEmailCode("anything", NOW));
             Assertions.assertFalse(existing.hasValidPendingEmailCode(null, NOW));
-            // the code of the registration mail is another secret: it cannot confirm an address change
-            Assertions.assertFalse(Account.builder().verificationCode("registration").verificationExpiresAt(NOW.plusSeconds(60)).build()
-                    .hasValidPendingEmailCode("registration", NOW));
         }
 
         @Test

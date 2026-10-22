@@ -1,6 +1,7 @@
 package fr.barlords.dndgateapi.server.mail;
 
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
+import fr.barlords.dndgateapi.domain.functional.model.account.PendingSignup;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.master.MasterTransferMessage;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -26,14 +27,15 @@ public class EmailContentBuilder {
         this.webBaseUrl = webBaseUrl.endsWith("/") ? webBaseUrl.substring(0, webBaseUrl.length() - 1) : webBaseUrl;
     }
 
-    public EmailContent accountValidation(Account account) {
-        String link = webBaseUrl + "/verify-email?email=" + encode(account.getEmail())
-                + "&code=" + encode(account.getVerificationCode());
+    /** Goes to the address of a pending signup: the link carries the address and the clear code. */
+    public EmailContent signupConfirmation(PendingSignup signup, String code) {
+        String link = webBaseUrl + "/verify-email?email=" + encode(signup.getEmail())
+                + "&code=" + encode(code);
 
         return new EmailContent(
-                templates.render("account-validation.subject", Map.of()),
-                templates.render("account-validation.html", Map.of(
-                        "pseudo", escape(account.getPseudo()),
+                templates.render("signup-confirmation.subject", Map.of()),
+                templates.render("signup-confirmation.html", Map.of(
+                        "pseudo", escape(signup.getPseudo()),
                         "link", escape(link))));
     }
 

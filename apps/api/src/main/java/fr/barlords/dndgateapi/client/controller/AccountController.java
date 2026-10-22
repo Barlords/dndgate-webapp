@@ -1,5 +1,6 @@
 package fr.barlords.dndgateapi.client.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import fr.barlords.dndgateapi.client.dto.DeletionConfirmationRequest;
 import fr.barlords.dndgateapi.client.dto.account.AccountUpdateRequest;
@@ -11,6 +12,7 @@ import fr.barlords.dndgateapi.client.dto.account.PublicAccountDto;
 import fr.barlords.dndgateapi.client.dto.account.AccountCreationRequest;
 import fr.barlords.dndgateapi.client.dto.account.AccountDto;
 import fr.barlords.dndgateapi.client.dto.account.AccountLogRequest;
+import fr.barlords.dndgateapi.client.dto.account.SignupAcceptedDto;
 import fr.barlords.dndgateapi.client.mapper.AuthDtoMapper;
 import fr.barlords.dndgateapi.client.mapper.AccountDtoMapper;
 import fr.barlords.dndgateapi.client.service.AuthVerifierService;
@@ -80,8 +82,13 @@ public class AccountController {
 
     @PostMapping
     @ResponseStatus(ACCEPTED)
-    public void createAccount(@Valid @RequestBody AccountCreationRequest request) {
+    @Operation(summary = "Sign up",
+            description = "Records a pending signup and sends the confirmation link: the account only exists once the link "
+                    + "is followed. The answer is the same whether the address is free or already registered; "
+                    + "only a pseudo already used by an account answers 409.")
+    public SignupAcceptedDto createAccount(@Valid @RequestBody AccountCreationRequest request) {
         accountCreatorApi.create(AccountDtoMapper.creationRequestToDomain(request));
+        return SignupAcceptedDto.INSTANCE;
     }
 
     @PatchMapping

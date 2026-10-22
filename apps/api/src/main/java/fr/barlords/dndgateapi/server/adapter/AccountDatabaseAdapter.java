@@ -97,12 +97,6 @@ public class AccountDatabaseAdapter implements AccountPersistenceSpi {
 
     @Override
     @Transactional
-    public Optional<Account> findByVerificationCode(String code) {
-        return repository.findByVerificationCode(code).map(AccountEntityMapper::toDomain);
-    }
-
-    @Override
-    @Transactional
     public void deleteById(UUID id) {
         repository.deleteById(id);
     }
