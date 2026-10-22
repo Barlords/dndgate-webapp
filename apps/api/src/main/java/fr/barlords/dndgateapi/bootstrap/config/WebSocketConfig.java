@@ -16,6 +16,9 @@ import org.springframework.web.socket.config.annotation.WebSocketTransportRegist
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
+    /** The STOMP endpoint (SockJS; the raw WebSocket is {@code /ws/websocket}), documented in contracts/asyncapi.yaml. */
+    static final String ENDPOINT = "/ws";
+
     private static final int MAX_FRAME_BYTES = 16 * 1024;
 
     private final WebSocketSecurityInterceptor webSocketSecurityInterceptor;
@@ -35,7 +38,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws")
+        registry.addEndpoint(ENDPOINT)
                 .setAllowedOrigins(allowedOrigins)
                 .withSockJS();
     }

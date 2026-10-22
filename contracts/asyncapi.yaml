@@ -2,29 +2,34 @@ asyncapi: 3.0.0
 info:
   title: DnDGate API - WebSocket topics
   version: 1.0.0
+  x-subscriptions-per-connection: 20
   description: |
     What the API publishes over WebSocket (STOMP), the part of the API that `openapi.yaml` cannot describe.
     This file is written by hand; the payload schemas are the ones of `openapi.yaml`, so a message has one definition.
 
-    Connection: `ws(s)://<host>/<context-path>/ws`, STOMP 1.2 with the access token of the session in the `Authorization`
-    header of the `CONNECT` frame (`Bearer <token>`). A missing, invalid or revoked token refuses the connection.
+    Connection: STOMP 1.2 over SockJS at `<context-path>/ws` (browsers; `http(s)://` URL, SockJS picks the transport),
+    or over a raw WebSocket at `<context-path>/ws/websocket` (`ws(s)://` URL; native and test clients). The access token
+    of the session goes in the `Authorization` header of the `CONNECT` frame (`Bearer <token>`). A missing, invalid or
+    revoked token refuses the connection. Allowed origins are those of the CORS configuration.
 
     Rules:
     - Clients only subscribe: a `SEND` is refused. Messages are published by the API, as a side effect of
       `POST /messages` and `POST /webrtc/{offer|answer|candidate}`.
     - A subscription is accepted only for a participant of the adventure (the owner, the master or a player), to the exact
       destinations below (lowercase UUID, nothing before or after). It is cut when the participant leaves the adventure,
-      hands over the master role, logs out, changes password or deletes the account.
-    - At most 20 subscriptions per connection.
+      hands over the master role, logs out, changes password or deletes the account, or when the adventure is deleted.
+    - At most `x-subscriptions-per-connection` (see above) subscriptions per connection.
     - Every participant of the adventure receives every message of the topic, including the sender.
     - WebRTC signals are not addressed to a recipient: each participant must ignore the ones that are not for them
       (see point 58 of the audit).
 servers:
   local:
-    host: localhost:8080
+    host: localhost:4000
     pathname: /dndgate-api/ws
-    protocol: ws
-    description: Development server. Authenticate with the `Authorization` header of the STOMP `CONNECT` frame.
+    protocol: http
+    description: >-
+      Development server (SockJS endpoint; the raw WebSocket is `ws://localhost:4000/dndgate-api/ws/websocket`).
+      Authenticate with the `Authorization` header of the STOMP `CONNECT` frame.
 channels:
   adventureChat:
     address: /topic/adventure/chat/{adventureId}
