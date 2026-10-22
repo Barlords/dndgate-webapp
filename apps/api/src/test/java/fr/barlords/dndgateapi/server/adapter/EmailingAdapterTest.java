@@ -1,6 +1,7 @@
 package fr.barlords.dndgateapi.server.adapter;
 
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
+import fr.barlords.dndgateapi.domain.functional.model.account.PendingSignup;
 import fr.barlords.dndgateapi.server.mail.EmailContentBuilder;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
@@ -96,5 +97,21 @@ class EmailingAdapterTest {
         executor.shutdown();
         Assertions.assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
         Assertions.assertEquals(1, sent.get());
+    }
+
+    @Test
+    void the_signup_confirmation_is_handed_to_the_mail_server_for_the_address_of_the_signup() throws Exception {
+        CountDownLatch handed = new CountDownLatch(1);
+        doAnswer(call -> {
+            MimeMessage message = call.getArgument(0);
+            Assertions.assertEquals("gandalf@middle.earth", message.getAllRecipients()[0].toString());
+            handed.countDown();
+            return null;
+        }).when(mailSender).send(any(MimeMessage.class));
+
+        adapter.sendSignupConfirmationEmail(
+                PendingSignup.builder().pseudo("Gandalf").email("gandalf@middle.earth").build(), "abc123");
+
+        Assertions.assertTrue(handed.await(5, TimeUnit.SECONDS));
     }
 }

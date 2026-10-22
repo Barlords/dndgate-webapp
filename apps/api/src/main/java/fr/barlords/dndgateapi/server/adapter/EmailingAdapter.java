@@ -2,6 +2,7 @@ package fr.barlords.dndgateapi.server.adapter;
 
 import fr.barlords.dndgateapi.domain.functional.exception.EmailNotSendException;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
+import fr.barlords.dndgateapi.domain.functional.model.account.PendingSignup;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.master.MasterTransferMessage;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
 import fr.barlords.dndgateapi.server.mail.AfterCommit;
@@ -49,6 +50,11 @@ public class EmailingAdapter implements EmailingSpi {
     @Override
     public void sendAccountValidationEmail(Account account) {
         enqueue(account.getEmail(), contentBuilder.accountValidation(account));
+    }
+
+    @Override
+    public void sendSignupConfirmationEmail(PendingSignup signup, String code) {
+        enqueue(signup.getEmail(), contentBuilder.signupConfirmation(signup, code));
     }
 
     @Override

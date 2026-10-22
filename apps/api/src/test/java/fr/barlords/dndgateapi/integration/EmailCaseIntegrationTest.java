@@ -27,8 +27,8 @@ class EmailCaseIntegrationTest extends ApiIntegrationTestSupport {
         return jdbc.queryForObject("select verification_code from accounts where pseudo = ?", String.class, pseudo);
     }
 
-    private String emailOf(String pseudo) {
-        return jdbc.queryForObject("select email from accounts where pseudo = ?", String.class, pseudo);
+    private String pendingEmailOf(String pseudo) {
+        return jdbc.queryForObject("select email from pending_signups where pseudo = ?", String.class, pseudo);
     }
 
     private ResponseEntity<String> requestChange(TestAccount account, String newEmail) {
@@ -45,25 +45,26 @@ class EmailCaseIntegrationTest extends ApiIntegrationTestSupport {
         ResponseEntity<String> response = register(pseudo, pseudo + "@Mail.COM");
 
         Assertions.assertEquals(202, response.getStatusCode().value(), response.getBody());
-        Assertions.assertEquals(pseudo + "@mail.com", emailOf(pseudo));
+        Assertions.assertEquals(pseudo + "@mail.com", pendingEmailOf(pseudo));
     }
 
     @Test
     void the_same_address_in_another_case_cannot_open_a_second_account() {
         String first = newPseudo();
         String second = newPseudo();
-        Assertions.assertEquals(202, register(first, first + "@mail.com").getStatusCode().value());
+        insertAccount(first, first + "@mail.com", "password123", true);
 
         ResponseEntity<String> response = register(second, (first + "@Mail.Com").toUpperCase());
 
         Assertions.assertEquals(202, response.getStatusCode().value(), response.getBody());
         Assertions.assertEquals(0, jdbc.queryForObject("select count(*) from accounts where pseudo = ?", Integer.class, second));
+        Assertions.assertEquals(0, jdbc.queryForObject("select count(*) from pending_signups where pseudo = ?", Integer.class, second));
     }
 
     @Test
     void the_address_can_be_retyped_in_another_case_to_verify_it() {
         String pseudo = newPseudo();
-        register(pseudo, pseudo + "@mail.com");
+        insertUnverifiedAccount(pseudo, pseudo + "@mail.com");
 
         Assertions.assertEquals(204, verifyEmail((pseudo + "@Mail.com").toUpperCase(), verificationCode(pseudo)));
 
@@ -73,7 +74,7 @@ class EmailCaseIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     void the_address_can_be_retyped_in_another_case_to_ask_for_a_new_code() {
         String pseudo = newPseudo();
-        register(pseudo, pseudo + "@mail.com");
+        insertUnverifiedAccount(pseudo, pseudo + "@mail.com");
         String before = verificationCode(pseudo);
         // the mail just sent is old enough for a new one to be allowed
         jdbc.update("update accounts set verification_expires_at = now() where pseudo = ?", pseudo);

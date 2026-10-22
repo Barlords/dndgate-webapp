@@ -216,7 +216,7 @@ Une invitation refusée n'est pas comptée. Les lignes plus anciennes que la plu
 
 ### Vérification de l'adresse e-mail
 
-À l'inscription, un e-mail contient un lien vers **le site web** (`WEB_BASE_URL/verify-email?email=…&code=…`, avec l'adresse et le code encodés).
+Après l'inscription, un e-mail contient un lien vers **le site web** (`WEB_BASE_URL/verify-email?email=…&code=…`, avec l'adresse et le code encodés).
 La page appelle l'API :
 
 - `POST /accounts/verify` `{ "email": "...", "code": "..." }` : `204` si le code est bon.
@@ -224,10 +224,16 @@ La page appelle l'API :
   Un code faux, expiré ou déjà utilisé, ou une adresse inconnue, donnent **la même réponse `400`** : on ne peut pas savoir quelles adresses sont inscrites.
 - `POST /accounts/verification-email` `{ "email": "..." }` : renvoie un nouveau mail (l'ancien code cesse de fonctionner). Répond **toujours `202`**,
   que l'adresse existe ou non, soit déjà vérifiée ou non. Au plus un mail par minute et par adresse (`security.verification.resend-cooldown`).
-- `POST /accounts` répond **toujours `202`, sans corps**, que l'adresse soit déjà inscrite ou non : l'inscription ne révèle pas les adresses connues. Si l'adresse est déjà inscrite, rien n'est créé et son propriétaire reçoit un mail l'informant de la tentative (sans code), **au plus un par adresse et par 24 h** (`security.signup-notice.window`, compté en base sous forme d'empreinte de l'adresse). Le pseudo est examiné avant l'adresse : un pseudo pris répond `409` quelle que soit l'adresse. Limite connue : en deux requêtes (un pseudo neuf avec l'adresse visée, puis un sondage de ce pseudo), on peut encore deviner si l'adresse était libre, car le compte est créé avant la vérification de l'adresse. Seul un pseudo déjà pris répond `409` (les pseudos sont publics). Le client dit donc toujours « si l'adresse est libre, un mail de validation vous a été envoyé ».
+- `POST /accounts` **ne crée plus de compte** : il enregistre une **inscription en attente** (table `pending_signups`, une par adresse, adresse en minuscules) et envoie le lien de confirmation. Il répond **toujours `202`** avec le même corps fixe `{"message": "One last step before your account is validated: check your e-mail address"}`, que l'adresse soit déjà inscrite ou non, jamais de donnée de compte : l'inscription ne révèle pas les adresses connues.
+  - Le pseudo est examiné en premier, **contre les comptes seulement** : un pseudo pris par un compte répond `409` quelle que soit l'adresse (les pseudos sont publics). Le pseudo d'une inscription en attente n'est **pas réservé** : sinon on pourrait sonder une adresse en deux requêtes (un pseudo neuf avec l'adresse visée, puis un sondage de ce pseudo). Le pseudo sera revérifié à la confirmation.
+  - Le mot de passe est haché avant que l'adresse soit regardée (les deux branches coûtent pareil).
+  - Adresse déjà inscrite : aucune inscription, et son propriétaire reçoit un mail l'informant de la tentative (sans code), **au plus un par adresse et par 24 h** (`security.signup-notice.window`, compté en base sous forme d'empreinte de l'adresse).
+  - Adresse libre : l'inscription en attente est créée, ou **remplacée** (nouveau pseudo, mot de passe, code, l'ancien lien cesse de fonctionner) si l'ancienne a plus que `security.verification.resend-cooldown` (1 minute) ; sinon rien ne change et aucun mail ne part, en silence. L'écriture est une seule requête SQL atomique : deux inscriptions simultanées pour la même adresse laissent une seule ligne et un seul mail, sans erreur.
+  - Le code (24 caractères aléatoires, valable `security.verification.ttl`, 24 h) n'est **jamais stocké en clair** : la base garde son SHA-256 (hexadécimal) ; seul le mail contient le code.
+  - Les inscriptions expirées sont purgées chaque nuit (même tâche planifiée que les sessions).
 - Une validation n'est plus un `GET` : suivre un lien (analyseurs de courrier, aperçus) ne modifie rien.
-- Si le mail ne peut pas être envoyé, **l'inscription réussit quand même** (sinon le pseudo et l'adresse resteraient pris par un compte inutilisable) ;
-  la personne demande un nouveau mail. Après un envoi raté, il faut attendre la minute de délai.
+- Si le mail ne peut pas être envoyé, l'erreur est journalisée et **la réponse reste la même** ; la personne peut se réinscrire après le délai d'une minute.
+- Étape suivante du point 59 (pas encore faite) : `POST /accounts/verify` et `POST /accounts/verification-email` fonctionnent encore sur les comptes non activés d'avant ; ils créeront le compte à partir de l'inscription en attente.
 
 ### Pseudo et contenu des e-mails
 

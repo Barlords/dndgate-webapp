@@ -58,7 +58,7 @@ class SignupNoticeLimitIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     void a_second_attempt_inside_the_window_sends_no_second_notice_and_answers_the_same() {
         String owner = newPseudo();
-        register(owner, owner + "@mail.com");
+        insertAccount(owner, owner + "@mail.com", "password123", true);
         Mockito.clearInvocations(emailingSpi);
 
         ResponseEntity<String> first = register(newPseudo(), owner + "@mail.com");
@@ -73,7 +73,7 @@ class SignupNoticeLimitIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     void an_attempt_after_the_window_sends_a_new_notice() {
         String owner = newPseudo();
-        register(owner, owner + "@mail.com");
+        insertAccount(owner, owner + "@mail.com", "password123", true);
         Mockito.clearInvocations(emailingSpi);
         attempts(owner + "@mail.com", 1);
         jdbc.update("update signup_notices set sent_at = now() - interval '25 hours' where email_hash = ?", sha256(owner + "@mail.com"));
@@ -87,8 +87,8 @@ class SignupNoticeLimitIntegrationTest extends ApiIntegrationTestSupport {
     void the_limit_is_per_address() {
         String first = newPseudo();
         String second = newPseudo();
-        register(first, first + "@mail.com");
-        register(second, second + "@mail.com");
+        insertAccount(first, first + "@mail.com", "password123", true);
+        insertAccount(second, second + "@mail.com", "password123", true);
         Mockito.clearInvocations(emailingSpi);
 
         attempts(first + "@mail.com", 1);
@@ -100,7 +100,7 @@ class SignupNoticeLimitIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     void the_address_is_not_stored_in_clear() {
         String owner = newPseudo();
-        register(owner, owner + "@mail.com");
+        insertAccount(owner, owner + "@mail.com", "password123", true);
         attempts(owner + "@mail.com", 1);
 
         Assertions.assertEquals(1, jdbc.queryForObject(
@@ -123,7 +123,7 @@ class SignupNoticeLimitIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     void a_taken_address_with_a_taken_pseudo_answers_409_because_the_pseudo_is_public() {
         String owner = newPseudo();
-        register(owner, owner + "@mail.com");
+        insertAccount(owner, owner + "@mail.com", "password123", true);
 
         ResponseEntity<String> response = register(owner, owner + "@mail.com");
 
@@ -133,7 +133,7 @@ class SignupNoticeLimitIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     void the_database_refusal_of_a_duplicate_address_is_a_taken_address_not_a_500() {
         String owner = newPseudo();
-        register(owner, owner + "@mail.com");
+        insertAccount(owner, owner + "@mail.com", "password123", true);
 
         Account duplicate = Account.builder().pseudo(newPseudo()).email(owner + "@mail.com").password("hash").build();
 
@@ -154,7 +154,7 @@ class SignupNoticeLimitIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     void the_database_refusal_of_a_duplicate_pseudo_is_a_taken_pseudo() {
         String owner = newPseudo();
-        register(owner, owner + "@mail.com");
+        insertAccount(owner, owner + "@mail.com", "password123", true);
 
         Account duplicate = Account.builder().pseudo(owner).email("other-" + owner + "@mail.com").password("hash").build();
 

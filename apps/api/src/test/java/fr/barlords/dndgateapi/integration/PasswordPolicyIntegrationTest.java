@@ -18,9 +18,12 @@ class PasswordPolicyIntegrationTest extends ApiIntegrationTestSupport {
                 Map.of("email", pseudo + "@test.fr", "password", password, "pseudo", pseudo)).getStatusCode().value();
     }
 
+    /** What the confirmation of the signup will do (task 2): the account is created, activated, with the stored hash. */
     private void activate(String pseudo) {
-        String code = jdbc.queryForObject("select verification_code from accounts where pseudo = ?", String.class, pseudo);
-        Assertions.assertEquals(204, verifyEmail(pseudo + "@test.fr", code));
+        String hash = jdbc.queryForObject("select password_hash from pending_signups where pseudo = ?", String.class, pseudo);
+        jdbc.update("insert into accounts (id, email, password, pseudo, activated, version) values (?, ?, ?, ?, true, 0)",
+                UUID.randomUUID(), pseudo + "@test.fr", hash, pseudo);
+        jdbc.update("delete from pending_signups where pseudo = ?", pseudo);
     }
 
     private int login(String pseudo, String password) {

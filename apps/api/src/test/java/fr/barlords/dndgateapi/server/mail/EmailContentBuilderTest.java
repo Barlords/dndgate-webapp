@@ -1,6 +1,7 @@
 package fr.barlords.dndgateapi.server.mail;
 
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
+import fr.barlords.dndgateapi.domain.functional.model.account.PendingSignup;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.master.MasterTransferEvent;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.master.MasterTransferMessage;
 import org.junit.jupiter.api.Assertions;
@@ -48,6 +49,32 @@ class EmailContentBuilderTest {
 
         Assertions.assertTrue(mail.html().contains("https://dndgate.example.com/verify-email?"));
         Assertions.assertFalse(mail.html().contains("com//verify"));
+    }
+
+    // ================= the confirmation of a signup =================
+
+    private PendingSignup signup(String pseudo, String email) {
+        return PendingSignup.builder().pseudo(pseudo).email(email).passwordHash("hash").codeHash("codehash").build();
+    }
+
+    @Test
+    void the_signup_confirmation_links_to_the_web_site_with_the_address_and_the_clear_code() {
+        EmailContent mail = builder.signupConfirmation(signup("Gandalf", "gandalf+rpg@middle.earth"), "abc123");
+
+        Assertions.assertTrue(mail.html().contains(
+                "href=\"https://dndgate.example.com/verify-email?email=gandalf%2Brpg%40middle.earth&amp;code=abc123\""), mail.html());
+        Assertions.assertEquals("Confirmation de votre inscription", mail.subject());
+        Assertions.assertFalse(mail.html().contains("codehash"), mail.html());
+    }
+
+    @Test
+    void the_signup_confirmation_says_to_ignore_the_mail_when_the_person_did_not_ask_and_keeps_the_pseudo_as_text() {
+        EmailContent mail = builder.signupConfirmation(signup("<script>alert(1)</script>", "g@middle.earth"), "abc");
+
+        Assertions.assertTrue(mail.html().contains("ignorez simplement ce mail"), mail.html());
+        Assertions.assertFalse(mail.html().contains("<script"), mail.html());
+        Assertions.assertTrue(mail.html().contains("&lt;script&gt;"), mail.html());
+        Assertions.assertEquals(1, mail.html().split("<a ", -1).length - 1, "the only link is the confirmation one");
     }
 
     // ================= the notice of a registration attempt =================

@@ -59,7 +59,7 @@ class EmailVerificationIntegrationTest extends ApiIntegrationTestSupport {
     void the_code_received_by_mail_activates_the_account() {
         String pseudo = newPseudo();
         String email = pseudo + "@test.fr";
-        Assertions.assertEquals(202, register(pseudo, email).getStatusCode().value());
+        insertUnverifiedAccount(pseudo, email);
         Assertions.assertEquals(401, login(pseudo), "not usable before the address is verified");
 
         Assertions.assertEquals(204, verifyEmail(email, codeOfTheLastMail()));
@@ -74,15 +74,19 @@ class EmailVerificationIntegrationTest extends ApiIntegrationTestSupport {
 
         ResponseEntity<String> response = register(pseudo, pseudo + "@test.fr");
 
-        Assertions.assertNull(response.getBody(), "the answer carries nothing: no id, no code");
-        Assertions.assertFalse(codeOfTheLastMail().isBlank());
+        Assertions.assertEquals(1, body(response).size(), "the answer carries a message only: no id, no code");
+        Assertions.assertFalse(response.getBody().contains(pseudo));
+        ArgumentCaptor<String> code = ArgumentCaptor.forClass(String.class);
+        Mockito.verify(emailingSpi).sendSignupConfirmationEmail(any(), code.capture());
+        Assertions.assertFalse(code.getValue().isBlank());
+        Assertions.assertFalse(response.getBody().contains(code.getValue()));
     }
 
     @Test
     void an_address_with_a_plus_sign_can_be_verified() {
         String pseudo = newPseudo();
         String email = "name+rpg" + pseudo + "@test.fr";
-        register(pseudo, email);
+        insertUnverifiedAccount(pseudo, email);
 
         Assertions.assertEquals(204, verifyEmail(email, codeOfTheLastMail()));
         Assertions.assertEquals(200, login(pseudo));
@@ -94,7 +98,7 @@ class EmailVerificationIntegrationTest extends ApiIntegrationTestSupport {
     void a_code_can_only_be_used_once() {
         String pseudo = newPseudo();
         String email = pseudo + "@test.fr";
-        register(pseudo, email);
+        insertUnverifiedAccount(pseudo, email);
         String code = codeOfTheLastMail();
 
         Assertions.assertEquals(204, verifyEmail(email, code));
@@ -105,7 +109,7 @@ class EmailVerificationIntegrationTest extends ApiIntegrationTestSupport {
     void a_wrong_code_activates_nothing() {
         String pseudo = newPseudo();
         String email = pseudo + "@test.fr";
-        register(pseudo, email);
+        insertUnverifiedAccount(pseudo, email);
         String code = codeOfTheLastMail();
 
         Assertions.assertEquals(400, verifyEmail(email, "wrong" + code));
@@ -118,9 +122,9 @@ class EmailVerificationIntegrationTest extends ApiIntegrationTestSupport {
     void a_code_given_for_another_address_does_not_work() {
         String first = newPseudo();
         String second = newPseudo();
-        register(first, first + "@test.fr");
+        insertUnverifiedAccount(first, first + "@test.fr");
         String codeOfFirst = codeOfTheLastMail();
-        register(second, second + "@test.fr");
+        insertUnverifiedAccount(second, second + "@test.fr");
 
         Assertions.assertEquals(400, verifyEmail(second + "@test.fr", codeOfFirst));
         Assertions.assertFalse(activated(second));
@@ -129,7 +133,7 @@ class EmailVerificationIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     void an_unknown_address_gets_the_same_answer_as_a_wrong_code() {
         String pseudo = newPseudo();
-        register(pseudo, pseudo + "@test.fr");
+        insertUnverifiedAccount(pseudo, pseudo + "@test.fr");
 
         ResponseEntity<String> wrongCode = call(HttpMethod.POST, "/accounts/verify", null,
                 Map.of("email", pseudo + "@test.fr", "code", "wrong"));
@@ -151,7 +155,7 @@ class EmailVerificationIntegrationTest extends ApiIntegrationTestSupport {
     void a_code_that_has_expired_does_not_work() {
         String pseudo = newPseudo();
         String email = pseudo + "@test.fr";
-        register(pseudo, email);
+        insertUnverifiedAccount(pseudo, email);
         String code = codeOfTheLastMail();
         jdbc.update("update accounts set verification_expires_at = now() - interval '1 minute' where pseudo = ?", pseudo);
 
@@ -163,7 +167,7 @@ class EmailVerificationIntegrationTest extends ApiIntegrationTestSupport {
     void a_code_from_before_the_expiry_existed_does_not_work() {
         String pseudo = newPseudo();
         String email = pseudo + "@test.fr";
-        register(pseudo, email);
+        insertUnverifiedAccount(pseudo, email);
         String code = codeOfTheLastMail();
         jdbc.update("update accounts set verification_expires_at = null where pseudo = ?", pseudo);
 
@@ -174,7 +178,7 @@ class EmailVerificationIntegrationTest extends ApiIntegrationTestSupport {
     void the_old_link_that_changed_something_with_a_get_is_gone() {
         String pseudo = newPseudo();
         String email = pseudo + "@test.fr";
-        register(pseudo, email);
+        insertUnverifiedAccount(pseudo, email);
 
         ResponseEntity<String> response = call(HttpMethod.GET, "/accounts/verify?email=" + email + "&code=" + codeOfTheLastMail(), null, null);
 
@@ -195,7 +199,7 @@ class EmailVerificationIntegrationTest extends ApiIntegrationTestSupport {
     void a_new_mail_can_be_asked_for_and_replaces_the_old_code() {
         String pseudo = newPseudo();
         String email = pseudo + "@test.fr";
-        register(pseudo, email);
+        insertUnverifiedAccount(pseudo, email);
         String oldCode = codeOfTheLastMail();
         pretendTheLastMailWasSent(pseudo, "2 minutes");
 
@@ -212,7 +216,7 @@ class EmailVerificationIntegrationTest extends ApiIntegrationTestSupport {
     void an_expired_code_is_replaced_the_same_way() {
         String pseudo = newPseudo();
         String email = pseudo + "@test.fr";
-        register(pseudo, email);
+        insertUnverifiedAccount(pseudo, email);
         jdbc.update("update accounts set verification_expires_at = now() - interval '3 days' where pseudo = ?", pseudo);
 
         Assertions.assertEquals(202, resend(email));
@@ -224,7 +228,7 @@ class EmailVerificationIntegrationTest extends ApiIntegrationTestSupport {
     void a_second_request_right_after_the_first_sends_nothing() {
         String pseudo = newPseudo();
         String email = pseudo + "@test.fr";
-        register(pseudo, email);
+        insertUnverifiedAccount(pseudo, email);
 
         Assertions.assertEquals(202, resend(email));
         Assertions.assertEquals(202, resend(email));
@@ -236,7 +240,7 @@ class EmailVerificationIntegrationTest extends ApiIntegrationTestSupport {
     void the_answer_does_not_tell_whether_the_address_is_registered() {
         String pseudo = newPseudo();
         String email = pseudo + "@test.fr";
-        register(pseudo, email);
+        insertUnverifiedAccount(pseudo, email);
         pretendTheLastMailWasSent(pseudo, "2 minutes");
 
         ResponseEntity<String> registered = call(HttpMethod.POST, "/accounts/verification-email", null, Map.of("email", email));
@@ -267,30 +271,22 @@ class EmailVerificationIntegrationTest extends ApiIntegrationTestSupport {
     // ================= a mail server that is down =================
 
     @Test
-    void a_registration_succeeds_even_when_the_mail_cannot_be_sent_and_the_person_can_ask_again() {
+    void a_registration_succeeds_even_when_the_mail_cannot_be_sent() {
         String pseudo = newPseudo();
-        String email = pseudo + "@test.fr";
-        Mockito.doThrow(new EmailNotSendException()).when(emailingSpi).sendAccountValidationEmail(any());
+        Mockito.doThrow(new EmailNotSendException()).when(emailingSpi).sendSignupConfirmationEmail(any(), any());
 
-        Assertions.assertEquals(202, register(pseudo, email).getStatusCode().value());
+        Assertions.assertEquals(202, register(pseudo, pseudo + "@test.fr").getStatusCode().value());
 
-        // the pseudo and the address are not lost to someone who cannot log in: the account exists
-        Assertions.assertEquals(1, jdbc.queryForObject("select count(*) from accounts where pseudo = ?", Integer.class, pseudo));
-        Assertions.assertFalse(activated(pseudo));
-
-        // the mail server is back
-        Mockito.reset(emailingSpi);
-        pretendTheLastMailWasSent(pseudo, "2 minutes");
-        Assertions.assertEquals(202, resend(email));
-        Assertions.assertEquals(204, verifyEmail(email, codeOfTheLastMail()));
-        Assertions.assertEquals(200, login(pseudo));
+        // nothing is lost: the pending signup is there, and the person can sign up again after the cooldown
+        Assertions.assertEquals(1, jdbc.queryForObject("select count(*) from pending_signups where pseudo = ?", Integer.class, pseudo));
+        Assertions.assertEquals(0, jdbc.queryForObject("select count(*) from accounts where pseudo = ?", Integer.class, pseudo));
     }
 
     @Test
     void a_mail_server_that_is_down_is_not_reported_to_whoever_asks_for_a_new_mail() {
         String pseudo = newPseudo();
         String email = pseudo + "@test.fr";
-        register(pseudo, email);
+        insertUnverifiedAccount(pseudo, email);
         pretendTheLastMailWasSent(pseudo, "2 minutes");
         Mockito.doThrow(new EmailNotSendException()).when(emailingSpi).sendAccountValidationEmail(any());
 
