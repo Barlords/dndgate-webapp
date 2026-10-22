@@ -11,6 +11,8 @@ import fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.AvailabilityPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.MasterClaimPersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.MasterInvitationPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MessagePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
 import fr.barlords.dndgateapi.domain.port.out.PlanningPersistenceSpi;
@@ -47,6 +49,10 @@ public class AdventureDeleterService implements AdventureDeleterApi {
 
     private final AccessRevocationSpi accessRevocation;
 
+    private final MasterClaimPersistenceSpi masterClaims;
+
+    private final MasterInvitationPersistenceSpi masterInvitations;
+
     @Override
     public void deleteById(UUID accountId, UUID id, String confirmation) {
         Adventure adventure = adventureOwnerVerifierService.verify(accountId, id);
@@ -67,6 +73,9 @@ public class AdventureDeleterService implements AdventureDeleterApi {
             plannings.deleteById(planning.getId());
         });
         messages.deleteByAdventureId(id);
+        // Foreign keys without ON DELETE: every child goes before the adventure (the votes go with their claim)
+        masterClaims.deleteByAdventureId(id);
+        masterInvitations.deleteByAdventureId(id);
         spi.deleteById(id);
         audit.deletion("adventure", accountId, id);
         accessRevocation.adventureDeleted(id);

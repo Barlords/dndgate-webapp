@@ -124,7 +124,7 @@ class OptimisticLockingIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     private List<String> spellsOf(UUID spellBookId) {
-        return jdbc.queryForList("select spell_list from spell_book_entity_spell_list where spell_book_entity_id = ?", String.class, spellBookId);
+        return jdbc.queryForList("select spell from spellbook_spells where spellbook_id = ?", String.class, spellBookId);
     }
 
     private UUID createPlanning() {

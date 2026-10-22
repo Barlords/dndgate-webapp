@@ -19,4 +19,7 @@ public interface MasterClaimPersistenceSpi {
 
     /** The claims the account made as a candidate that have not been closed, even if their time is over. */
     List<MasterClaim> findOpenByCandidateId(UUID candidateId);
+
+    /** Every claim of the adventure, closed or not, with its votes. */
+    void deleteByAdventureId(UUID adventureId);
 }

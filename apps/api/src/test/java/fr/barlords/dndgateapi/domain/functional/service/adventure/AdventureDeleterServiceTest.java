@@ -12,6 +12,8 @@ import fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.AvailabilityPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.MasterClaimPersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.MasterInvitationPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MessagePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
 import fr.barlords.dndgateapi.domain.port.out.PlanningPersistenceSpi;
@@ -72,9 +74,16 @@ public class AdventureDeleterServiceTest {
     @Mock
     private AccessRevocationSpi accessRevocation;
 
+    @Mock
+    private MasterClaimPersistenceSpi masterClaims;
+
+    @Mock
+    private MasterInvitationPersistenceSpi masterInvitations;
+
     @BeforeEach
     void setUp() {
-        service = new AdventureDeleterService(spi, ownerVerifier, gameCharacters, messages, plannings, availabilities, minioSpi, audit, accessRevocation);
+        service = new AdventureDeleterService(spi, ownerVerifier, gameCharacters, messages, plannings, availabilities, minioSpi, audit, accessRevocation,
+                masterClaims, masterInvitations);
     }
 
     private void ownerIsVerified() {
@@ -84,6 +93,8 @@ public class AdventureDeleterServiceTest {
     private void nothingWasDeleted() {
         verify(spi, never()).deleteById(any());
         verify(messages, never()).deleteByAdventureId(any());
+        verify(masterClaims, never()).deleteByAdventureId(any());
+        verify(masterInvitations, never()).deleteByAdventureId(any());
         verify(plannings, never()).deleteById(any());
         verify(availabilities, never()).deleteByPlanningId(any());
         verifyNoInteractions(accessRevocation);
@@ -168,10 +179,12 @@ public class AdventureDeleterServiceTest {
 
         service.deleteById(accountId, adventure.getId(), "La quête du soir");
 
-        InOrder order = inOrder(availabilities, plannings, messages, spi, minioSpi);
+        InOrder order = inOrder(availabilities, plannings, messages, masterClaims, masterInvitations, spi, minioSpi);
         order.verify(availabilities).deleteByPlanningId(planning.getId());
         order.verify(plannings).deleteById(planning.getId());
         order.verify(messages).deleteByAdventureId(adventure.getId());
+        order.verify(masterClaims).deleteByAdventureId(adventure.getId());
+        order.verify(masterInvitations).deleteByAdventureId(adventure.getId());
         order.verify(spi).deleteById(adventure.getId());
         order.verify(minioSpi).deleteAfterCommit("account/1/a.png");
         verify(minioSpi, never()).deleteAfterCommit(org.mockito.ArgumentMatchers.eq(null));

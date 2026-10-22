@@ -120,7 +120,7 @@ class QuantityLimitIntegrationTest extends ApiIntegrationTestSupport {
         assertConflict(addSpell(wizard, bookId, "magic-missile"));
 
         Assertions.assertEquals(201, addSpell(wizard, bookId, "fireball").getStatusCode().value());
-        Assertions.assertEquals(3, jdbc.queryForObject("select count(*) from spell_book_entity_spell_list where spell_book_entity_id = ?::uuid",
+        Assertions.assertEquals(3, jdbc.queryForObject("select count(*) from spellbook_spells where spellbook_id = ?::uuid",
                 Integer.class, bookId));
     }
 

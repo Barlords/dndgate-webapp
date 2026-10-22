@@ -9,7 +9,9 @@ import fr.barlords.dndgateapi.domain.functional.model.Rating;
 import fr.barlords.dndgateapi.domain.port.out.RatingPersistenceSpi;
 import fr.barlords.dndgateapi.server.mapper.RatingEntityMapper;
 import fr.barlords.dndgateapi.server.repository.RatingRepository;
+import fr.barlords.dndgateapi.domain.functional.exception.rating.RatingAlreadyExistsException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +27,13 @@ public class RatingDatabaseAdapter implements RatingPersistenceSpi {
     @Override
     @Transactional
     public Rating save(Rating o) {
-        return RatingEntityMapper.toDomain(repository.save(RatingEntityMapper.fromDomain(o)));
+        try {
+            // Flushed here so that the unique (emitter, target) index answers now, not when the transaction commits
+            return RatingEntityMapper.toDomain(repository.saveAndFlush(RatingEntityMapper.fromDomain(o)));
+        } catch (DataIntegrityViolationException e) {
+            // Two requests passed the "already rated" check together: the unique index let only one through
+            throw new RatingAlreadyExistsException();
+        }
     }
 
     @Override

@@ -42,7 +42,7 @@ class SpellBookConcurrencyIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     private List<String> spellsOf(UUID spellBookId) {
-        return jdbc.queryForList("select spell_list from spell_book_entity_spell_list where spell_book_entity_id = ? order by spell_list",
+        return jdbc.queryForList("select spell from spellbook_spells where spellbook_id = ? order by spell",
                 String.class, spellBookId);
     }
 

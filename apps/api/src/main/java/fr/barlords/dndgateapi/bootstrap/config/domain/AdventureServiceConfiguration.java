@@ -15,6 +15,8 @@ import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
 import fr.barlords.dndgateapi.bootstrap.config.TransactionalAdventureDeleter;
 import fr.barlords.dndgateapi.domain.port.out.AvailabilityPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.MasterClaimPersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.MasterInvitationPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MessagePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
 import fr.barlords.dndgateapi.domain.port.out.PlanningPersistenceSpi;
@@ -59,11 +61,13 @@ public class AdventureServiceConfiguration {
             AvailabilityPersistenceSpi availabilities,
             MinioSpi minioSpi,
             AuditSpi audit,
-            AccessRevocationSpi accessRevocation
+            AccessRevocationSpi accessRevocation,
+            MasterClaimPersistenceSpi masterClaims,
+            MasterInvitationPersistenceSpi masterInvitations
     ) {
         return new TransactionalAdventureDeleter(new AdventureDeleterService(
                 spi, adventureOwnerVerifierService, gameCharacters, messages, plannings, availabilities, minioSpi, audit,
-                accessRevocation));
+                accessRevocation, masterClaims, masterInvitations));
     }
 
     @Bean

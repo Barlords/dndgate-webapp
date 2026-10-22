@@ -49,4 +49,10 @@ public class MasterClaimDatabaseAdapter implements MasterClaimPersistenceSpi {
         return repository.findAllByCandidateIdAndStatus(candidateId, MasterClaimStatus.OPEN).stream()
                 .map(MasterClaimEntityMapper::toDomain).toList();
     }
+
+    @Override
+    @Transactional
+    public void deleteByAdventureId(UUID adventureId) {
+        repository.deleteByAdventureId(adventureId);
+    }
 }

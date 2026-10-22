@@ -3,6 +3,9 @@ package fr.barlords.dndgateapi.server.repository;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.master.MasterClaimStatus;
 import fr.barlords.dndgateapi.server.entity.MasterClaimEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,4 +21,9 @@ public interface MasterClaimRepository extends JpaRepository<MasterClaimEntity, 
     Optional<MasterClaimEntity> findByAdventureIdAndStatus(UUID adventureId, MasterClaimStatus status);
 
     List<MasterClaimEntity> findAllByCandidateIdAndStatus(UUID candidateId, MasterClaimStatus status);
+
+    /** The votes go with their claim (ON DELETE CASCADE): a bulk delete does not go through the entity collection. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("delete from MasterClaimEntity c where c.adventureId = :adventureId")
+    int deleteByAdventureId(@Param("adventureId") UUID adventureId);
 }

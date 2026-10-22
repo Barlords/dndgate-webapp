@@ -77,6 +77,24 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    private static void insertAdventure(Connection connection, UUID id, UUID creator, String visibility, String invitationCode) throws SQLException {
+        execute(connection, "insert into adventure (id, creator_id, name, description, max_player, status, visibility, invitation_code) "
+                + "values (?, ?, 'Quest', 'A quest', 4, 'NOT_STARTED', ?, ?)", id, creator, visibility, invitationCode);
+    }
+
+    private static void insertPlanning(Connection connection, UUID id, UUID adventure) throws SQLException {
+        execute(connection, "insert into planning (id, adventure_id) values (?, ?)", id, adventure);
+    }
+
+    private static void execute(Connection connection, String sql, Object... parameters) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            for (int i = 0; i < parameters.length; i++) {
+                statement.setObject(i + 1, parameters[i]);
+            }
+            statement.executeUpdate();
+        }
+    }
+
     // ---- from nothing ----
 
     @Test
@@ -167,6 +185,14 @@ class FlywayMigrationIntegrationTest {
         UUID account = UUID.randomUUID();
         UUID otherAccount = UUID.randomUUID();
         try (Connection connection = connect(url)) {
+            insertAccount(connection, account, "Voter");
+            insertAccount(connection, otherAccount, "OtherVoter");
+            UUID adventure = UUID.randomUUID();
+            UUID otherAdventure = UUID.randomUUID();
+            insertAdventure(connection, adventure, account, "PUBLIC", null);
+            insertAdventure(connection, otherAdventure, account, "PUBLIC", null);
+            insertPlanning(connection, planning, adventure);
+            insertPlanning(connection, otherPlanning, otherAdventure);
             for (UUID[] vote : new UUID[][]{
                     {planning, account}, {planning, account}, {planning, account},
                     {planning, otherAccount}, {otherPlanning, account}}) {
@@ -228,6 +254,7 @@ class FlywayMigrationIntegrationTest {
         UUID message = UUID.randomUUID();
         try (Connection connection = connect(url)) {
             insertAccount(connection, sender, "Sender");
+            insertAdventure(connection, adventure, sender, "PUBLIC", null);
             try (PreparedStatement statement = connection.prepareStatement(
                     "insert into message (id, adventure_id, sender_id, content, send_date) values (?, ?, ?, 'hi', '2026-03-01 10:30:00')")) {
                 statement.setObject(1, message);
@@ -252,6 +279,178 @@ class FlywayMigrationIntegrationTest {
                     "select count(*) from pg_indexes where tablename = 'message' and indexname = 'message_adventure_send_date_idx'"));
             Assertions.assertEquals(0, count(connection, "select count(*) from pg_indexes where indexname = 'idx_message_adventure'"),
                     "the old single-column index is covered by the composite one");
+        }
+    }
+
+    // ---- V12: missing constraints (review v2, point 44) ----
+
+    /** A database on V11 with two accounts and one adventure, to which the tests add what V12 must accept or refuse. */
+    private record Fixture(String url, UUID master, UUID player, UUID adventure) { }
+
+    private static Fixture databaseOnVersion11() throws SQLException {
+        String url = newDatabase();
+        flyway(url, "11").migrate();
+        UUID master = UUID.randomUUID();
+        UUID player = UUID.randomUUID();
+        UUID adventure = UUID.randomUUID();
+        try (Connection connection = connect(url)) {
+            insertAccount(connection, master, "Master");
+            insertAccount(connection, player, "Player");
+            insertAdventure(connection, adventure, master, "PUBLIC", "CODE000001");
+        }
+        return new Fixture(url, master, player, adventure);
+    }
+
+    private static void assertV12Stops(Fixture fixture, String expectedMessage) {
+        FlywayException failure = Assertions.assertThrows(FlywayException.class, () -> flyway(fixture.url(), null).migrate());
+        Assertions.assertTrue(failure.getMessage().contains(expectedMessage), failure.getMessage());
+        Assertions.assertEquals("11", flyway(fixture.url(), null).info().current().getVersion().getVersion(),
+                "the database stays on the last version that worked");
+    }
+
+    @Test
+    void consistent_data_takes_the_constraints_and_keeps_every_row() throws Exception {
+        Fixture fixture = databaseOnVersion11();
+        UUID planning = UUID.randomUUID();
+        UUID availability = UUID.randomUUID();
+        UUID spellBook = UUID.randomUUID();
+        UUID claim = UUID.randomUUID();
+        try (Connection connection = connect(fixture.url())) {
+            execute(connection, "insert into adventure_players (adventure_id, player_id) values (?, ?)", fixture.adventure(), fixture.player());
+            execute(connection, "insert into message (id, adventure_id, sender_id, content, send_date) values (?, ?, ?, 'hi', now())",
+                    UUID.randomUUID(), fixture.adventure(), fixture.player());
+            execute(connection, "insert into rating (id, emitter_id, target_id, rate) values (?, ?, ?, 4)",
+                    UUID.randomUUID(), fixture.player(), fixture.master());
+            insertPlanning(connection, planning, fixture.adventure());
+            execute(connection, "insert into availability (id, planning_id, account_id) values (?, ?, ?)", availability, planning, fixture.player());
+            execute(connection, "insert into spellbook (id, account_id, name) values (?, ?, 'Book')", spellBook, fixture.player());
+            execute(connection, "insert into spell_book_entity_spell_list (spell_book_entity_id, spell_list) values (?, 'Fireball')", spellBook);
+            execute(connection, "insert into master_claims (id, adventure_id, candidate_id, created_at, expires_at, status) "
+                    + "values (?, ?, ?, now(), now(), 'OPEN')", claim, fixture.adventure(), fixture.player());
+            execute(connection, "insert into master_claim_votes (claim_id, voter_id, approve) values (?, ?, true)", claim, fixture.master());
+        }
+
+        flyway(fixture.url(), null).migrate();
+
+        try (Connection connection = connect(fixture.url())) {
+            Assertions.assertEquals(1, count(connection, "select count(*) from adventure_players"));
+            Assertions.assertEquals(1, count(connection, "select count(*) from message"));
+            Assertions.assertEquals(1, count(connection, "select count(*) from rating"));
+            Assertions.assertEquals(1, count(connection, "select count(*) from availability"));
+            Assertions.assertEquals(1, count(connection, "select count(*) from master_claim_votes"));
+            Assertions.assertEquals("Fireball", stringValue(connection, "select spell from spellbook_spells where spellbook_id = '" + spellBook + "'"),
+                    "the spell list table has its new name, and its rows");
+            Assertions.assertEquals(0, count(connection, "select count(*) from information_schema.tables where table_name = 'spell_book_entity_spell_list'"));
+        }
+    }
+
+    @Test
+    void a_reference_to_a_row_that_does_not_exist_stops_the_migration() throws Exception {
+        UUID ghost = UUID.randomUUID();
+        // one case per kind of target: account, adventure, planning
+        Fixture account = databaseOnVersion11();
+        try (Connection connection = connect(account.url())) {
+            execute(connection, "insert into adventure_players (adventure_id, player_id) values (?, ?)", account.adventure(), ghost);
+        }
+        assertV12Stops(account, "adventure_players.player_id " + ghost);
+
+        Fixture adventure = databaseOnVersion11();
+        try (Connection connection = connect(adventure.url())) {
+            execute(connection, "insert into message (id, adventure_id, sender_id, content, send_date) values (?, ?, ?, 'hi', now())",
+                    UUID.randomUUID(), ghost, adventure.player());
+        }
+        assertV12Stops(adventure, "message.adventure_id " + ghost);
+
+        Fixture planning = databaseOnVersion11();
+        try (Connection connection = connect(planning.url())) {
+            execute(connection, "insert into availability (id, planning_id, account_id) values (?, ?, ?)", UUID.randomUUID(), ghost, planning.player());
+        }
+        assertV12Stops(planning, "availability.planning_id " + ghost);
+    }
+
+    @Test
+    void a_player_listed_twice_stops_the_migration() throws Exception {
+        Fixture fixture = databaseOnVersion11();
+        try (Connection connection = connect(fixture.url())) {
+            for (int i = 0; i < 2; i++) {
+                execute(connection, "insert into adventure_players (adventure_id, player_id) values (?, ?)", fixture.adventure(), fixture.player());
+            }
+        }
+
+        assertV12Stops(fixture, "lists player " + fixture.player() + " twice");
+    }
+
+    @Test
+    void two_ratings_of_the_same_account_by_the_same_account_stop_the_migration() throws Exception {
+        Fixture fixture = databaseOnVersion11();
+        try (Connection connection = connect(fixture.url())) {
+            for (int rate : new int[]{3, 5}) {
+                execute(connection, "insert into rating (id, emitter_id, target_id, rate) values (?, ?, ?, ?)",
+                        UUID.randomUUID(), fixture.player(), fixture.master(), rate);
+            }
+        }
+
+        assertV12Stops(fixture, "more than once");
+    }
+
+    @Test
+    void an_invitation_code_shared_by_two_adventures_stops_the_migration() throws Exception {
+        Fixture fixture = databaseOnVersion11();
+        try (Connection connection = connect(fixture.url())) {
+            insertAdventure(connection, UUID.randomUUID(), fixture.master(), "PUBLIC", "CODE000001");
+        }
+
+        assertV12Stops(fixture, "CODE000001");
+    }
+
+    @Test
+    void an_adventure_without_visibility_becomes_private_and_the_column_refuses_null_afterwards() throws Exception {
+        Fixture fixture = databaseOnVersion11();
+        UUID unknown = UUID.randomUUID();
+        try (Connection connection = connect(fixture.url())) {
+            insertAdventure(connection, unknown, fixture.master(), null, null);
+        }
+
+        flyway(fixture.url(), null).migrate();
+
+        try (Connection connection = connect(fixture.url())) {
+            Assertions.assertEquals("PRIVATE", stringValue(connection, "select visibility from adventure where id = '" + unknown + "'"));
+            Assertions.assertEquals("PUBLIC", stringValue(connection, "select visibility from adventure where id = '" + fixture.adventure() + "'"),
+                    "a known visibility is left alone");
+            Assertions.assertThrows(SQLException.class, () -> insertAdventure(connection, UUID.randomUUID(), fixture.master(), null, null));
+        }
+    }
+
+    @Test
+    void once_up_to_date_the_database_itself_refuses_what_the_code_used_to_check() throws Exception {
+        String url = newDatabase();
+        flyway(url, null).migrate();
+        UUID master = UUID.randomUUID();
+        UUID player = UUID.randomUUID();
+        UUID adventure = UUID.randomUUID();
+        UUID ghost = UUID.randomUUID();
+        try (Connection connection = connect(url)) {
+            insertAccount(connection, master, "Master");
+            insertAccount(connection, player, "Player");
+            insertAdventure(connection, adventure, master, "PUBLIC", "CODE000001");
+            execute(connection, "insert into adventure_players (adventure_id, player_id) values (?, ?)", adventure, player);
+            execute(connection, "insert into rating (id, emitter_id, target_id, rate) values (?, ?, ?, 4)", UUID.randomUUID(), player, master);
+
+            Assertions.assertThrows(SQLException.class, () -> insertAdventure(connection, UUID.randomUUID(), ghost, "PUBLIC", null), "creator");
+            Assertions.assertThrows(SQLException.class, () -> insertAdventure(connection, UUID.randomUUID(), master, "PUBLIC", "CODE000001"), "code");
+            Assertions.assertThrows(SQLException.class,
+                    () -> execute(connection, "insert into adventure_players (adventure_id, player_id) values (?, ?)", adventure, player), "twice");
+            Assertions.assertThrows(SQLException.class,
+                    () -> execute(connection, "insert into adventure_players (adventure_id, player_id) values (?, null)", adventure), "null player");
+            Assertions.assertThrows(SQLException.class,
+                    () -> execute(connection, "insert into rating (id, emitter_id, target_id, rate) values (?, ?, ?, 2)", UUID.randomUUID(), player, master), "rating");
+            Assertions.assertThrows(SQLException.class,
+                    () -> execute(connection, "insert into message (id, adventure_id, sender_id, content, send_date) values (?, ?, ?, 'x', now())",
+                            UUID.randomUUID(), ghost, player), "message adventure");
+            Assertions.assertThrows(SQLException.class, () -> insertPlanning(connection, UUID.randomUUID(), ghost), "planning");
+            Assertions.assertThrows(SQLException.class,
+                    () -> execute(connection, "insert into master_claims (id, adventure_id, candidate_id, created_at, expires_at, status) "
+                            + "values (?, ?, ?, now(), now(), 'OPEN')", UUID.randomUUID(), adventure, ghost), "claim candidate");
         }
     }
 
