@@ -61,7 +61,9 @@ class SpellBookImportExportIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     void a_blank_spell_is_a_400() {
         TestAccount account = registerAndLogin();
-        assertInvalid(importFile(account, "{\"name\":\"b\",\"description\":\"d\",\"spellList\":[\"  \"]}"));
+        ResponseEntity<String> response = importFile(account, "{\"name\":\"b\",\"description\":\"d\",\"spellList\":[\"  \"]}");
+        assertInvalid(response);
+        Assertions.assertEquals("spellList[]", body(response).get("errors").get(0).get("field").asText());
     }
 
     @Test

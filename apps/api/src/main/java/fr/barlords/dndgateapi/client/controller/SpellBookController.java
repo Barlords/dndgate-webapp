@@ -6,6 +6,8 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 import fr.barlords.dndgateapi.client.dto.spellbook.*;
 import fr.barlords.dndgateapi.client.dto.DeletionConfirmationRequest;
+import fr.barlords.dndgateapi.client.error.InvalidImportFileException;
+import fr.barlords.dndgateapi.client.error.dto.ValidationErrorResponse;
 import fr.barlords.dndgateapi.client.mapper.SpellBookDtoMapper;
 import fr.barlords.dndgateapi.client.mapper.SpellBookImportExportDtoMapper;
 import fr.barlords.dndgateapi.client.service.AuthVerifierService;
@@ -18,7 +20,6 @@ import fr.barlords.dndgateapi.domain.port.in.spellbook.*;
 import fr.barlords.dndgateapi.domain.port.in.spellbook.spell.SpellDeleterApi;
 import fr.barlords.dndgateapi.domain.port.in.spellbook.spell.SpellWriterApi;
 import jakarta.validation.ConstraintViolation;
-import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
@@ -139,7 +140,11 @@ public class SpellBookController {
 
         Set<ConstraintViolation<SpellBookImportExportDto>> violations = validator.validate(spellBookImportDto);
         if (!violations.isEmpty()) {
-            throw new ConstraintViolationException(violations);
+            throw new InvalidImportFileException(violations.stream()
+                    .map(violation -> new ValidationErrorResponse(
+                            violation.getPropertyPath().toString().replace(".<iterable element>", ""),
+                            violation.getMessage()))
+                    .toList());
         }
 
         return SpellBookDtoMapper.toDto(
