@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.account;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.EmailNotSendException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.WrongPasswordException;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
@@ -73,8 +72,7 @@ public class AccountUpdaterService implements AccountUpdaterApi {
             patched = accountModifierService.encodePassword(patched.withPassword(changes.newPassword()));
         }
 
-        Account saved = spi.save(patched)
-                .getOrElseThrow(DataNotSaveException::new);
+        Account saved = spi.save(patched);
 
         if (passwordChanged) {
             // whoever knew the old password must not keep a session

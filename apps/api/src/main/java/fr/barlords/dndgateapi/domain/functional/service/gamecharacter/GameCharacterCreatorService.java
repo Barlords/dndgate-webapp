@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.gamecharacter;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.QuantityLimitExceededException;
 import fr.barlords.dndgateapi.domain.functional.exception.InvalidPictureException;
 import fr.barlords.dndgateapi.domain.functional.model.PictureFormat;
@@ -76,7 +75,7 @@ public class GameCharacterCreatorService implements GameCharacterCreatorApi {
                         .withOwner(account)
                         .withAdventure(adventure)
                         .withPicturePath(picturePath)
-                ).getOrElseThrow(DataNotSaveException::new);
+                );
     }
 
 }

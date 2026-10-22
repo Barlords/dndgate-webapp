@@ -18,7 +18,6 @@ import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.OpaqueTokenSpi;
 import fr.barlords.dndgateapi.domain.port.out.PasswordHasherSpi;
 import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
-import io.vavr.control.Either;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -92,8 +91,8 @@ public class AccountAnonymizerServiceTest {
         lenient().when(accounts.findById(account.getId())).thenReturn(Optional.of(account));
         lenient().when(opaqueTokens.generate()).thenReturn("random-secret");
         lenient().when(passwordHasher.hash("random-secret")).thenReturn("unusable-hash");
-        lenient().when(accounts.save(any(Account.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
-        lenient().when(adventures.save(any(Adventure.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        lenient().when(accounts.save(any(Account.class))).thenAnswer(i -> i.getArguments()[0]);
+        lenient().when(adventures.save(any(Adventure.class))).thenAnswer(i -> i.getArguments()[0]);
         lenient().when(adventures.findAllByCreatorId(account.getId())).thenReturn(List.of());
         lenient().when(adventures.findAllByPlayersId(account.getId())).thenReturn(List.of());
         lenient().when(spellBooks.findByOwnerId(account.getId())).thenReturn(List.of());

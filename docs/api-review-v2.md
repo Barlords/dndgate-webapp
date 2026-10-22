@@ -150,8 +150,8 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
   - `maxPlayer` peut être inférieur au nombre de joueurs.
 - Correctif : une machine à états dans le domaine (`NOT_STARTED → ONGOING → FINISH`, `NOT_STARTED|ONGOING → ABORT`, rien après `FINISH`/`ABORT`), `409` sinon ; `maxPlayer >= players.size()` ; retirer `status` de `AdventurePatchRequest` (la route `PUT …/status` existe déjà).
 
-### 35. Erreurs de base de données : 500 sans cause, ou cause perdue — *vérifié*
-- [ ] Les adaptateurs enveloppent `repository.save` dans un `Try` de Vavr, mais l'`INSERT` n'est envoyé qu'au commit, **après** la sortie du `Try`. Une contrainte violée devient donc une 500 générique.
+### 35. Erreurs de base de données : 500 sans cause, ou cause perdue — *corrigé*
+- [x] Les adaptateurs enveloppent `repository.save` dans un `Try` de Vavr, mais l'`INSERT` n'est envoyé qu'au commit, **après** la sortie du `Try`. Une contrainte violée devient donc une 500 générique.
   Mesuré : un deuxième `POST /planning` pour la même aventure donne `500 "An unexpected error occurred"` au lieu d'un `409`.
 - Quand le `Try` attrape bien l'erreur (écriture immédiate, comme `saveAndFlush`), les 37 appels `getOrElseThrow(DataNotSaveException::new)` jettent l'`ApplicationError` et sa cause : `DataNotSaveException` n'a pas de cause, et `ErrorHandler` ne journalise rien. Une erreur réelle ne laisse **aucune trace** dans les logs.
 - Correctif :
@@ -160,6 +160,7 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
   - ajouter un handler pour `DataIntegrityViolationException` qui journalise et répond `409`.
 
   Option minimale : `DataNotSaveException(Throwable cause)` et un `log.error` dans son handler.
+- Corrigé (correctif complet, pas l'option minimale) : `PersistenceSpi.save` renvoie `T` ; `Either`/`Try` retirés des 11 adaptateurs, `DataNotSaveException` et `ApplicationError` supprimés, les 37 `getOrElseThrow` aussi. Les exceptions de la base remontent donc avec leur cause. `AdventureDatabaseAdapter` garde `saveAndFlush` et sa traduction `ObjectOptimisticLockingFailureException` → `AdventureConcurrentModificationException` ; `TransactionalAvailabilityVote` rejoue toujours sur `DataIntegrityViolationException`. `ErrorHandler` répond `409` (détail générique : ni SQL ni nom de contrainte) à toute `DataIntegrityViolationException` et la journalise en `WARN` avec sa cause. Cas connu traduit : `PlanningCreatorService` vérifie d'abord l'existence du planning (`PlanningAlreadyExistsException` → `409`) ; la course entre deux créations simultanées finit par la contrainte `planning_adventure_id_key` → `409` par le handler. Tests : `DatabaseConflictIntegrationTest` (deuxième `POST /planning` : `409` problem+json, était `500`), `ErrorHandlerTest` (`409` sans fuite, journalisation avec cause), `PlanningCreatorServiceTest` ; les tests unitaires qui simulaient `Either.left` vérifient maintenant que l'exception de persistance remonte. Contrôle par mutation fait : sans la vérification, `PlanningCreatorServiceTest` rouge ; sans la vérification ni le handler, `DatabaseConflictIntegrationTest` rouge (`500`) ; sans le `log.warn`, `ErrorHandlerTest` rouge. Pas fait : la traduction « vote déjà enregistré » (déjà rejouée par `TransactionalAvailabilityVote`) et « adresse prise entre-temps » (le `409` générique la couvre).
 
 ### 36. Import de grimoire non validé — *vérifié*
 - [ ] `POST /spellbooks/import-file` lit le fichier avec son propre `ObjectMapper`, sans aucune validation. Mesuré : un fichier sans `name` donne une **500** (`NullPointerException` sur `trim()`).
@@ -242,7 +243,7 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
 - [ ] `POST /messages` répond `200` sans corps : il faut `201` et le `MessageDto` créé.
 - [ ] `POST /adventures/{id}/invitations/{pseudo}` répond `200` sans corps : il faut `202` (l'e-mail part plus tard) ou `204`.
 - [ ] Un échec de connexion (pseudo inconnu ou mauvais mot de passe) répond **404** (`AccountCredentialNotFoundException`) : il faut `401`.
-- [ ] Points 36 (import, export) et 35 (`409` plutôt que 500).
+- [ ] Points 36 (import, export) et 35 (`409` plutôt que 500 : fait, voir le point 35).
 - À faire en une fois, avant de générer le client Angular : ce sont des ruptures de contrat.
 
 ### 47. Champs ignorés et routes en double dans le contrat — *lu*
@@ -305,7 +306,7 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
 
 ### 55. Tests manquants — *lu*
 - Aucun test unitaire pour : services des grimoires (sauf la création), planning et disponibilités, évaluations (création, mise à jour, `PATCH`), modification, suppression et lecture des personnages, services des notes.
-- Aucun test d'intégration pour : import et export de grimoire, (faits : vote multiple (29), modification de la date d'une note (28), chemin encodé et limite par IP (25), date d'un message (30)) abonnement WebSocket après départ de l'aventure (33), statut d'aventure à rebours (34).
+- Aucun test d'intégration pour : import et export de grimoire, (faits : vote multiple (29), modification de la date d'une note (28), chemin encodé et limite par IP (25), date d'un message (30)) abonnement WebSocket après départ de l'aventure (33), statut d'aventure à rebours (34), second planning pour une aventure (35).
 - La marge de couverture est de 0,5 point (v1) : chaque correctif de ce rapport doit arriver avec son test, et suivre la méthode habituelle (réintroduire le défaut, vérifier que le test devient rouge, restaurer).
 
 ---

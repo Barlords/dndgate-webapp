@@ -8,20 +8,16 @@ import org.springframework.data.domain.Pageable;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.note.NoteVisibility;
 import fr.barlords.dndgateapi.server.entity.AdventureNoteEntity;
 
-import fr.barlords.dndgateapi.domain.ApplicationError;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.note.AdventureNote;
 import fr.barlords.dndgateapi.domain.port.out.AdventureNotePersistenceSpi;
 import fr.barlords.dndgateapi.server.mapper.AdventureNoteEntityMapper;
 import fr.barlords.dndgateapi.server.repository.AdventureNoteRepository;
-import io.vavr.control.Either;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
-
-import static io.vavr.API.Try;
 
 @Service
 @RequiredArgsConstructor
@@ -33,11 +29,8 @@ public class AdventureNoteDatabaseAdapter implements AdventureNotePersistenceSpi
 
     @Override
     @Transactional
-    public Either<ApplicationError, AdventureNote> save(AdventureNote o) {
-        return Try(() -> repository.save(AdventureNoteEntityMapper.fromDomain(o)))
-                .toEither()
-                .mapLeft(throwable -> new ApplicationError("Error while writing to the database", null, o, throwable))
-                .map(AdventureNoteEntityMapper::toDomain);
+    public AdventureNote save(AdventureNote o) {
+        return AdventureNoteEntityMapper.toDomain(repository.save(AdventureNoteEntityMapper.fromDomain(o)));
     }
 
     @Override

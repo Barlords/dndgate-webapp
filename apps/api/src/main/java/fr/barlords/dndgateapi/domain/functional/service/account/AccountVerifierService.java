@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.account;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.InvalidVerificationCodeException;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountVerifierApi;
@@ -25,8 +24,7 @@ public class AccountVerifierService implements AccountVerifierApi {
         spi.save(account
                         .withVerificationCode(null)
                         .withVerificationExpiresAt(null)
-                        .withActivated(true))
-                .getOrElseThrow(DataNotSaveException::new);
+                        .withActivated(true));
     }
 
 }

@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.message;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.MessageRateLimitException;
 import fr.barlords.dndgateapi.domain.functional.model.Message;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureAccessVerifierApi;
@@ -38,8 +37,7 @@ public class MessageCreatorService implements MessageCreatorApi {
             throw new MessageRateLimitException(oldest.plus(limits.messageWindow()));
         }
 
-        return spi.save(message.withSenderId(accountId).withSendDate(now))
-                .getOrElseThrow(DataNotSaveException::new);
+        return spi.save(message.withSenderId(accountId).withSendDate(now));
     }
 
 }

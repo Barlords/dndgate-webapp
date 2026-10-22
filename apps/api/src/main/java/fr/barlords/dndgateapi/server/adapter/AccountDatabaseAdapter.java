@@ -1,12 +1,10 @@
 package fr.barlords.dndgateapi.server.adapter;
 
 
-import fr.barlords.dndgateapi.domain.ApplicationError;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
 import fr.barlords.dndgateapi.server.mapper.AccountEntityMapper;
 import fr.barlords.dndgateapi.server.repository.AccountRepository;
-import io.vavr.control.Either;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,8 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import static io.vavr.API.Try;
 
 @Service
 @RequiredArgsConstructor
@@ -25,11 +21,8 @@ public class AccountDatabaseAdapter implements AccountPersistenceSpi {
 
     @Override
     @Transactional
-    public Either<ApplicationError, Account> save(Account o) {
-        return Try(() -> repository.save(AccountEntityMapper.fromDomain(o)))
-                .toEither()
-                .mapLeft(throwable -> new ApplicationError("Error while writing to the database", null, o, throwable))
-                .map(AccountEntityMapper::toDomain);
+    public Account save(Account o) {
+        return AccountEntityMapper.toDomain(repository.save(AccountEntityMapper.fromDomain(o)));
     }
 
     @Override

@@ -4,7 +4,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureConcurrentModificationException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureNotJoinableException;
@@ -73,24 +72,21 @@ public class AdventureUpdaterService implements AdventureUpdaterApi {
                 .withCity(Objects.requireNonNullElse(adventure.getCity(), previousAdventure.getCity()))
                 .withMaxPlayer(Objects.requireNonNullElse(adventure.getMaxPlayer(), previousAdventure.getMaxPlayer()));
 
-        return spi.save(patchedAdventure)
-                .getOrElseThrow(DataNotSaveException::new);
+        return spi.save(patchedAdventure);
     }
 
     @Override
     public Adventure updateVisibility(UUID accountId, UUID id, AdventureVisibility visibility) {
         Adventure adventure = adventureOwnerVerifierService.verify(accountId, id);
 
-        return spi.save(adventure.withVisibility(visibility))
-                .getOrElseThrow(DataNotSaveException::new);
+        return spi.save(adventure.withVisibility(visibility));
     }
 
     @Override
     public Adventure updateStatus(UUID accountId, UUID id, AdventureStatus status) {
         Adventure adventure = adventureOwnerVerifierService.verify(accountId, id);
 
-        return spi.save(adventure.withStatus(status))
-                .getOrElseThrow(DataNotSaveException::new);
+        return spi.save(adventure.withStatus(status));
     }
 
     @Override
@@ -137,8 +133,7 @@ public class AdventureUpdaterService implements AdventureUpdaterApi {
             joined = joined.withStatus(AdventureStatus.ONGOING).withVisibility(AdventureVisibility.PRIVATE);
         }
 
-        return spi.save(joined)
-                .getOrElseThrow(DataNotSaveException::new);
+        return spi.save(joined);
     }
 
     @Override
@@ -197,8 +192,7 @@ public class AdventureUpdaterService implements AdventureUpdaterApi {
             List<UUID> players = new ArrayList<>(adventure.getPlayers());
             players.remove(account.getId());
 
-            return spi.save(adventure.withPlayers(players))
-                    .getOrElseThrow(DataNotSaveException::new);
+            return spi.save(adventure.withPlayers(players));
         });
 
         // The chat and the WebRTC signals already open for this account must stop as well

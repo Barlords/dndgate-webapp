@@ -2,7 +2,6 @@ package fr.barlords.dndgateapi.domain.functional.service.adventurenote;
 
 import java.util.Objects;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.note.AdventureNoteNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.note.AdventureNote;
 import fr.barlords.dndgateapi.domain.functional.service.adventure.AdventureOwnerVerifierService;
@@ -34,7 +33,6 @@ public class AdventureNoteUpdaterService implements AdventureNoteUpdaterApi {
                 .withContent(Objects.requireNonNullElse(adventureNote.getContent(), previousAdventureNote.getContent()))
                 .withNoteVisibility(Objects.requireNonNullElse(adventureNote.getNoteVisibility(), previousAdventureNote.getNoteVisibility()));
 
-        return spi.save(patchedAdventureNote)
-                .getOrElseThrow(DataNotSaveException::new);
+        return spi.save(patchedAdventureNote);
     }
 }

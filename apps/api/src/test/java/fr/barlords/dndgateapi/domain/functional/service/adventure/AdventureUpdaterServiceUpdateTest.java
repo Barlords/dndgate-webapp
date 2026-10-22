@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.adventure;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureOwnerException;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureStatus;
@@ -10,7 +9,6 @@ import fr.barlords.dndgateapi.domain.port.in.account.AccountFinderApi;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureFinderApi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
-import io.vavr.control.Either;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -72,7 +70,7 @@ class AdventureUpdaterServiceUpdateTest {
 
     private void masterIsOwner() {
         when(adventureOwnerVerifierService.verify(masterId, stored.getId())).thenReturn(stored);
-        when(spi.save(any(Adventure.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(spi.save(any(Adventure.class))).thenAnswer(i -> i.getArguments()[0]);
     }
 
     // ---- update ----
@@ -136,9 +134,9 @@ class AdventureUpdaterServiceUpdateTest {
     @Test
     void a_failed_save_is_reported() {
         when(adventureOwnerVerifierService.verify(masterId, stored.getId())).thenReturn(stored);
-        when(spi.save(any(Adventure.class))).thenReturn(Either.left(null));
+        when(spi.save(any(Adventure.class))).thenThrow(new IllegalStateException("db down"));
 
-        Assertions.assertThrows(DataNotSaveException.class,
+        Assertions.assertThrows(IllegalStateException.class,
                 () -> service.update(masterId, Adventure.builder().id(stored.getId()).name("X").build()));
     }
 

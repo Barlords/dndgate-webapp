@@ -2,7 +2,6 @@ package fr.barlords.dndgateapi.domain.functional.service.account;
 
 import fr.barlords.dndgateapi.domain.port.out.AuditSpi;
 import fr.barlords.dndgateapi.domain.port.out.LoginFailureSpi;
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.AccountNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.WrongPasswordException;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
@@ -72,8 +71,7 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
         freeSeatsInAdventuresThatHaveNotStarted(accountId);
         deleteSpellBooks(accountId);
 
-        accounts.save(anonymousVersionOf(account))
-                .getOrElseThrow(DataNotSaveException::new);
+        accounts.save(anonymousVersionOf(account));
 
         loginFailures.deleteByAccount(accountId);
 
@@ -105,12 +103,10 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
             if (adventure.isOpenToNewPlayers()) {
                 adventures.save(adventure
                                 .withStatus(AdventureStatus.ABORT)
-                                .withVisibility(AdventureVisibility.PRIVATE))
-                        .getOrElseThrow(DataNotSaveException::new);
+                                .withVisibility(AdventureVisibility.PRIVATE));
             } else if (adventure.isTransferable() && !adventure.isMasterVacant()) {
                 // A running adventure goes on: the players can invite a new master or vote for one among them
-                Adventure vacant = adventures.save(adventure.withMasterVacantSince(clock.instant()))
-                        .getOrElseThrow(DataNotSaveException::new);
+                Adventure vacant = adventures.save(adventure.withMasterVacantSince(clock.instant()));
                 masterTransferNotifier.masterAccountDeleted(vacant);
             }
         }
@@ -122,8 +118,7 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
             if (adventure.isOpenToNewPlayers()) {
                 List<UUID> players = new ArrayList<>(adventure.getPlayers());
                 players.remove(accountId);
-                adventures.save(adventure.withPlayers(players))
-                        .getOrElseThrow(DataNotSaveException::new);
+                adventures.save(adventure.withPlayers(players));
             }
         }
     }

@@ -12,7 +12,6 @@ import fr.barlords.dndgateapi.domain.port.in.account.AccountSessionRevokerApi;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
 import fr.barlords.dndgateapi.domain.port.out.PasswordHasherSpi;
-import io.vavr.control.Either;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -70,7 +69,7 @@ public class AccountUpdaterServiceTest {
                 emailingSpi, Clock.fixed(Instant.parse("2026-01-01T10:00:00Z"), ZoneOffset.UTC), Duration.ofHours(24));
         lenient().when(currentAccountService.getAccountById(existing.getId())).thenReturn(existing);
         lenient().when(passwordVerifier.verify(any(), any(), any(), any())).thenAnswer(i -> i.getArguments()[0]);
-        lenient().when(spi.save(any(Account.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        lenient().when(spi.save(any(Account.class))).thenAnswer(i -> i.getArguments()[0]);
     }
 
     @Test

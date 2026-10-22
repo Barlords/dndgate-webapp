@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.gamecharacter;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.InvalidPictureException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureAccessDeniedException;
 import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
@@ -11,7 +10,6 @@ import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureAccessVerifierApi;
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
-import io.vavr.control.Either;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -75,7 +73,7 @@ class GameCharacterCreatorServiceTest {
     @Test
     void the_character_belongs_to_the_caller_and_to_the_adventure_and_keeps_the_picture_path() {
         playerIsParticipant();
-        when(spi.save(any(GameCharacter.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(spi.save(any(GameCharacter.class))).thenAnswer(i -> i.getArguments()[0]);
 
         GameCharacter created = create(PNG);
 
@@ -88,7 +86,7 @@ class GameCharacterCreatorServiceTest {
     @Test
     void the_picture_is_stored_where_the_character_says_with_its_real_content_type() throws Exception {
         playerIsParticipant();
-        when(spi.save(any(GameCharacter.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(spi.save(any(GameCharacter.class))).thenAnswer(i -> i.getArguments()[0]);
 
         GameCharacter created = create(PNG);
 
@@ -100,7 +98,7 @@ class GameCharacterCreatorServiceTest {
     @Test
     void a_jpeg_gets_a_jpg_extension_and_its_own_content_type() throws Exception {
         playerIsParticipant();
-        when(spi.save(any(GameCharacter.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(spi.save(any(GameCharacter.class))).thenAnswer(i -> i.getArguments()[0]);
 
         GameCharacter created = create(JPEG);
 
@@ -136,7 +134,7 @@ class GameCharacterCreatorServiceTest {
     @Test
     void a_picture_of_exactly_five_megabytes_is_accepted() {
         playerIsParticipant();
-        when(spi.save(any(GameCharacter.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(spi.save(any(GameCharacter.class))).thenAnswer(i -> i.getArguments()[0]);
         byte[] limit = new byte[5 * 1024 * 1024];
         System.arraycopy(PNG, 0, limit, 0, PNG.length);
 
@@ -181,8 +179,8 @@ class GameCharacterCreatorServiceTest {
     @Test
     void a_failed_save_is_reported() {
         playerIsParticipant();
-        when(spi.save(any(GameCharacter.class))).thenReturn(Either.left(null));
+        when(spi.save(any(GameCharacter.class))).thenThrow(new IllegalStateException("db down"));
 
-        Assertions.assertThrows(DataNotSaveException.class, () -> create(PNG));
+        Assertions.assertThrows(IllegalStateException.class, () -> create(PNG));
     }
 }

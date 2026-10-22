@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.spellbook.spell;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.model.SpellBook;
 import fr.barlords.dndgateapi.domain.functional.service.spellbook.SpellBookOwnerVerifierService;
 import fr.barlords.dndgateapi.domain.port.in.spellbook.spell.SpellDeleterApi;
@@ -27,8 +26,7 @@ public class SpellDeleterService implements SpellDeleterApi {
         Set<String> updatedSpellList = new HashSet<>(spellBook.getSpellList());
         updatedSpellList.remove(spellIndex);
 
-        spi.save(spellBook.withSpellList(updatedSpellList))
-                .getOrElseThrow(DataNotSaveException::new);
+        spi.save(spellBook.withSpellList(updatedSpellList));
     }
 
 }

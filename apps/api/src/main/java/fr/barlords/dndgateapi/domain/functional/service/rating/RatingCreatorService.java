@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.rating;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.rating.RatingAlreadyExistsException;
 import fr.barlords.dndgateapi.domain.functional.model.Rating;
 import fr.barlords.dndgateapi.domain.port.in.rating.RatingCreatorApi;
@@ -26,8 +25,7 @@ public class RatingCreatorService implements RatingCreatorApi {
             throw new RatingAlreadyExistsException();
         }
 
-        return spi.save(rating.withEmitterId(accountId))
-                .getOrElseThrow(DataNotSaveException::new);
+        return spi.save(rating.withEmitterId(accountId));
     }
 
 }

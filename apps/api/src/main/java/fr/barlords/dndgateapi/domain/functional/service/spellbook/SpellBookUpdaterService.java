@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.spellbook;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.model.SpellBook;
 import fr.barlords.dndgateapi.domain.port.in.spellbook.SpellBookUpdaterApi;
 import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
@@ -25,7 +24,6 @@ public class SpellBookUpdaterService implements SpellBookUpdaterApi {
                 .withName(spellBook.getName())
                 .withDescription(spellBook.getDescription());
 
-        return spi.save(patchedSpellBook)
-                .getOrElseThrow(DataNotSaveException::new);
+        return spi.save(patchedSpellBook);
     }
 }

@@ -7,7 +7,6 @@ import fr.barlords.dndgateapi.domain.functional.model.pagination.Page;
 import fr.barlords.dndgateapi.domain.functional.model.pagination.PageRequest;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureAccessVerifierApi;
 import fr.barlords.dndgateapi.domain.port.out.MessagePersistenceSpi;
-import io.vavr.control.Either;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -66,7 +65,7 @@ public class MessageServicesTest {
     @Test
     void participant_can_send_a_message_and_sender_is_forced_to_the_caller() {
         Message message = Message.builder().adventureId(adventureId).senderId(UUID.randomUUID()).content("hello").build();
-        when(spi.save(any(Message.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(spi.save(any(Message.class))).thenAnswer(i -> i.getArguments()[0]);
 
         Message saved = new MessageCreatorService(spi, accessVerifier, clock, QuantityLimits.defaults()).create(accountId, message);
 
@@ -87,7 +86,7 @@ public class MessageServicesTest {
     void the_send_date_is_fixed_by_the_server_clock_whatever_the_message_carries() {
         Message forged = Message.builder().adventureId(adventureId).content("hello")
                 .sendDate(Instant.parse("2199-12-31T00:00:00Z")).build();
-        when(spi.save(any(Message.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(spi.save(any(Message.class))).thenAnswer(i -> i.getArguments()[0]);
 
         Message saved = new MessageCreatorService(spi, accessVerifier, clock, QuantityLimits.defaults()).create(accountId, forged);
 
@@ -97,7 +96,7 @@ public class MessageServicesTest {
     @Test
     void the_send_date_is_set_when_the_message_carries_none() {
         Message message = Message.builder().adventureId(adventureId).content("hello").build();
-        when(spi.save(any(Message.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        when(spi.save(any(Message.class))).thenAnswer(i -> i.getArguments()[0]);
 
         Assertions.assertEquals(NOW, new MessageCreatorService(spi, accessVerifier, clock, QuantityLimits.defaults()).create(accountId, message).getSendDate());
     }

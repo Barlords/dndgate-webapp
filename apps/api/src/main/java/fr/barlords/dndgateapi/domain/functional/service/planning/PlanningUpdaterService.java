@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.planning;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.model.planning.Planning;
 import fr.barlords.dndgateapi.domain.functional.service.adventure.AdventureOwnerVerifierService;
 import fr.barlords.dndgateapi.domain.port.in.planning.PlanningUpdaterApi;
@@ -26,7 +25,7 @@ public class PlanningUpdaterService implements PlanningUpdaterApi {
                 .map(existing -> existing.withPropositionDates(planning.getPropositionDates()))
                 .orElse(planning);
 
-        return spi.save(toSave).getOrElseThrow(DataNotSaveException::new);
+        return spi.save(toSave);
     }
 
 }

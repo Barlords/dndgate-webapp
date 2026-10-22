@@ -5,20 +5,16 @@ import fr.barlords.dndgateapi.domain.functional.model.pagination.PageRequest;
 import fr.barlords.dndgateapi.server.mapper.PageMapper;
 import org.springframework.data.domain.Sort;
 
-import fr.barlords.dndgateapi.domain.ApplicationError;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.note.HistoricalNote;
 import fr.barlords.dndgateapi.domain.port.out.HistoricalNotePersistenceSpi;
 import fr.barlords.dndgateapi.server.mapper.HistoricalNoteEntityMapper;
 import fr.barlords.dndgateapi.server.repository.HistoricalNoteRepository;
-import io.vavr.control.Either;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
-
-import static io.vavr.API.Try;
 
 @Service
 @RequiredArgsConstructor
@@ -30,11 +26,8 @@ public class HistoricalNoteDatabaseAdapter implements HistoricalNotePersistenceS
 
     @Override
     @Transactional
-    public Either<ApplicationError, HistoricalNote> save(HistoricalNote o) {
-        return Try(() -> repository.save(HistoricalNoteEntityMapper.fromDomain(o)))
-                .toEither()
-                .mapLeft(throwable -> new ApplicationError("Error while writing to the database", null, o, throwable))
-                .map(HistoricalNoteEntityMapper::toDomain);
+    public HistoricalNote save(HistoricalNote o) {
+        return HistoricalNoteEntityMapper.toDomain(repository.save(HistoricalNoteEntityMapper.fromDomain(o)));
     }
 
     @Override

@@ -1,6 +1,6 @@
 package fr.barlords.dndgateapi.domain.functional.service.planning;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
+import fr.barlords.dndgateapi.domain.functional.exception.planning.PlanningAlreadyExistsException;
 import fr.barlords.dndgateapi.domain.functional.model.planning.Planning;
 import fr.barlords.dndgateapi.domain.functional.service.adventure.AdventureOwnerVerifierService;
 import fr.barlords.dndgateapi.domain.port.in.planning.PlanningCreatorApi;
@@ -22,7 +22,11 @@ public class PlanningCreatorService implements PlanningCreatorApi {
     public Planning create(UUID accountId, Planning planning) {
         adventureOwnerVerifierService.verify(accountId, planning.getAdventureId());
 
-        return spi.save(planning).getOrElseThrow(DataNotSaveException::new);
+        if (spi.findByAdventureId(planning.getAdventureId()).isPresent()) {
+            throw new PlanningAlreadyExistsException();
+        }
+
+        return spi.save(planning);
     }
 
 }

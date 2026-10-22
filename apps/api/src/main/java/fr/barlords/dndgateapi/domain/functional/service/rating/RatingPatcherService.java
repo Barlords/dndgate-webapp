@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.rating;
 
-import fr.barlords.dndgateapi.domain.functional.exception.DataNotSaveException;
 import fr.barlords.dndgateapi.domain.functional.exception.rating.RatingNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.exception.rating.RatingOwnerException;
 import fr.barlords.dndgateapi.domain.functional.model.Rating;
@@ -29,8 +28,7 @@ public class RatingPatcherService implements RatingPatcherApi {
                 .orElseThrow(RatingNotFoundException::new);
 
         if (oldRating.getEmitterId().equals(account.getId())) {
-            return spi.save(oldRating.withRate(rating.getRate()))
-                    .getOrElseThrow(DataNotSaveException::new);
+            return spi.save(oldRating.withRate(rating.getRate()));
         }
         throw new RatingOwnerException();
     }

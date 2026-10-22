@@ -7,7 +7,6 @@ import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
 import fr.barlords.dndgateapi.domain.port.out.PasswordHasherSpi;
-import io.vavr.control.Either;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -114,7 +113,7 @@ public class AccountVerificationTest {
         void the_right_code_activates_the_account_and_is_used_up() {
             Account account = pending("secretcode", NOW.plus(TTL));
             when(spi.findByEmail("test@test.fr")).thenReturn(Optional.of(account));
-            when(spi.save(any(Account.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+            when(spi.save(any(Account.class))).thenAnswer(i -> i.getArguments()[0]);
 
             service().verify("test@test.fr", "secretcode");
 
@@ -170,7 +169,7 @@ public class AccountVerificationTest {
         }
 
         private void saveReturnsWhatItReceives() {
-            lenient().when(spi.save(any(Account.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+            lenient().when(spi.save(any(Account.class))).thenAnswer(i -> i.getArguments()[0]);
         }
 
         /** An account whose last mail was sent this long ago. */
@@ -289,7 +288,7 @@ public class AccountVerificationTest {
         @BeforeEach
         void setUp() {
             lenient().when(passwordHasher.hash(any())).thenReturn("hashed");
-            lenient().when(spi.save(any(Account.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+            lenient().when(spi.save(any(Account.class))).thenAnswer(i -> i.getArguments()[0]);
         }
 
         @Test

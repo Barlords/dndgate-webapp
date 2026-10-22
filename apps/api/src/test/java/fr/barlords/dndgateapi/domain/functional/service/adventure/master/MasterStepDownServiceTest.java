@@ -8,7 +8,6 @@ import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureStatus;
 import fr.barlords.dndgateapi.domain.functional.service.adventure.AdventureOwnerVerifierService;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MasterInvitationPersistenceSpi;
-import io.vavr.control.Either;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,7 +50,7 @@ class MasterStepDownServiceTest {
     @BeforeEach
     void setUp() {
         service = new MasterStepDownService(adventures, invitations, ownerVerifier, notifier, Clock.fixed(now, ZoneOffset.UTC));
-        lenient().when(adventures.save(any(Adventure.class))).thenAnswer(i -> Either.right(i.getArguments()[0]));
+        lenient().when(adventures.save(any(Adventure.class))).thenAnswer(i -> i.getArguments()[0]);
     }
 
     private Adventure adventure(AdventureStatus status) {
