@@ -1,0 +1,75 @@
+asyncapi: 3.0.0
+info:
+  title: DnDGate API - WebSocket topics
+  version: 1.0.0
+  description: |
+    What the API publishes over WebSocket (STOMP), the part of the API that `openapi.yaml` cannot describe.
+    This file is written by hand; the payload schemas are the ones of `openapi.yaml`, so a message has one definition.
+
+    Connection: `ws(s)://<host>/<context-path>/ws`, STOMP 1.2 with the access token of the session in the `Authorization`
+    header of the `CONNECT` frame (`Bearer <token>`). A missing, invalid or revoked token refuses the connection.
+
+    Rules:
+    - Clients only subscribe: a `SEND` is refused. Messages are published by the API, as a side effect of
+      `POST /messages` and `POST /webrtc/{offer|answer|candidate}`.
+    - A subscription is accepted only for a participant of the adventure (the owner, the master or a player), to the exact
+      destinations below (lowercase UUID, nothing before or after). It is cut when the participant leaves the adventure,
+      hands over the master role, logs out, changes password or deletes the account.
+    - At most 20 subscriptions per connection.
+    - Every participant of the adventure receives every message of the topic, including the sender.
+    - WebRTC signals are not addressed to a recipient: each participant must ignore the ones that are not for them
+      (see point 58 of the audit).
+servers:
+  local:
+    host: localhost:8080
+    pathname: /dndgate-api/ws
+    protocol: ws
+    description: Development server. Authenticate with the `Authorization` header of the STOMP `CONNECT` frame.
+channels:
+  adventureChat:
+    address: /topic/adventure/chat/{adventureId}
+    description: Chat messages of an adventure, published when a participant posts one with `POST /messages`.
+    parameters:
+      adventureId:
+        description: Identifier of the adventure (UUID, lowercase).
+    messages:
+      chatMessage:
+        $ref: '#/components/messages/chatMessage'
+  adventureWebrtc:
+    address: /topic/adventure/webrtc/{adventureId}
+    description: >-
+      WebRTC signaling of an adventure (SDP offers and answers, ICE candidates), relayed from
+      `POST /webrtc/offer`, `POST /webrtc/answer` and `POST /webrtc/candidate`. The `type` of the message tells which.
+    parameters:
+      adventureId:
+        description: Identifier of the adventure (UUID, lowercase).
+    messages:
+      webrtcSignal:
+        $ref: '#/components/messages/webrtcSignal'
+operations:
+  receiveChatMessage:
+    action: receive
+    summary: Receive the chat messages of an adventure
+    channel:
+      $ref: '#/channels/adventureChat'
+  receiveWebrtcSignal:
+    action: receive
+    summary: Receive the WebRTC signals of an adventure
+    channel:
+      $ref: '#/channels/adventureWebrtc'
+components:
+  messages:
+    chatMessage:
+      name: chatMessage
+      title: Chat message
+      summary: The message that `POST /messages` has just created (same body as its response).
+      contentType: application/json
+      payload:
+        $ref: 'openapi.yaml#/components/schemas/MessageDto'
+    webrtcSignal:
+      name: webrtcSignal
+      title: WebRTC signal
+      summary: An offer, an answer or an ICE candidate; `accountId` is the sender, set by the API.
+      contentType: application/json
+      payload:
+        $ref: 'openapi.yaml#/components/schemas/WebRTCMessage'

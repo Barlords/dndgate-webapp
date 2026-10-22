@@ -156,6 +156,11 @@ class WebSocketSecurityIntegrationTest extends ApiIntegrationTestSupport {
 
         String payload = received.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
         Assertions.assertTrue(payload.contains("hello table"), payload);
+        // the topic carries the MessageDto the route answers with: same identifier, sender and date
+        var created = body(sent);
+        Assertions.assertTrue(payload.contains(created.get("id").asString()), payload);
+        Assertions.assertTrue(payload.contains(created.get("senderId").asString()), payload);
+        Assertions.assertTrue(payload.contains("sendDate=" + created.get("sendDate").asString()), payload);
     }
 
     @Test

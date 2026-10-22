@@ -54,10 +54,11 @@ public class MessageController {
                 MessageDtoMapper.creationRequestToDomain(request)
         );
 
-        // Broadcast the message to the subscribers of the adventure
-        messagingTemplate.convertAndSend("/topic/adventure/chat/"+message.getAdventureId().toString(), message);
+        // Broadcast the same DTO as the answer to the subscribers of the adventure (documented in contracts/asyncapi.yaml)
+        MessageDto dto = MessageDtoMapper.toDto(message);
+        messagingTemplate.convertAndSend("/topic/adventure/chat/" + message.getAdventureId(), dto);
 
-        return MessageDtoMapper.toDto(message);
+        return dto;
     }
 }
 
