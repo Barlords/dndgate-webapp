@@ -2864,6 +2864,9 @@ components:
         count:
           type: integer
           format: int64
+      required:
+      - average
+      - count
     PageDtoMessageDto:
       type: object
       properties:

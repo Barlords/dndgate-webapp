@@ -118,6 +118,10 @@ class AccountAnonymizationIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(202, call(HttpMethod.POST, "/accounts", null,
                 Map.of("email", account.pseudo() + "@test.fr", "password", "password123", "pseudo", account.pseudo()))
                 .getStatusCode().value());
+
+        // Signup always answers 202: only the database tells that the account was really created again
+        Assertions.assertEquals(1, jdbc.queryForObject("select count(*) from accounts where pseudo = ?", Integer.class, account.pseudo()));
+        Assertions.assertEquals(1, jdbc.queryForObject("select count(*) from accounts where email = ?", Integer.class, account.pseudo() + "@test.fr"));
     }
 
     @Test

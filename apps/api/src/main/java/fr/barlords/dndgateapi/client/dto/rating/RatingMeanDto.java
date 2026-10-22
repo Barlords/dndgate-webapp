@@ -10,7 +10,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 @JsonInclude(JsonInclude.Include.ALWAYS)
 public record RatingMeanDto(
-        @Schema(nullable = true) Double average,
-        long count
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, nullable = true) Double average,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long count
 ) {
 }

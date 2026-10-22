@@ -61,6 +61,7 @@ class EmailContentBuilderTest {
         Assertions.assertTrue(mail.html().contains("&lt;b&gt;Gandalf&lt;/b&gt;"), mail.html());
         Assertions.assertFalse(mail.html().contains("abc123"), mail.html());
         Assertions.assertFalse(mail.html().contains("verify-email"), mail.html());
+        Assertions.assertFalse(mail.html().contains("validation"), "no invitation to ask for a validation mail: " + mail.html());
         Assertions.assertTrue(mail.html().contains("href=\"https://dndgate.example.com/login\""), mail.html());
     }
 
