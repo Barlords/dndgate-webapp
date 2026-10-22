@@ -33,7 +33,7 @@ class PasswordPolicyIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     void a_password_shorter_than_8_characters_is_refused() {
         Assertions.assertEquals(400, register(newPseudo(), "abcdefg"));
-        Assertions.assertEquals(201, register(newPseudo(), "abcdefgh"));
+        Assertions.assertEquals(202, register(newPseudo(), "abcdefgh"));
     }
 
     @Test
@@ -43,9 +43,9 @@ class PasswordPolicyIntegrationTest extends ApiIntegrationTestSupport {
 
     @Test
     void a_password_longer_than_72_bytes_is_refused_instead_of_being_silently_truncated() {
-        Assertions.assertEquals(201, register(newPseudo(), "a".repeat(72)));
+        Assertions.assertEquals(202, register(newPseudo(), "a".repeat(72)));
         Assertions.assertEquals(400, register(newPseudo(), "a".repeat(73)));
-        Assertions.assertEquals(201, register(newPseudo(), "€".repeat(24)));
+        Assertions.assertEquals(202, register(newPseudo(), "€".repeat(24)));
         Assertions.assertEquals(400, register(newPseudo(), "€".repeat(25)));
     }
 
@@ -82,7 +82,7 @@ class PasswordPolicyIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     void the_pseudo_is_trimmed_the_same_way_at_registration_and_login() {
         String pseudo = newPseudo();
-        Assertions.assertEquals(201, call(HttpMethod.POST, "/accounts", null,
+        Assertions.assertEquals(202, call(HttpMethod.POST, "/accounts", null,
                 Map.of("email", pseudo + "@test.fr", "password", "password123", "pseudo", " " + pseudo + " ")).getStatusCode().value());
         activate(pseudo);
 

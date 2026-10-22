@@ -79,13 +79,9 @@ public class AccountController {
     }
 
     @PostMapping
-    @ResponseStatus(CREATED)
-    public AccountDto createAccount(@Valid @RequestBody AccountCreationRequest request) {
-        return AccountDtoMapper.toDto(
-                accountCreatorApi.create(
-                        AccountDtoMapper.creationRequestToDomain(request)
-                )
-        );
+    @ResponseStatus(ACCEPTED)
+    public void createAccount(@Valid @RequestBody AccountCreationRequest request) {
+        accountCreatorApi.create(AccountDtoMapper.creationRequestToDomain(request));
     }
 
     @PatchMapping

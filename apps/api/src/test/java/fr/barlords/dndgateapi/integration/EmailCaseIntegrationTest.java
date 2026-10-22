@@ -44,8 +44,7 @@ class EmailCaseIntegrationTest extends ApiIntegrationTestSupport {
 
         ResponseEntity<String> response = register(pseudo, pseudo + "@Mail.COM");
 
-        Assertions.assertEquals(201, response.getStatusCode().value(), response.getBody());
-        Assertions.assertEquals(pseudo + "@mail.com", body(response).get("email").asString());
+        Assertions.assertEquals(202, response.getStatusCode().value(), response.getBody());
         Assertions.assertEquals(pseudo + "@mail.com", emailOf(pseudo));
     }
 
@@ -53,11 +52,11 @@ class EmailCaseIntegrationTest extends ApiIntegrationTestSupport {
     void the_same_address_in_another_case_cannot_open_a_second_account() {
         String first = newPseudo();
         String second = newPseudo();
-        Assertions.assertEquals(201, register(first, first + "@mail.com").getStatusCode().value());
+        Assertions.assertEquals(202, register(first, first + "@mail.com").getStatusCode().value());
 
         ResponseEntity<String> response = register(second, (first + "@Mail.Com").toUpperCase());
 
-        Assertions.assertEquals(409, response.getStatusCode().value(), response.getBody());
+        Assertions.assertEquals(202, response.getStatusCode().value(), response.getBody());
         Assertions.assertEquals(0, jdbc.queryForObject("select count(*) from accounts where pseudo = ?", Integer.class, second));
     }
 

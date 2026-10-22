@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.util.Optional;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -30,11 +31,19 @@ public class AccountCreatorService implements AccountCreatorApi {
     private final Duration verificationCodeTtl;
 
     @Override
-    public Account create(Account account) {
+    public void create(Account account) {
         accountCheckerService.pseudoIsAvailable(account);
-        accountCheckerService.emailIsAvailable(account);
 
-        Account toSave = accountModifierService.encodePassword(account)
+        // Hashed before the address is looked at: both answers cost the same time, the hash being the slow part
+        Account encoded = accountModifierService.encodePassword(account);
+
+        Optional<Account> owner = spi.findByEmail(account.getEmail());
+        if (owner.isPresent()) {
+            tellTheOwner(owner.get());
+            return;
+        }
+
+        Account toSave = encoded
                 .withVerificationCode(RandomStringGenerator.generateAlphanumericString(Account.VERIFICATION_CODE_LENGTH))
                 .withVerificationExpiresAt(clock.instant().plus(verificationCodeTtl));
 
@@ -47,8 +56,14 @@ public class AccountCreatorService implements AccountCreatorApi {
             // cannot log in. The person can ask for the mail again.
             log.warn("The validation e-mail of account {} could not be sent", savedAccount.getId(), e);
         }
+    }
 
-        return savedAccount;
+    private void tellTheOwner(Account owner) {
+        try {
+            emailSenderSpi.sendSignupAttemptEmail(owner);
+        } catch (EmailNotSendException e) {
+            log.warn("The notice of a registration attempt for account {} could not be sent", owner.getId(), e);
+        }
     }
 
 }

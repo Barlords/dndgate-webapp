@@ -291,22 +291,35 @@ public class AccountVerificationTest {
             lenient().when(spi.save(any(Account.class))).thenAnswer(i -> i.getArguments()[0]);
         }
 
+        private Account savedAccount() {
+            ArgumentCaptor<Account> saved = ArgumentCaptor.forClass(Account.class);
+            verify(spi).save(saved.capture());
+            return saved.getValue();
+        }
+
+        private Account newcomer() {
+            return Account.builder().pseudo("usertest").email("test@test.fr").password("clear").build();
+        }
+
         @Test
         void the_account_is_saved_with_a_fresh_code_that_expires_and_the_mail_is_sent() {
-            Account created = service().create(Account.builder().pseudo("usertest").email("test@test.fr").password("clear").build());
+            service().create(newcomer());
 
+            Account created = savedAccount();
             Assertions.assertEquals("hashed", created.getPassword());
             Assertions.assertFalse(created.isActivated());
             Assertions.assertEquals(Account.VERIFICATION_CODE_LENGTH, created.getVerificationCode().length());
             Assertions.assertEquals(NOW.plus(TTL), created.getVerificationExpiresAt());
             verify(emailingSpi).sendAccountValidationEmail(created);
+            verify(emailingSpi, never()).sendSignupAttemptEmail(any());
         }
 
         @Test
         void the_code_does_not_depend_on_what_the_caller_put_in_the_account() {
-            Account created = service().create(Account.builder().pseudo("usertest").email("test@test.fr").password("clear")
+            service().create(Account.builder().pseudo("usertest").email("test@test.fr").password("clear")
                     .verificationCode("chosen-by-the-caller").verificationExpiresAt(NOW.plus(Duration.ofDays(3650))).build());
 
+            Account created = savedAccount();
             Assertions.assertNotEquals("chosen-by-the-caller", created.getVerificationCode());
             Assertions.assertEquals(NOW.plus(TTL), created.getVerificationExpiresAt());
         }
@@ -315,11 +328,40 @@ public class AccountVerificationTest {
         void a_mail_that_cannot_be_sent_does_not_lock_the_account_out() {
             doThrow(new EmailNotSendException()).when(emailingSpi).sendAccountValidationEmail(any());
 
-            Account created = Assertions.assertDoesNotThrow(
-                    () -> service().create(Account.builder().pseudo("usertest").email("test@test.fr").password("clear").build()));
+            Assertions.assertDoesNotThrow(() -> service().create(newcomer()));
 
-            Assertions.assertNotNull(created);
             verify(spi).save(any(Account.class));
+        }
+
+        @Test
+        void an_address_already_registered_changes_nothing_and_its_owner_is_told_instead() {
+            Account owner = Account.builder().pseudo("owner").email("test@test.fr").password("hash").activated(true).build();
+            when(spi.findByEmail("test@test.fr")).thenReturn(Optional.of(owner));
+
+            Assertions.assertDoesNotThrow(() -> service().create(newcomer()));
+
+            verify(spi, never()).save(any());
+            verify(emailingSpi, never()).sendAccountValidationEmail(any());
+            verify(emailingSpi).sendSignupAttemptEmail(owner);
+        }
+
+        @Test
+        void the_password_is_hashed_whether_or_not_the_address_is_taken() {
+            when(spi.findByEmail("test@test.fr")).thenReturn(Optional.of(
+                    Account.builder().pseudo("owner").email("test@test.fr").password("hash").build()));
+
+            service().create(newcomer());
+
+            verify(passwordHasher).hash("clear");
+        }
+
+        @Test
+        void a_notice_that_cannot_be_sent_is_not_reported_to_the_caller() {
+            when(spi.findByEmail("test@test.fr")).thenReturn(Optional.of(
+                    Account.builder().pseudo("owner").email("test@test.fr").password("hash").build()));
+            doThrow(new EmailNotSendException()).when(emailingSpi).sendSignupAttemptEmail(any());
+
+            Assertions.assertDoesNotThrow(() -> service().create(newcomer()));
         }
 
         @Test

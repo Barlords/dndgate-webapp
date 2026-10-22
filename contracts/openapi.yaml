@@ -1064,12 +1064,8 @@ paths:
               $ref: "#/components/schemas/AccountCreationRequest"
         required: true
       responses:
-        "201":
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AccountDto"
+        "202":
+          description: Accepted
         default:
           description: "The error, in the same shape whatever produced it (RFC 9457)."
           content:
@@ -2641,18 +2637,6 @@ components:
       - email
       - password
       - pseudo
-    AccountDto:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        email:
-          type: string
-        pseudo:
-          type: string
-        pendingEmail:
-          type: string
     VerificationRequest:
       type: object
       properties:
@@ -2838,6 +2822,18 @@ components:
           type: string
       required:
       - currentPassword
+    AccountDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        pseudo:
+          type: string
+        pendingEmail:
+          type: string
     PageDtoRatingDto:
       type: object
       properties:

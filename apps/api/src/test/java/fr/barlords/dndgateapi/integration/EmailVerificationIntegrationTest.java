@@ -59,7 +59,7 @@ class EmailVerificationIntegrationTest extends ApiIntegrationTestSupport {
     void the_code_received_by_mail_activates_the_account() {
         String pseudo = newPseudo();
         String email = pseudo + "@test.fr";
-        Assertions.assertEquals(201, register(pseudo, email).getStatusCode().value());
+        Assertions.assertEquals(202, register(pseudo, email).getStatusCode().value());
         Assertions.assertEquals(401, login(pseudo), "not usable before the address is verified");
 
         Assertions.assertEquals(204, verifyEmail(email, codeOfTheLastMail()));
@@ -74,8 +74,8 @@ class EmailVerificationIntegrationTest extends ApiIntegrationTestSupport {
 
         ResponseEntity<String> response = register(pseudo, pseudo + "@test.fr");
 
-        Assertions.assertFalse(response.getBody().contains(codeOfTheLastMail()));
-        Assertions.assertFalse(response.getBody().toLowerCase().contains("verification"));
+        Assertions.assertNull(response.getBody(), "the answer carries nothing: no id, no code");
+        Assertions.assertFalse(codeOfTheLastMail().isBlank());
     }
 
     @Test
@@ -272,7 +272,7 @@ class EmailVerificationIntegrationTest extends ApiIntegrationTestSupport {
         String email = pseudo + "@test.fr";
         Mockito.doThrow(new EmailNotSendException()).when(emailingSpi).sendAccountValidationEmail(any());
 
-        Assertions.assertEquals(201, register(pseudo, email).getStatusCode().value());
+        Assertions.assertEquals(202, register(pseudo, email).getStatusCode().value());
 
         // the pseudo and the address are not lost to someone who cannot log in: the account exists
         Assertions.assertEquals(1, jdbc.queryForObject("select count(*) from accounts where pseudo = ?", Integer.class, pseudo));
@@ -310,7 +310,7 @@ class EmailVerificationIntegrationTest extends ApiIntegrationTestSupport {
     void a_pseudo_with_accents_and_symbols_that_are_harmless_is_accepted() {
         String suffix = UUID.randomUUID().toString().substring(0, 6);
 
-        Assertions.assertEquals(201, register("José_Zoë-" + suffix + ".1", "accent" + suffix + "@test.fr").getStatusCode().value());
+        Assertions.assertEquals(202, register("José_Zoë-" + suffix + ".1", "accent" + suffix + "@test.fr").getStatusCode().value());
     }
 
     @Test

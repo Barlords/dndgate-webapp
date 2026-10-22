@@ -65,7 +65,7 @@ class RateLimitIntegrationTest extends ApiIntegrationTestSupport {
     void account_creation_is_limited() {
         for (int i = 0; i < 2; i++) {
             String pseudo = "rate" + UUID.randomUUID().toString().substring(0, 8);
-            Assertions.assertEquals(201, call(HttpMethod.POST, "/accounts", null,
+            Assertions.assertEquals(202, call(HttpMethod.POST, "/accounts", null,
                     Map.of("email", pseudo + "@test.fr", "password", "password123", "pseudo", pseudo)).getStatusCode().value());
         }
 

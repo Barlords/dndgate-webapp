@@ -115,7 +115,7 @@ class AccountAnonymizationIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount account = registerAndLogin();
         deleteAccount(account);
 
-        Assertions.assertEquals(201, call(HttpMethod.POST, "/accounts", null,
+        Assertions.assertEquals(202, call(HttpMethod.POST, "/accounts", null,
                 Map.of("email", account.pseudo() + "@test.fr", "password", "password123", "pseudo", account.pseudo()))
                 .getStatusCode().value());
     }
