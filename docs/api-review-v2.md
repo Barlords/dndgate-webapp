@@ -21,7 +21,7 @@ Statuts : `[ ]` à faire, `[~]` en cours, `[x]` fait.
 | 29 | Un compte peut voter plusieurs fois au planning | P1 | vérifié |
 | 30 | La date d'un message est choisie par le client | P1 | vérifié |
 | 31 | L'inscription révèle si une adresse est inscrite | P1 | vérifié |
-| 32 | Adresses e-mail sensibles à la casse | P1 | lu |
+| 32 | Adresses e-mail sensibles à la casse | P1 | corrigé |
 | 33 | Le chat reste reçu après avoir quitté l'aventure ou s'être déconnecté | P1 | lu |
 | 34 | Statut et capacité d'une aventure modifiables sans règle | P2 | vérifié |
 | 35 | Erreurs de base de données : 500 sans cause ou cause perdue | P2 | vérifié |
@@ -113,10 +113,15 @@ Ordre conseillé : **lot 1** (petits correctifs sûrs : 25, 28, 29, 30, 37, 45, 
   - assumer : documenter que l'inscription révèle les adresses, et compter sur la limite par IP (une fois le point 25 corrigé).
 - `PATCH /accounts` répond aussi `409` pour une adresse prise ; ce cas demande le mot de passe actuel et peut rester tel quel.
 
-### 32. Adresses e-mail sensibles à la casse — *lu*
-- [ ] L'adresse est seulement rognée (`AccountDtoMapper`), puis comparée exactement (`AccountRepository.findByEmail`, unicité `accounts_email_key`).
+### 32. Adresses e-mail sensibles à la casse — *corrigé*
+- [x] **Corrigé** (voir plus bas). L'adresse est seulement rognée (`AccountDtoMapper`), puis comparée exactement (`AccountRepository.findByEmail`, unicité `accounts_email_key`).
   `Bob@Mail.com` et `bob@mail.com` peuvent ouvrir deux comptes ; une personne qui retape son adresse avec une autre casse ne la retrouve pas (`/verify`, `/verification-email`, `/email/confirm`).
 - Correctif : comme pour le pseudo (v1, point 13) : mettre l'adresse en minuscules à l'entrée, index unique sur `lower(email)` (et recherche de `pending_email` sur la même forme), avec une migration qui s'arrête si la base contient déjà deux adresses identiques à la casse près.
+- **Corrigé** (aucun changement de contrat : mêmes routes et mêmes champs, seule la valeur renvoyée change de casse) :
+  - l'adresse est rognée puis mise en minuscules (`Locale.ROOT`) dès l'entrée, par `AccountDtoMapper.normalizeEmail`, utilisé à l'inscription, à `PATCH /accounts` (donc `pendingEmail` aussi), à `/verify`, `/verification-email` et `/email/confirm` ; `AccountDto.email` est donc rendu en minuscules ;
+  - migration `V14__email_unique_ignoring_case.sql` : s'arrête avec un message nommant les adresses en double à la casse près (comme V2 pour les pseudos), puis met `email` et `pending_email` existants en minuscules et crée l'index unique `accounts_email_lower_key` sur `lower(email)` (la contrainte `accounts_email_key` est conservée) ;
+  - Tests : `EmailCaseIntegrationTest` (stockage en minuscules, `409` pour une variante de casse à l'inscription et au changement d'adresse, `/verify`, `/verification-email` et `/email/confirm` avec une autre casse, `pendingEmail` en minuscules, même adresse en autre casse = pas un changement) et deux tests de `FlywayMigrationIntegrationTest` (adresses existantes mises en minuscules + variante refusée ensuite ; doublon à la casse près : migration arrêtée, base intacte, version 13 conservée). Tous rouges avant le correctif. Contrôle par mutation fait : normalisation sans minuscules (7 tests sur 8 rouges), migration sans `UPDATE`, sans index, sans la garde explicite : tests rouges.
+  - **Volontairement pas fait** : (1) pas de comparaison insensible à la casse dans la requête (`findByEmail` reste exacte, l'entrée étant normalisée) : une adresse écrite par un autre chemin que l'API devrait déjà être en minuscules ; (2) le local-part d'une adresse peut en théorie être sensible à la casse (RFC 5321), mais aucun fournisseur courant ne l'applique : choix assumé, comme pour le pseudo ; (3) les e-mails envoyés utilisent l'adresse en minuscules.
 
 ### 33. Le chat et les signaux WebRTC restent reçus après avoir quitté l'aventure — *corrigé*
 - [x] `WebSocketSecurityInterceptor` vérifie la règle « participant » **une seule fois**, au `SUBSCRIBE`. Ensuite, rien ne coupe l'abonnement :

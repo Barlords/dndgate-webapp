@@ -142,7 +142,7 @@ public class AccountController {
     @PostMapping("/verify")
     @ResponseStatus(NO_CONTENT)
     public void verifyEmail(@Valid @RequestBody VerificationRequest request) {
-        accountVerifierApi.verify(request.email().trim(), request.code().trim());
+        accountVerifierApi.verify(AccountDtoMapper.normalizeEmail(request.email()), request.code().trim());
     }
 
     /**
@@ -152,14 +152,14 @@ public class AccountController {
     @PostMapping("/email/confirm")
     @ResponseStatus(NO_CONTENT)
     public void confirmEmailChange(@Valid @RequestBody VerificationRequest request) {
-        accountEmailChangeConfirmerApi.confirm(request.email().trim(), request.code().trim());
+        accountEmailChangeConfirmerApi.confirm(AccountDtoMapper.normalizeEmail(request.email()), request.code().trim());
     }
 
     /** Always 202, whether the address is registered or not. */
     @PostMapping("/verification-email")
     @ResponseStatus(ACCEPTED)
     public void resendVerificationEmail(@Valid @RequestBody VerificationEmailRequest request) {
-        accountVerificationResenderApi.resend(request.email().trim());
+        accountVerificationResenderApi.resend(AccountDtoMapper.normalizeEmail(request.email()));
     }
 
 }

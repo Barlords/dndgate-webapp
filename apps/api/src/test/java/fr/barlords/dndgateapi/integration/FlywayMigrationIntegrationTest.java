@@ -478,6 +478,54 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+
+    // ---- V14: case-insensitive e-mail addresses (review v2, point 32) ----
+
+    private static void insertAccountWithEmail(Connection connection, String pseudo, String email, String pendingEmail) throws SQLException {
+        execute(connection, "insert into accounts (id, email, password, pseudo, activated, pending_email) values (?, ?, 'hash', ?, true, ?)",
+                UUID.randomUUID(), email, pseudo, pendingEmail);
+    }
+
+    @Test
+    void existing_addresses_are_lower_cased_and_the_database_refuses_a_case_variant_afterwards() throws Exception {
+        String url = newDatabase();
+        flyway(url, "13").migrate();
+        try (Connection connection = connect(url)) {
+            insertAccountWithEmail(connection, "Alice", "Alice@Mail.COM", "New.Alice@Mail.COM");
+            insertAccountWithEmail(connection, "Bob", "bob@mail.com", null);
+        }
+
+        flyway(url, null).migrate();
+
+        try (Connection connection = connect(url)) {
+            Assertions.assertEquals(2, count(connection, "select count(*) from accounts"), "no row lost");
+            Assertions.assertEquals("alice@mail.com", stringValue(connection, "select email from accounts where pseudo = 'Alice'"));
+            Assertions.assertEquals("new.alice@mail.com", stringValue(connection, "select pending_email from accounts where pseudo = 'Alice'"));
+            Assertions.assertEquals(1, count(connection, "select count(*) from accounts where pseudo = 'Bob' and pending_email is null"));
+            Assertions.assertThrows(SQLException.class, () -> insertAccountWithEmail(connection, "Carol", "ALICE@mail.com", null));
+        }
+    }
+
+    @Test
+    void two_addresses_that_differ_only_by_case_stop_the_migration_and_leave_the_database_untouched() throws Exception {
+        String url = newDatabase();
+        flyway(url, "13").migrate();
+        try (Connection connection = connect(url)) {
+            insertAccountWithEmail(connection, "Alice", "Bob@Mail.com", null);
+            insertAccountWithEmail(connection, "Bobby", "bob@mail.com", null);
+        }
+
+        FlywayException failure = Assertions.assertThrows(FlywayException.class, () -> flyway(url, null).migrate());
+
+        Assertions.assertTrue(failure.getMessage().contains("V14 stopped") && failure.getMessage().contains("bob@mail.com"), failure.getMessage());
+        try (Connection connection = connect(url)) {
+            Assertions.assertEquals("Bob@Mail.com", stringValue(connection, "select email from accounts where pseudo = 'Alice'"),
+                    "nothing was lower-cased");
+            Assertions.assertEquals(0, count(connection, "select count(*) from pg_indexes where indexname = 'accounts_email_lower_key'"));
+        }
+        Assertions.assertEquals("13", flyway(url, null).info().current().getVersion().getVersion());
+    }
+
     private static String stringValue(Connection connection, String sql) throws SQLException {
         try (Statement statement = connection.createStatement(); ResultSet rows = statement.executeQuery(sql)) {
             rows.next();
