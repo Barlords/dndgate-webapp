@@ -14,12 +14,16 @@ import {
   switchMap,
   tap,
   throwError,
+  timeout,
 } from 'rxjs';
 import { ApiConfiguration } from '../api/generated/api-configuration';
 import { getMyProfile, login, logout, logoutAll, refresh } from '../api/generated/functions';
 import { AccountDto } from '../api/generated/models/account-dto';
 import { AuthDto } from '../api/generated/models/auth-dto';
 import { TokenStore } from './token-store';
+
+/** How long startup waits for the API before booting signed out. */
+export const RESTORE_TIMEOUT_MS = 5000;
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -43,10 +47,15 @@ export class AuthService {
       return;
     }
     try {
-      await firstValueFrom(this.refreshAccessToken().pipe(switchMap(() => this.reloadAccount())));
+      await firstValueFrom(
+        this.refreshAccessToken().pipe(
+          switchMap(() => this.reloadAccount()),
+          timeout(RESTORE_TIMEOUT_MS),
+        ),
+      );
     } catch (error) {
       // A refresh token the server rejected is dead: drop it. Keep it when the API is merely
-      // unreachable (status 0) or failing (5xx), so a later reload can still restore.
+      // unreachable (status 0), failing (5xx) or too slow (timeout), so a later reload can still restore.
       if (error instanceof HttpErrorResponse && (error.status === 400 || error.status === 401)) {
         this.forgetSession();
       }
