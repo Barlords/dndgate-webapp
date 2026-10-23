@@ -16,8 +16,20 @@ npm run build       # build de production (dist/web)
 npm test            # tests en mode watch
 npm run test:ci     # tests + couverture (seuil lignes 80 %)
 npm run lint        # ESLint (angular-eslint)
-npm run e2e         # tests Playwright
+npm run e2e         # parcours Playwright (Chromium), API et dnd5eapi.co simulées
 ```
+
+## Lancer le front contre l'API locale
+
+1. À la racine du dépôt : `docker compose up -d` (PostgreSQL et MinIO).
+2. Dans `apps/api` : `./mvnw spring-boot:run -Dspring-boot.run.profiles=dev` (l'API écoute sur `http://localhost:4000`).
+3. Dans `apps/web` : `npm start`, puis ouvrir `http://localhost:4200`. Le proxy de dev envoie `/dndgate-api` vers l'API.
+
+Le référentiel des règles vient directement de `https://www.dnd5eapi.co` (aucune clé requise).
+
+## Tests de bout en bout
+
+`npm run e2e` lance `npm start` (ou réutilise le serveur déjà ouvert sur le port 4200) et déroule les parcours de `e2e/` dans Chromium. Aucun backend n'est nécessaire : chaque appel à notre API (`**/dndgate-api/**`) et à dnd5eapi.co est simulé par `page.route` (`e2e/support/mocks.ts`, petites données dans `e2e/fixtures/`). Première utilisation : `npx playwright install chromium`.
 
 ## Client d'API généré
 

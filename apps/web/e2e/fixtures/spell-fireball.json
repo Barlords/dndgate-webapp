@@ -1,0 +1,18 @@
+{
+  "index": "fireball",
+  "name": "Fireball",
+  "desc": [
+    "A bright streak flashes from your pointing finger and blossoms into an explosion of flame."
+  ],
+  "higher_level": ["The damage increases by 1d6 for each slot level above 3rd."],
+  "range": "150 feet",
+  "components": ["V", "S", "M"],
+  "material": "A tiny ball of bat guano and sulfur.",
+  "ritual": false,
+  "duration": "Instantaneous",
+  "concentration": false,
+  "casting_time": "1 action",
+  "level": 3,
+  "school": { "index": "evocation", "name": "Evocation" },
+  "classes": [{ "index": "wizard", "name": "Wizard" }]
+}
