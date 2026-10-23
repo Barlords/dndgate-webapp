@@ -1,0 +1,25 @@
+{
+  "count": 4,
+  "results": [
+    {
+      "index": "acolyte",
+      "name": "Acolyte",
+      "url": "/api/2024/backgrounds/acolyte"
+    },
+    {
+      "index": "criminal",
+      "name": "Criminal",
+      "url": "/api/2024/backgrounds/criminal"
+    },
+    {
+      "index": "sage",
+      "name": "Sage",
+      "url": "/api/2024/backgrounds/sage"
+    },
+    {
+      "index": "soldier",
+      "name": "Soldier",
+      "url": "/api/2024/backgrounds/soldier"
+    }
+  ]
+}

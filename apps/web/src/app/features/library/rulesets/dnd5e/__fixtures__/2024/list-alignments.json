@@ -1,0 +1,55 @@
+{
+  "count": 10,
+  "results": [
+    {
+      "index": "chaotic-evil",
+      "name": "Chaotic Evil",
+      "url": "/api/2024/alignments/chaotic-evil"
+    },
+    {
+      "index": "chaotic-good",
+      "name": "Chaotic Good",
+      "url": "/api/2024/alignments/chaotic-good"
+    },
+    {
+      "index": "chaotic-neutral",
+      "name": "Chaotic Neutral",
+      "url": "/api/2024/alignments/chaotic-neutral"
+    },
+    {
+      "index": "lawful-evil",
+      "name": "Lawful Evil",
+      "url": "/api/2024/alignments/lawful-evil"
+    },
+    {
+      "index": "lawful-good",
+      "name": "Lawful Good",
+      "url": "/api/2024/alignments/lawful-good"
+    },
+    {
+      "index": "lawful-neutral",
+      "name": "Lawful Neutral",
+      "url": "/api/2024/alignments/lawful-neutral"
+    },
+    {
+      "index": "neutral",
+      "name": "Neutral",
+      "url": "/api/2024/alignments/neutral"
+    },
+    {
+      "index": "neutral-evil",
+      "name": "Neutral Evil",
+      "url": "/api/2024/alignments/neutral-evil"
+    },
+    {
+      "index": "neutral-good",
+      "name": "Neutral Good",
+      "url": "/api/2024/alignments/neutral-good"
+    },
+    {
+      "index": "unaligned",
+      "name": "Unaligned",
+      "url": "/api/2024/alignments/unaligned"
+    }
+  ]
+}

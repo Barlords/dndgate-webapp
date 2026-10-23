@@ -1,0 +1,96 @@
+<dg-parchment>
+  <p class="list__ruleset">{{ ruleset().label }}</p>
+  <h1 class="list__title">{{ section().label }}</h1>
+
+  <div class="list__filters">
+    <label class="list__field list__field--search">
+      <span class="list__caption">Rechercher</span>
+      <input
+        #searchField
+        type="search"
+        placeholder="Un nom…"
+        [value]="search()"
+        (input)="searchFor(searchField.value)"
+      />
+    </label>
+    @for (filter of section().filters; track filter.key) {
+      <label class="list__field">
+        <span class="list__caption">{{ filter.label }}</span>
+        <select #filterField (change)="filterBy(filter.key, filterField.value)">
+          <option value="" [selected]="filterValues()[filter.key] === ''">Tout</option>
+          @for (option of filter.options; track option.value) {
+            <option [value]="option.value" [selected]="filterValues()[filter.key] === option.value">
+              {{ option.label }}
+            </option>
+          }
+        </select>
+      </label>
+    }
+    <label class="list__field">
+      <span class="list__caption">Par page</span>
+      <select #sizeField (change)="resize(sizeField.value)">
+        @for (size of pageSizes; track size) {
+          <option [value]="size" [selected]="size === pageSize()">{{ size }}</option>
+        }
+      </select>
+    </label>
+  </div>
+
+  @if (failed()) {
+    <div class="list__state">
+      <p role="alert">Impossible de charger cette rubrique.</p>
+      <dg-button variant="ghost" (click)="retry()">Réessayer</dg-button>
+    </div>
+  } @else if (entries() === null) {
+    <div class="list__state"><dg-spinner label="Chargement de la rubrique" /></div>
+  } @else if (shown().length === 0) {
+    <p class="list__state list__empty">Aucune entrée ne correspond.</p>
+  } @else {
+    <p class="list__count">{{ shown().length }} {{ shown().length > 1 ? 'entrées' : 'entrée' }}</p>
+    <div class="list__scroll">
+      <table class="list__table">
+        <thead>
+          <tr>
+            @for (column of section().columns; track column.key) {
+              <th scope="col" [attr.aria-sort]="ariaSort(column)">
+                @if (column.sortable) {
+                  <button type="button" class="list__sort" (click)="sortBy(column)">
+                    {{ column.label }}
+                    <span class="list__arrow" aria-hidden="true">
+                      @switch (ariaSort(column)) {
+                        @case ('ascending') {
+                          ▲
+                        }
+                        @case ('descending') {
+                          ▼
+                        }
+                      }
+                    </span>
+                  </button>
+                } @else {
+                  {{ column.label }}
+                }
+              </th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (entry of rows(); track entry.index) {
+            <tr>
+              @for (column of section().columns; track column.key; let first = $first) {
+                <td>
+                  @if (first) {
+                    <a class="list__link" [routerLink]="link(entry)">{{ cell(entry, column) }}</a>
+                  } @else {
+                    {{ cell(entry, column) }}
+                  }
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <dg-paginator [page]="page()" [totalPages]="totalPages()" (pageChange)="goTo($event)" />
+  }
+</dg-parchment>

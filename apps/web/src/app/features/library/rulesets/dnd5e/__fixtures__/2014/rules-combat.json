@@ -1,0 +1,91 @@
+{
+  "name": "Combat",
+  "index": "combat",
+  "desc": "# Combat\n",
+  "subsections": [
+    {
+      "name": "The Order of Combat",
+      "index": "the-order-of-combat",
+      "url": "/api/2014/rule-sections/the-order-of-combat"
+    },
+    {
+      "name": "Movement and Position",
+      "index": "movement-and-position",
+      "url": "/api/2014/rule-sections/movement-and-position"
+    },
+    {
+      "name": "Actions in Combat",
+      "index": "actions-in-combat",
+      "url": "/api/2014/rule-sections/actions-in-combat"
+    },
+    {
+      "name": "Making an Attack",
+      "index": "making-an-attack",
+      "url": "/api/2014/rule-sections/making-an-attack"
+    },
+    {
+      "name": "Cover",
+      "index": "cover",
+      "url": "/api/2014/rule-sections/cover"
+    },
+    {
+      "name": "Damage and Healing",
+      "index": "damage-and-healing",
+      "url": "/api/2014/rule-sections/damage-and-healing"
+    },
+    {
+      "name": "Mounted Combat",
+      "index": "mounted-combat",
+      "url": "/api/2014/rule-sections/mounted-combat"
+    },
+    {
+      "name": "Underwater Combat",
+      "index": "underwater-combat",
+      "url": "/api/2014/rule-sections/underwater-combat"
+    }
+  ],
+  "url": "/api/2014/rules/combat",
+  "updated_at": "2026-09-24T21:12:35.681Z",
+  "children": [
+    {
+      "index": "the-order-of-combat",
+      "name": "The Order of Combat",
+      "url": "/api/2014/rules/the-order-of-combat"
+    },
+    {
+      "index": "movement-and-position",
+      "name": "Movement and Position",
+      "url": "/api/2014/rules/movement-and-position"
+    },
+    {
+      "index": "actions-in-combat",
+      "name": "Actions in Combat",
+      "url": "/api/2014/rules/actions-in-combat"
+    },
+    {
+      "index": "making-an-attack",
+      "name": "Making an Attack",
+      "url": "/api/2014/rules/making-an-attack"
+    },
+    {
+      "index": "cover",
+      "name": "Cover",
+      "url": "/api/2014/rules/cover"
+    },
+    {
+      "index": "damage-and-healing",
+      "name": "Damage and Healing",
+      "url": "/api/2014/rules/damage-and-healing"
+    },
+    {
+      "index": "mounted-combat",
+      "name": "Mounted Combat",
+      "url": "/api/2014/rules/mounted-combat"
+    },
+    {
+      "index": "underwater-combat",
+      "name": "Underwater Combat",
+      "url": "/api/2014/rules/underwater-combat"
+    }
+  ]
+}

@@ -1,7 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, inject, InjectionToken } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ActivationEnd, provideRouter, Router } from '@angular/router';
+import { ActivatedRouteSnapshot, ActivationEnd, provideRouter, Router } from '@angular/router';
 import { BreadcrumbService } from './breadcrumb.service';
+
+const NAMES = new InjectionToken<Record<string, string>>('NAMES');
 
 @Component({ template: '' })
 class Stub {}
@@ -30,7 +32,15 @@ describe('BreadcrumbService', () => {
             ],
           },
           { path: 'free', component: Stub },
+          {
+            path: 'named/:id',
+            component: Stub,
+            data: {
+              breadcrumb: (route: ActivatedRouteSnapshot) => inject(NAMES)[route.params['id']],
+            },
+          },
         ]),
+        { provide: NAMES, useValue: { a1: 'Acid Arrow' } },
       ],
     });
     service = TestBed.inject(BreadcrumbService);
@@ -89,6 +99,16 @@ describe('BreadcrumbService', () => {
     service.setLast('Acid Arrow');
     await router.navigateByUrl('/library/spells/aid');
     expect(service.crumbs().map((c) => c.label)).toEqual(['Bibliothèque', 'Sorts', 'Sort']);
+  });
+
+  it('computes a label from the route, in an injection context', async () => {
+    await router.navigateByUrl('/named/a1');
+    expect(service.crumbs()).toEqual([{ label: 'Acid Arrow', link: '/named/a1' }]);
+  });
+
+  it('has no crumb when the computed label is undefined', async () => {
+    await router.navigateByUrl('/named/zz');
+    expect(service.crumbs()).toEqual([]);
   });
 
   it('ignores setLast when there are no crumbs', () => {

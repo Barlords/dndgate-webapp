@@ -1,0 +1,159 @@
+{
+  "index": "air-elemental",
+  "actions": [
+    {
+      "damage": [],
+      "name": "Multiattack",
+      "desc": "The elemental makes two Thunderous Slam attacks.",
+      "multiattack_type": "actions",
+      "actions": [
+        {
+          "action_name": "Thunderous Slam",
+          "count": "2",
+          "type": "melee"
+        }
+      ],
+      "attacks": []
+    },
+    {
+      "name": "Thunderous Slam",
+      "desc": "Melee Attack Roll: +8, reach 10 ft. Hit: 14 (2d8 + 5) Thunder damage.",
+      "damage": [
+        {
+          "damage_type": {
+            "index": "thunder",
+            "name": "Thunder",
+            "url": "/api/2024/damage-types/thunder"
+          },
+          "damage_dice": "2d8+5"
+        }
+      ],
+      "attack_bonus": 8,
+      "actions": [],
+      "attacks": []
+    },
+    {
+      "name": "Whirlwind",
+      "desc": "Strength Saving Throw: DC 13, one Medium or smaller creature in the elemental’s space. Failure: 24 (4d10 + 2) Thunder damage, and the target is pushed up to 20 feet straight away from the elemental and has the Prone condition. Success: Half damage only.",
+      "damage": [
+        {
+          "damage_type": {
+            "index": "thunder",
+            "name": "Thunder",
+            "url": "/api/2024/damage-types/thunder"
+          },
+          "damage_dice": "4d10+2"
+        }
+      ],
+      "dc": {
+        "dc_type": {
+          "index": "str",
+          "name": "STR",
+          "url": "/api/2024/ability-scores/str"
+        },
+        "dc_value": 13,
+        "success_type": "half"
+      },
+      "usage": {
+        "type": "recharge on roll",
+        "dice": "1d6",
+        "min_value": 4,
+        "rest_types": []
+      },
+      "actions": [],
+      "attacks": []
+    }
+  ],
+  "alignment": "neutral",
+  "armor_class": [
+    {
+      "value": 15,
+      "armor": []
+    }
+  ],
+  "challenge_rating": 5,
+  "charisma": 6,
+  "condition_immunities": [
+    {
+      "index": "exhaustion",
+      "name": "Exhaustion",
+      "url": "/api/2024/conditions/exhaustion"
+    },
+    {
+      "index": "grappled",
+      "name": "Grappled",
+      "url": "/api/2024/conditions/grappled"
+    },
+    {
+      "index": "paralyzed",
+      "name": "Paralyzed",
+      "url": "/api/2024/conditions/paralyzed"
+    },
+    {
+      "index": "petrified",
+      "name": "Petrified",
+      "url": "/api/2024/conditions/petrified"
+    },
+    {
+      "index": "poisoned",
+      "name": "Poisoned",
+      "url": "/api/2024/conditions/poisoned"
+    },
+    {
+      "index": "prone",
+      "name": "Prone",
+      "url": "/api/2024/conditions/prone"
+    },
+    {
+      "index": "restrained",
+      "name": "Restrained",
+      "url": "/api/2024/conditions/restrained"
+    },
+    {
+      "index": "unconscious",
+      "name": "Unconscious",
+      "url": "/api/2024/conditions/unconscious"
+    }
+  ],
+  "constitution": 14,
+  "damage_immunities": ["poison", "thunder"],
+  "damage_resistances": ["bludgeoning", "lightning", "piercing", "slashing"],
+  "damage_vulnerabilities": [],
+  "dexterity": 20,
+  "hit_dice": "12d10",
+  "hit_points": 90,
+  "hit_points_roll": "12d10 + 24",
+  "image": "/api/images/monsters/air-elemental.png",
+  "intelligence": 6,
+  "languages": "Primordial (Auran)",
+  "legendary_actions": [],
+  "name": "Air Elemental",
+  "proficiencies": [],
+  "proficiency_bonus": 3,
+  "senses": {
+    "darkvision": "60 ft.",
+    "passive_perception": 10
+  },
+  "size": "Large",
+  "special_abilities": [
+    {
+      "name": "Air Form",
+      "desc": "The elemental can enter a creature’s space and stop there. It can move through a space as narrow as 1 inch without expending extra movement to do so.",
+      "damage": []
+    }
+  ],
+  "speed": {
+    "walk": "10 ft.",
+    "fly": "90 ft.",
+    "hover": true
+  },
+  "strength": 14,
+  "type": "elemental",
+  "updated_at": "2026-09-22T23:01:02.695Z",
+  "url": "/api/2024/monsters/air-elemental",
+  "wisdom": 10,
+  "xp": 1800,
+  "bonus_actions": [],
+  "reactions": [],
+  "forms": []
+}

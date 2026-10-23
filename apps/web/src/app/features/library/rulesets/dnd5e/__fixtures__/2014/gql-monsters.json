@@ -1,0 +1,27 @@
+{
+  "data": {
+    "monsters": [
+      {
+        "index": "goblin",
+        "name": "Goblin",
+        "type": "humanoid",
+        "size": "Small",
+        "challenge_rating": 0.25
+      },
+      {
+        "index": "adult-red-dragon",
+        "name": "Adult Red Dragon",
+        "type": "dragon",
+        "size": "Huge",
+        "challenge_rating": 17
+      },
+      {
+        "index": "acolyte",
+        "name": "Acolyte",
+        "type": "humanoid",
+        "size": "Medium",
+        "challenge_rating": 0.25
+      }
+    ]
+  }
+}

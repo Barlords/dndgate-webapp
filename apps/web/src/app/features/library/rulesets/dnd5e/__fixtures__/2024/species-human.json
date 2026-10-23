@@ -1,0 +1,27 @@
+{
+  "index": "human",
+  "url": "/api/2024/species/human",
+  "name": "Human",
+  "type": "Humanoid",
+  "size": "Medium",
+  "speed": 30,
+  "traits": [
+    {
+      "index": "resourceful",
+      "url": "/api/2024/traits/resourceful",
+      "name": "Resourceful"
+    },
+    {
+      "index": "skillful",
+      "url": "/api/2024/traits/skillful",
+      "name": "Skillful"
+    },
+    {
+      "index": "versatile",
+      "url": "/api/2024/traits/versatile",
+      "name": "Versatile"
+    }
+  ],
+  "updated_at": "2026-04-23T07:06:28.509Z",
+  "subspecies": []
+}

@@ -1,0 +1,35 @@
+{
+  "count": 262,
+  "results": [
+    {
+      "index": "adamantine-armor",
+      "url": "/api/2024/magic-items/adamantine-armor",
+      "name": "Adamantine Armor"
+    },
+    {
+      "index": "ammunition",
+      "url": "/api/2024/magic-items/ammunition",
+      "name": "Ammunition"
+    },
+    {
+      "index": "ammunition-1",
+      "url": "/api/2024/magic-items/ammunition-1",
+      "name": "Ammunition, +1"
+    },
+    {
+      "index": "ammunition-2",
+      "url": "/api/2024/magic-items/ammunition-2",
+      "name": "Ammunition, +2"
+    },
+    {
+      "index": "ammunition-3",
+      "url": "/api/2024/magic-items/ammunition-3",
+      "name": "Ammunition, +3"
+    },
+    {
+      "index": "ammunition-of-slaying",
+      "url": "/api/2024/magic-items/ammunition-of-slaying",
+      "name": "Ammunition of Slaying"
+    }
+  ]
+}

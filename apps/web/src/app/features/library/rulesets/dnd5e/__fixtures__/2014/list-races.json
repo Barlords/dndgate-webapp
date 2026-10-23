@@ -1,0 +1,20 @@
+{
+  "count": 3,
+  "results": [
+    {
+      "index": "dragonborn",
+      "name": "Dragonborn",
+      "url": "/api/2014/races/dragonborn"
+    },
+    {
+      "index": "dwarf",
+      "name": "Dwarf",
+      "url": "/api/2014/races/dwarf"
+    },
+    {
+      "index": "elf",
+      "name": "Elf",
+      "url": "/api/2014/races/elf"
+    }
+  ]
+}

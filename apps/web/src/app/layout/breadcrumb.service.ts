@@ -1,6 +1,19 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import {
+  computed,
+  EnvironmentInjector,
+  inject,
+  Injectable,
+  runInInjectionContext,
+  signal,
+} from '@angular/core';
 import { ActivatedRouteSnapshot, NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs';
+
+/**
+ * What a route puts in `data.breadcrumb`: a fixed label, or a function of the route (run in an
+ * injection context) for a label that depends on its parameters; `undefined` means no crumb.
+ */
+export type CrumbLabel = string | ((route: ActivatedRouteSnapshot) => string | undefined);
 
 export interface Crumb {
   label: string;
@@ -8,12 +21,13 @@ export interface Crumb {
 }
 
 /**
- * The trail of the current page, built from `data.breadcrumb` (a string) of the routes from the
- * root to the leaf. A page that loads its own name calls `setLast` once it has it.
+ * The trail of the current page, built from `data.breadcrumb` (a `CrumbLabel`) of the routes from
+ * the root to the leaf. A page that loads its own name calls `setLast` once it has it.
  */
 @Injectable({ providedIn: 'root' })
 export class BreadcrumbService {
   private readonly router = inject(Router);
+  private readonly injector = inject(EnvironmentInjector);
 
   private readonly trail = signal<Crumb[]>([]);
   private readonly currentUrl = signal(this.router.url);
@@ -53,11 +67,20 @@ export class BreadcrumbService {
     ) {
       url += route.url.map((segment) => `/${segment.path}`).join('');
       // Read the route's own config: `snapshot.data` also holds what an empty-path parent gives.
-      const label = route.routeConfig?.data?.['breadcrumb'];
-      if (typeof label === 'string') {
+      const label = this.label(route, route.routeConfig?.data?.['breadcrumb']);
+      if (label !== undefined) {
         crumbs.push({ label, link: url || '/' });
       }
     }
     return crumbs;
+  }
+
+  private label(route: ActivatedRouteSnapshot, label: unknown): string | undefined {
+    if (typeof label === 'function') {
+      return runInInjectionContext(this.injector, () =>
+        (label as Exclude<CrumbLabel, string>)(route),
+      );
+    }
+    return typeof label === 'string' ? label : undefined;
   }
 }
