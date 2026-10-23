@@ -25,6 +25,10 @@ describe('OverviewPage', () => {
     tavern.backend.expectOne(get).flush(adventure(overrides));
     await tavern.render();
     tavern.backend.match(accounts).forEach((r) => r.flush({ id: 'master', pseudo: 'Gandalf' }));
+    // The planning tab asks for the planning; there is none here.
+    tavern.backend
+      .match((r) => r.method === 'GET' && /\/planning$/.test(r.url))
+      .forEach((r) => r.flush(null, { status: 404, statusText: 'Not Found' }));
     await tavern.render();
   }
 
@@ -329,7 +333,7 @@ describe('OverviewPage', () => {
   });
 
   it('placeholder tabs render', async () => {
-    await open({ players: ['me'] }, 'planning');
+    await open({ players: ['me'] }, 'messages');
     expect(tavern.main().textContent).toContain('Bientôt disponible.');
   });
 });
