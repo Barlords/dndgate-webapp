@@ -1,0 +1,81 @@
+@if (drawer()) {
+  <div class="sidebar__veil" (click)="linkFollowed()" aria-hidden="true"></div>
+}
+<aside class="sidebar" [class.sidebar--collapsed]="collapsed()" [class.sidebar--drawer]="drawer()">
+  <button
+    type="button"
+    class="sidebar__toggle"
+    [attr.aria-expanded]="!collapsed()"
+    [attr.aria-controls]="panelId"
+    [attr.aria-label]="collapsed() ? 'Ouvrir le sommaire' : 'Réduire le sommaire'"
+    (click)="toggle()"
+  >
+    <dg-icon [name]="collapsed() ? 'chevron-right' : 'chevron-left'" />
+  </button>
+
+  <div class="sidebar__panel" [id]="panelId">
+    @if (!collapsed()) {
+      <h2 class="sidebar__title">{{ title() }}</h2>
+      <div class="sidebar__header">
+        <ng-content select="[sidebarHeader]" />
+      </div>
+    }
+
+    <nav [attr.aria-label]="title()">
+      @for (group of groups(); track group.label) {
+        <div class="sidebar__section">
+          @if (!collapsed()) {
+            <h3 class="sidebar__group">{{ group.label }}</h3>
+          }
+          @for (item of group.items; track item.link) {
+            <a
+              class="sidebar__link"
+              [routerLink]="item.link"
+              routerLinkActive="on"
+              [routerLinkActiveOptions]="{ exact: !!item.exact }"
+              [attr.title]="collapsed() ? item.label : null"
+              [attr.aria-label]="collapsed() ? item.label : null"
+              (click)="linkFollowed()"
+            >
+              <dg-icon [name]="item.icon" />
+              @if (!collapsed()) {
+                <span>{{ item.label }}</span>
+              }
+            </a>
+          }
+        </div>
+      }
+    </nav>
+
+    <div class="sidebar__footer">
+      @if (account(); as me) {
+        <a
+          routerLink="/account"
+          class="sidebar__account"
+          [attr.title]="collapsed() ? me.pseudo : null"
+          [attr.aria-label]="collapsed() ? 'Mon compte, ' + me.pseudo : null"
+          (click)="linkFollowed()"
+        >
+          <span class="sidebar__avatar" aria-hidden="true">{{ initial() }}</span>
+          @if (!collapsed()) {
+            <span class="sidebar__pseudo">{{ me.pseudo }}</span>
+          }
+        </a>
+      } @else {
+        <a
+          routerLink="/login"
+          class="sidebar__account"
+          [queryParams]="loginQuery()"
+          [attr.title]="collapsed() ? 'Se connecter' : null"
+          [attr.aria-label]="collapsed() ? 'Se connecter' : null"
+          (click)="linkFollowed()"
+        >
+          <dg-icon name="user" />
+          @if (!collapsed()) {
+            <span>Se connecter</span>
+          }
+        </a>
+      }
+    </div>
+  </div>
+</aside>

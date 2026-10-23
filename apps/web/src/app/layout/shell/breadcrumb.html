@@ -1,0 +1,16 @@
+@if (crumbs().length > 0) {
+  <nav aria-label="Fil d'Ariane">
+    <ol>
+      @for (crumb of crumbs(); track crumb.link; let last = $last) {
+        <li>
+          @if (last) {
+            <span aria-current="page">{{ crumb.label }}</span>
+          } @else {
+            <a [routerLink]="crumb.link">{{ crumb.label }}</a>
+            <span class="separator" aria-hidden="true">›</span>
+          }
+        </li>
+      }
+    </ol>
+  </nav>
+}
