@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import { provideApi } from '../../core/api/api.providers';
 import { AuthService } from '../../core/auth/auth.service';
@@ -11,9 +11,11 @@ import { PublicProfilePage } from './public-profile.page';
 describe('PublicProfilePage', () => {
   let backend: HttpTestingController;
 
+  let params: BehaviorSubject<ParamMap>;
+
   async function setup(accountId: string, me = '1') {
     localStorage.clear();
-    const params = new BehaviorSubject(convertToParamMap({ accountId }));
+    params = new BehaviorSubject(convertToParamMap({ accountId }));
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
@@ -106,5 +108,20 @@ describe('PublicProfilePage', () => {
     backend.match((r) => r.url.endsWith('/ratings/mean'));
     fixture.detectChanges();
     expect(TestBed.inject(NotifierService).toasts()[0].message).toContain('Chargement du joueur');
+  });
+
+  it('recovers when the next player loads after a failed one', async () => {
+    const { fixture, root } = await setup('404');
+    account('404').flush({}, { status: 404, statusText: 'Not Found' });
+    backend.match((r) => r.url.endsWith('/ratings/mean'));
+    fixture.detectChanges();
+    expect(root.querySelector('[role="alert"]')).not.toBeNull();
+
+    params.next(convertToParamMap({ accountId: '2' }));
+    account('2').flush({ id: '2', pseudo: 'Bilbo' });
+    mean('2').flush({ average: null, count: 0 });
+    fixture.detectChanges();
+    expect(root.querySelector('[role="alert"]')).toBeNull();
+    expect(root.textContent).toContain('Bilbo');
   });
 });

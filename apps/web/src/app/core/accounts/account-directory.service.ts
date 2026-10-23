@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
-import { inject, Injectable, signal, Signal } from '@angular/core';
-import { catchError, map, Observable, of, shareReplay } from 'rxjs';
+import { inject, Injectable, signal, Signal, WritableSignal } from '@angular/core';
+import { map, Observable, shareReplay } from 'rxjs';
 import { ApiConfiguration } from '../api/generated/api-configuration';
 import { getAccountById } from '../api/generated/functions';
 import { PublicAccountDto } from '../api/generated/models/public-account-dto';
@@ -14,6 +14,11 @@ export function displayName(account: PublicAccountDto): string {
   return account.anonymized ? PSEUDO_DELETED : (account.pseudo ?? PSEUDO_UNKNOWN);
 }
 
+interface PseudoEntry {
+  name: WritableSignal<string>;
+  failed: boolean;
+}
+
 /**
  * Who an account id is. Accounts are fetched once per id (concurrent callers share the request),
  * so screens may ask for the same pseudo as often as they like.
@@ -24,7 +29,7 @@ export class AccountDirectory {
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
 
   private readonly accounts = new Map<string, Observable<PublicAccountDto>>();
-  private readonly pseudos = new Map<string, Signal<string>>();
+  private readonly pseudos = new Map<string, PseudoEntry>();
 
   get(id: string): Observable<PublicAccountDto> {
     let account = this.accounts.get(id);
@@ -42,20 +47,28 @@ export class AccountDirectory {
   /**
    * « … » while loading, « Compte supprimé » once anonymized; the same signal for the same id.
    * Safe to call from a template: no `toSignal`, which refuses to run in a reactive context.
+   * A failed lookup shows « Compte inconnu » and is retried by the next call, on the same signal.
    */
   pseudo(id: string): Signal<string> {
-    let pseudo = this.pseudos.get(id);
-    if (pseudo === undefined) {
-      const state = signal(PSEUDO_LOADING);
-      this.get(id)
-        .pipe(
-          map(displayName),
-          catchError(() => of(PSEUDO_UNKNOWN)),
-        )
-        .subscribe((name) => state.set(name));
-      pseudo = state.asReadonly();
-      this.pseudos.set(id, pseudo);
+    let entry = this.pseudos.get(id);
+    if (entry === undefined) {
+      entry = { name: signal(PSEUDO_LOADING), failed: false };
+      this.pseudos.set(id, entry);
+      this.load(id, entry);
+    } else if (entry.failed) {
+      this.load(id, entry);
     }
-    return pseudo;
+    return entry.name.asReadonly();
+  }
+
+  private load(id: string, entry: PseudoEntry): void {
+    entry.failed = false;
+    this.get(id).subscribe({
+      next: (account) => entry.name.set(displayName(account)),
+      error: () => {
+        entry.failed = true;
+        entry.name.set(PSEUDO_UNKNOWN);
+      },
+    });
   }
 }

@@ -61,4 +61,19 @@ describe('AccountDirectory', () => {
     backend.expectOne((r) => r.url.endsWith('/accounts/id/4')).flush({ id: '4', pseudo: 'Back' });
     expect((await retry).pseudo).toBe('Back');
   });
+
+  it('directory retries a failed pseudo on the next call, on the same signal', () => {
+    const pseudo = directory.pseudo('5');
+    backend
+      .expectOne((r) => r.url.endsWith('/accounts/id/5'))
+      .flush({}, { status: 500, statusText: 'Server Error' });
+    expect(pseudo()).toBe('Compte inconnu');
+
+    expect(directory.pseudo('5')).toBe(pseudo);
+    backend.expectOne((r) => r.url.endsWith('/accounts/id/5')).flush({ id: '5', pseudo: 'Back' });
+    expect(pseudo()).toBe('Back');
+
+    directory.pseudo('5');
+    backend.expectNone(() => true);
+  });
 });

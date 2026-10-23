@@ -149,24 +149,25 @@ export class PublicProfilePage {
             mean: getMeanRateOfAccount(this.http, this.rootUrl, { accountId: id }).pipe(
               map((response) => response.body),
             ),
-          });
+          }).pipe(
+            // An error here must not end the stream: the component is reused for the next id.
+            catchError((error: unknown) => {
+              const problem = toApiProblem(error);
+              this.failed.set(true);
+              if (problem.status !== 404) {
+                this.notifier.error(problem, 'Chargement du joueur');
+              }
+              return EMPTY;
+            }),
+          );
         }),
         takeUntilDestroyed(destroyRef),
       )
-      .subscribe({
-        next: (profile) => {
-          this.profile.set(profile);
-          if (this.mine()) {
-            this.pages.next(0);
-          }
-        },
-        error: (error: unknown) => {
-          const problem = toApiProblem(error);
-          this.failed.set(true);
-          if (problem.status !== 404) {
-            this.notifier.error(problem, 'Chargement du joueur');
-          }
-        },
+      .subscribe((profile) => {
+        this.profile.set(profile);
+        if (this.mine()) {
+          this.pages.next(0);
+        }
       });
 
     this.pages
