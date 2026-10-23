@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
 import {
@@ -77,7 +84,10 @@ export const ADVENTURE_TABS: Tab[] = [
               <a [routerLink]="tab.path" routerLinkActive="active">{{ tab.label }}</a>
             }
           </nav>
-          <router-outlet />
+          <!-- A new outlet per adventure: its pages must not keep the previous one's data. -->
+          @for (id of [adventureId()]; track id) {
+            <router-outlet />
+          }
         }
         @case ('missing') {
           <div class="state">
@@ -104,6 +114,7 @@ export class AdventureShell {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private id = '';
+  protected readonly adventureId = signal('');
 
   // The tab shown, as the path of the child route.
   private readonly activeTab = toSignal(
@@ -121,6 +132,7 @@ export class AdventureShell {
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       this.id = params.get('id') ?? '';
+      this.adventureId.set(this.id);
       this.context.open(this.id);
     });
     effect(() => {

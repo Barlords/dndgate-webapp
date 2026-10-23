@@ -267,4 +267,45 @@ describe('ChroniclePage', () => {
     await answer([]);
     expect(tavern.main().textContent).toContain('encore vierge');
   });
+
+  it('shows the notes of the other adventure after navigating between two', async () => {
+    await open();
+    await answer([historicalNote({ content: 'Pour a1.' })]);
+    await tavern.go('/tavern/adventures/a2/chronicle');
+    tavern.backend
+      .expectOne((r) => r.method === 'GET' && /\/adventures\/a2$/.test(r.url))
+      .flush(adventure({ id: 'a2', players: ['me'] }));
+    await tavern.render();
+    tavern.backend
+      .expectOne((r) => /\/historical-notes$/.test(r.url) && r.params.get('adventureId') === 'a2')
+      .flush(notesPage([historicalNote({ id: 'x', content: 'Pour a2.' })]));
+    await tavern.render();
+    expect(contents()).toEqual(['Pour a2.']);
+  });
+
+  it.each([
+    ['2201-01-01', false],
+    ['20000-01-01', false],
+    ['1899-12-31', false],
+    ['1900-01-01', true],
+    ['2200-12-31', true],
+  ])('date %s accepted: %s', async (date, accepted) => {
+    await open();
+    await answer([]);
+    tavern.button('Ajouter une note').click();
+    await tavern.render();
+    await type('input[type="date"]', date);
+    await type('textarea', 'x');
+    tavern.button('Inscrire').click();
+    await tavern.render();
+    const posts = tavern.backend.match((r) => r.method === 'POST');
+    expect(posts.length).toBe(accepted ? 1 : 0);
+    posts.forEach((r) => r.flush(historicalNote()));
+    if (accepted) {
+      await tavern.render();
+      tavern.backend.expectOne(list).flush(notesPage([]));
+    } else {
+      expect(tavern.main().textContent).toContain('entre 1900 et 2200');
+    }
+  });
 });

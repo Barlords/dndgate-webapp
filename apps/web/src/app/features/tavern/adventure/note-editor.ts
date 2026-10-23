@@ -44,6 +44,9 @@ function dateInRange(control: AbstractControl): ValidationErrors | null {
   if (value === '') {
     return { required: true };
   }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return { dateRange: true };
+  }
   return value < NOTE_FIRST_DATE || value > NOTE_LAST_DATE ? { dateRange: true } : null;
 }
 
