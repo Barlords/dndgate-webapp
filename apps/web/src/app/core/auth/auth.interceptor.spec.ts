@@ -98,6 +98,42 @@ describe('authInterceptor', () => {
     expect(navigate).toHaveBeenCalledWith('/login?returnUrl=%2Fadventures%2F7');
   });
 
+  it.each([400, 401])('forgets the session and redirects when the refresh answers %s', (code) => {
+    http.get('/dndgate-api/a').subscribe({ error: () => undefined });
+    backend.expectOne('/dndgate-api/a').flush(null, { status: 401, statusText: 'Unauthorized' });
+    backend
+      .expectOne('/dndgate-api/accounts/refresh')
+      .flush(null, { status: code, statusText: 'No' });
+
+    expect(tokens.refreshToken()).toBeNull();
+    expect(navigate).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([403, 429, 503])(
+    'keeps the session and propagates the refresh error when the refresh answers %s',
+    (code) => {
+      let status = 0;
+      http.get('/dndgate-api/a').subscribe({ error: (e) => (status = e.status) });
+      backend.expectOne('/dndgate-api/a').flush(null, { status: 401, statusText: 'Unauthorized' });
+      backend
+        .expectOne('/dndgate-api/accounts/refresh')
+        .flush(null, { status: code, statusText: 'No' });
+
+      expect(status).toBe(code);
+      expect(tokens.refreshToken()).toBe('r1');
+      expect(navigate).not.toHaveBeenCalled();
+    },
+  );
+
+  it('forgets the session when the refresh cannot reach the server', () => {
+    http.get('/dndgate-api/a').subscribe({ error: () => undefined });
+    backend.expectOne('/dndgate-api/a').flush(null, { status: 401, statusText: 'Unauthorized' });
+    backend.expectOne('/dndgate-api/accounts/refresh').error(new ProgressEvent('error'));
+
+    expect(tokens.refreshToken()).toBeNull();
+    expect(navigate).toHaveBeenCalledTimes(1);
+  });
+
   it('does not refresh on a 403', () => {
     let status = 0;
     http.get('/dndgate-api/a').subscribe({ error: (e) => (status = e.status) });
