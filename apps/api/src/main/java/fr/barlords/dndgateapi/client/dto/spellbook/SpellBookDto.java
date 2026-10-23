@@ -10,6 +10,7 @@ public record SpellBookDto(
         UUID id,
         String name,
         String description,
+        String ruleset,
         Set<String> spellList
 ) {
 }

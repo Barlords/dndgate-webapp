@@ -105,7 +105,7 @@ class DeletionAuditIntegrationTest extends ApiIntegrationTestSupport {
     void deleting_a_spell_book_is_traced() {
         TestAccount owner = registerAndLogin();
         UUID bookId = UUID.fromString(body(call(HttpMethod.POST, "/spellbooks", owner.token(),
-                Map.of("name", "Fireballs", "description", "d"))).get("id").asString());
+                Map.of("name", "Fireballs", "description", "d", "ruleset", "dnd5e-2014"))).get("id").asString());
 
         Assertions.assertEquals(204, delete("/spellbooks/" + bookId, owner, Map.of("confirmation", "Fireballs")));
 
@@ -157,7 +157,7 @@ class DeletionAuditIntegrationTest extends ApiIntegrationTestSupport {
     void the_trace_holds_identifiers_only_never_names_or_addresses() {
         TestAccount owner = registerAndLogin();
         UUID bookId = UUID.fromString(body(call(HttpMethod.POST, "/spellbooks", owner.token(),
-                Map.of("name", "SecretGrimoireName", "description", "d"))).get("id").asString());
+                Map.of("name", "SecretGrimoireName", "description", "d", "ruleset", "dnd5e-2014"))).get("id").asString());
         delete("/spellbooks/" + bookId, owner, Map.of("confirmation", "SecretGrimoireName"));
         deleteAccount(owner);
 

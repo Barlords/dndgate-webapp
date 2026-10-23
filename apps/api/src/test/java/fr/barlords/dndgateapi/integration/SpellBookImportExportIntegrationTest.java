@@ -91,4 +91,68 @@ class SpellBookImportExportIntegrationTest extends ApiIntegrationTestSupport {
                 exported.getHeaders().getFirst("Content-Disposition"));
         Assertions.assertEquals("fireball", body(exported).get("spellList").get(0).asText());
     }
+
+    @Test
+    void a_spell_book_file_is_imported_as_multipart() {
+        TestAccount account = registerAndLogin();
+
+        ResponseEntity<String> response = importFile(account, "{\"name\":\"Multipart\",\"description\":\"d\",\"spellList\":[]}");
+
+        Assertions.assertEquals(201, response.getStatusCode().value(), response.getBody());
+    }
+
+    @Test
+    void an_import_without_a_file_part_is_a_400() {
+        TestAccount account = registerAndLogin();
+        LinkedMultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
+        parts.add("other", "value");
+
+        ResponseEntity<String> response = client().post().uri("/spellbooks/import-file")
+                .headers(headers -> headers.setBearerAuth(account.token()))
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(parts)
+                .retrieve().toEntity(String.class);
+
+        Assertions.assertEquals(400, response.getStatusCode().value(), response.getBody());
+        Assertions.assertTrue(MediaType.APPLICATION_PROBLEM_JSON.isCompatibleWith(response.getHeaders().getContentType()));
+    }
+
+    @Test
+    void the_export_contains_the_ruleset() {
+        TestAccount account = registerAndLogin();
+        String id = body(importFile(account,
+                "{\"name\":\"B\",\"ruleset\":\"dnd5e-2024\",\"spellList\":[]}")).get("id").asText();
+
+        ResponseEntity<String> exported = call(HttpMethod.GET, "/spellbooks/" + id + "/export-file", account.token(), null);
+
+        Assertions.assertEquals("dnd5e-2024", body(exported).get("ruleset").asText());
+    }
+
+    @Test
+    void an_import_keeps_the_ruleset_of_the_file() {
+        TestAccount account = registerAndLogin();
+
+        ResponseEntity<String> response = importFile(account,
+                "{\"name\":\"B\",\"ruleset\":\"dnd5e-2024\",\"spellList\":[]}");
+
+        Assertions.assertEquals(201, response.getStatusCode().value(), response.getBody());
+        Assertions.assertEquals("dnd5e-2024", body(response).get("ruleset").asText());
+    }
+
+    @Test
+    void an_import_without_ruleset_is_dnd5e_2014() {
+        TestAccount account = registerAndLogin();
+
+        ResponseEntity<String> response = importFile(account, "{\"name\":\"B\",\"spellList\":[]}");
+
+        Assertions.assertEquals(201, response.getStatusCode().value(), response.getBody());
+        Assertions.assertEquals("dnd5e-2014", body(response).get("ruleset").asText());
+    }
+
+    @Test
+    void an_import_with_a_ruleset_that_is_not_an_identifier_is_a_400() {
+        TestAccount account = registerAndLogin();
+
+        assertInvalid(importFile(account, "{\"name\":\"B\",\"ruleset\":\"DnD 5e\",\"spellList\":[]}"));
+    }
 }

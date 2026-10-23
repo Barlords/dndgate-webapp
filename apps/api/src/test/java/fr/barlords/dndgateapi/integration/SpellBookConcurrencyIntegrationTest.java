@@ -47,7 +47,7 @@ class SpellBookConcurrencyIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     private UUID createSpellBook(TestAccount owner) {
-        ResponseEntity<String> response = call(HttpMethod.POST, "/spellbooks", owner.token(), Map.of("name", "Book", "description", "Spells"));
+        ResponseEntity<String> response = call(HttpMethod.POST, "/spellbooks", owner.token(), Map.of("name", "Book", "description", "Spells", "ruleset", "dnd5e-2014"));
         Assertions.assertEquals(201, response.getStatusCode().value(), response.getBody());
         return UUID.fromString(body(response).get("id").asString());
     }

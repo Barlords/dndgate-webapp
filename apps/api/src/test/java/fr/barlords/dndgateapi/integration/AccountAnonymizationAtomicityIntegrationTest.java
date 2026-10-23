@@ -24,7 +24,7 @@ class AccountAnonymizationAtomicityIntegrationTest extends ApiIntegrationTestSup
     void a_failure_in_the_middle_leaves_everything_as_it_was() {
         TestAccount master = registerAndLogin();
         UUID adventureId = createAdventure(master, "PUBLIC");
-        call(HttpMethod.POST, "/spellbooks", master.token(), Map.of("name", "My book", "description", "Fireballs"));
+        call(HttpMethod.POST, "/spellbooks", master.token(), Map.of("name", "My book", "description", "Fireballs", "ruleset", "dnd5e-2014"));
 
         // the adventure is aborted first, the spell books are deleted after: make that second step fail
         Mockito.doThrow(new IllegalStateException("simulated failure")).when(spellBooks).deleteById(any());

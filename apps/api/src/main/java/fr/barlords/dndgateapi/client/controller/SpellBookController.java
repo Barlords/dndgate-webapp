@@ -1,5 +1,8 @@
 package fr.barlords.dndgateapi.client.controller;
 
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
@@ -93,6 +96,8 @@ public class SpellBookController {
 
     @GetMapping("/{id}/export-file")
     @ResponseStatus(OK)
+    @ApiResponse(responseCode = "200", description = "The spell book, as a file to import again.", content =
+            @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = SpellBookImportExportDto.class)))
     public ResponseEntity<byte[]> exportSpellBookFile(@PathVariable String id) {
         SpellBook spellBook = spellBookFinderApi.findById(authVerifierService.currentAccountId(), UuidValidator.validate(id))
                 .orElseThrow(SpellBookNotFoundException::new);
@@ -128,9 +133,9 @@ public class SpellBookController {
         );
     }
 
-    @PostMapping("/import-file")
+    @PostMapping(value = "/import-file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(CREATED)
-    public SpellBookDto importSpellBookFile(@RequestParam("file") MultipartFile file) {
+    public SpellBookDto importSpellBookFile(@RequestPart("file") MultipartFile file) {
         SpellBookImportExportDto spellBookImportDto;
         try {
             spellBookImportDto = objectMapper.readValue(file.getInputStream(), SpellBookImportExportDto.class);

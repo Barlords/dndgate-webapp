@@ -96,7 +96,7 @@ class ContractCleanupIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     void a_spellbook_patch_may_change_the_name_only() {
         String bookId = body(call(HttpMethod.POST, "/spellbooks", master.token(),
-                Map.of("name", "Book", "description", "Spells", "spellList", List.of()))).get("id").asString();
+                Map.of("name", "Book", "description", "Spells", "ruleset", "dnd5e-2014", "spellList", List.of()))).get("id").asString();
 
         Assertions.assertEquals(200, status(master, HttpMethod.PATCH, "/spellbooks/" + bookId, Map.of("name", "Renamed")));
         var book = body(call(HttpMethod.GET, "/spellbooks/" + bookId, master.token(), null));

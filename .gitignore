@@ -17,3 +17,6 @@ dist/
 
 # Java
 target/
+
+# Brainstorming companion (local mockups)
+.superpowers/

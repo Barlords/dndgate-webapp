@@ -13,6 +13,9 @@ import java.util.UUID;
 @Builder
 public class SpellBook {
 
+    /** Ruleset of the spell books created before rulesets existed, and of imported files that name none. */
+    public static final String LEGACY_RULESET = "dnd5e-2014";
+
     @Builder.Default
     @With
     UUID id = UUID.randomUUID();
@@ -25,6 +28,10 @@ public class SpellBook {
 
     @With
     String description;
+
+    /** Identifier of the ruleset the spell indexes belong to; the API only checks its format. */
+    @With
+    String ruleset;
 
     @Builder.Default
     @With

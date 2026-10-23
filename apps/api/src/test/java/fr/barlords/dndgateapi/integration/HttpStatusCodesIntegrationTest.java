@@ -46,7 +46,7 @@ class HttpStatusCodesIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(200, status(master, HttpMethod.PATCH, "/game-characters/" + characterId, Map.of("race", "Maia")));
 
         ResponseEntity<String> book = call(HttpMethod.POST, "/spellbooks", master.token(),
-                Map.of("name", "Book", "description", "Spells", "spellList", List.of()));
+                Map.of("name", "Book", "description", "Spells", "ruleset", "dnd5e-2014", "spellList", List.of()));
         Assertions.assertEquals(201, book.getStatusCode().value(), book.getBody());
         String bookId = body(book).get("id").asString();
         Assertions.assertEquals(200, status(master, HttpMethod.PATCH, "/spellbooks/" + bookId,
