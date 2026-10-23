@@ -140,4 +140,33 @@ describe('authInterceptor', () => {
     backend.expectNone('/dndgate-api/accounts/refresh');
     expect(status).toBe(401);
   });
+
+  describe('public routes', () => {
+    it.each([
+      '/dndgate-api/accounts',
+      '/dndgate-api/accounts/login',
+      '/dndgate-api/accounts/refresh',
+      '/dndgate-api/accounts/verify',
+      '/dndgate-api/accounts/email/confirm',
+      '/dndgate-api/accounts/verification-email',
+    ])('sends no bearer and never refreshes on POST %s', (url) => {
+      let status = 0;
+      http.post(url, {}).subscribe({ error: (e) => (status = e.status) });
+      const request = backend.expectOne(url);
+      expect(request.request.headers.has('Authorization')).toBe(false);
+      request.flush(null, { status: 401, statusText: 'Unauthorized' });
+      backend.expectNone('/dndgate-api/accounts/refresh');
+      expect(status).toBe(401);
+    });
+
+    it('still sends the bearer on PATCH and DELETE /accounts', () => {
+      http.patch('/dndgate-api/accounts', {}).subscribe();
+      http.request('DELETE', '/dndgate-api/accounts', { body: {} }).subscribe();
+      const requests = backend.match('/dndgate-api/accounts');
+      expect(requests.map((r) => r.request.headers.get('Authorization'))).toEqual([
+        'Bearer old',
+        'Bearer old',
+      ]);
+    });
+  });
 });

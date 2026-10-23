@@ -1,8 +1,10 @@
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { provideApi } from '../../core/api/api.providers';
+import { authInterceptor } from '../../core/auth/auth.interceptor';
+import { TokenStore } from '../../core/auth/token-store';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotifierService } from '../../core/errors/notifier.service';
 import { ConfirmEmailPage } from './confirm-email.page';
@@ -10,11 +12,11 @@ import { ConfirmEmailPage } from './confirm-email.page';
 describe('ConfirmEmailPage', () => {
   let backend: HttpTestingController;
 
-  function setup(query: Record<string, string>) {
+  function setup(query: Record<string, string>, accessToken?: string) {
     localStorage.clear();
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withInterceptors([authInterceptor])),
         provideHttpClientTesting(),
         provideApi(),
         provideRouter([]),
@@ -25,6 +27,9 @@ describe('ConfirmEmailPage', () => {
       ],
     });
     backend = TestBed.inject(HttpTestingController);
+    if (accessToken) {
+      TestBed.inject(TokenStore).save({ token: accessToken, refreshToken: 'r1' });
+    }
     const fixture = TestBed.createComponent(ConfirmEmailPage);
     fixture.detectChanges();
     return { fixture, root: fixture.nativeElement as HTMLElement };
@@ -39,7 +44,6 @@ describe('ConfirmEmailPage', () => {
     let page = setup(link);
     const request = backend.expectOne((r) => r.method === 'POST' && confirmUrl(r.url));
     expect(request.request.body).toEqual({ email: 'new@b.example', code: 'c0de' });
-    expect(request.request.headers.has('Authorization')).toBe(false);
     request.flush(null, { status: 204, statusText: 'No Content' });
     page.fixture.detectChanges();
     expect(page.root.textContent).toContain('Ta nouvelle adresse est confirmée.');
@@ -74,6 +78,15 @@ describe('ConfirmEmailPage', () => {
     backend.expectOne((r) => r.method === 'GET').flush({ id: 1, pseudo: 'Gandalf' });
     fixture.detectChanges();
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends no Authorization header even when signed in', () => {
+    const { fixture } = setup(link, 'access');
+    const request = backend.expectOne((r) => confirmUrl(r.url));
+    expect(TestBed.inject(TokenStore).accessToken()).toBe('access');
+    expect(request.request.headers.has('Authorization')).toBe(false);
+    request.flush(null, { status: 204, statusText: 'No Content' });
+    fixture.detectChanges();
   });
 
   it('does not reload the account when signed out', () => {
