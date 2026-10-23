@@ -325,6 +325,12 @@ Remplace la « limite connue » du point 4 (aventure en cours dont le MJ est par
 - **Tests ajoutés** : `AdventureUpdaterServiceConcurrencyTest` (6), `AdventureConcurrencyIntegrationTest` (9, vraies requêtes parallèles contre PostgreSQL). Total : 348.
 - Mutations : sans rejeu, 8 tests échouent ; sans `@Version`, la création échoue (colonne `NOT NULL`) — le test d'écriture périmée couvre le reste.
 
+### 23/10/2026 — migrations compactées (V1 à V18)
+
+- Les dix-huit migrations ont été fusionnées en un seul `V1__init.sql` (aucune base ne contenait de données à conserver). Schéma vérifié identique à celui des dix-huit migrations par comparaison de `pg_dump --schema-only`.
+- `FlywayMigrationIntegrationTest` ne teste plus le passage d'une ancienne version avec des données (arrêts de `V12`, `V14`, `V17`, conversion des comptes non vérifiés) : ces cas n'existent plus. Il garde la migration d'une base vide, la seconde migration sans effet, et ce que la base refuse d'elle-même (unicités sans casse du pseudo et de l'adresse, un vote par planning, clés étrangères, une demande de MJ ouverte par aventure, colonnes obligatoires, dates en `timestamptz`).
+- **Conséquence** : toute base déjà créée avec les anciennes migrations doit être recréée (l'historique Flyway ne correspond plus). Les futures évolutions repartent de `V2`.
+
 ### 20/10/2026 — migrations compactées
 
 - Les sept migrations ont été fusionnées en un seul `V1__init.sql` (aucune donnée à conserver). Schéma vérifié identique à celui des sept migrations par comparaison de `pg_dump`.

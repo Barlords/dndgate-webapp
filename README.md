@@ -236,7 +236,7 @@ La page appelle l'API :
   - Les inscriptions expirées sont purgées chaque nuit (même tâche planifiée que les sessions).
 - Une validation n'est plus un `GET` : suivre un lien (analyseurs de courrier, aperçus) ne modifie rien.
 - Si le mail ne peut pas être envoyé, l'erreur est journalisée et **la réponse reste la même** ; la personne peut se réinscrire après le délai d'une minute.
-- Il n'existe plus de compte « créé mais non activé » : un compte existe toujours activé (ou anonymisé). La migration `V17` a converti les anciens comptes non activés en inscriptions en attente (leur code, haché en SQL, et leur expiration sont conservés, 24 h sinon) puis les a supprimés ; elle s'arrête en nommant le compte si l'un d'eux possède des données liées. Les colonnes `verification_code` et `verification_expires_at` de `accounts` ont disparu (le changement d'adresse a ses propres colonnes `pending_email_*`).
+- Il n'existe pas de compte « créé mais non activé » : un compte existe toujours activé (ou anonymisé). `accounts` n'a pas de colonne de code de vérification (le changement d'adresse a ses propres colonnes `pending_email_*`).
 - **Front** : la page `/verify-email` appelle `POST /accounts/verify` ; après `POST /accounts`, afficher le message « vérifiez votre adresse e-mail » (le compte n'existe pas encore, la connexion répond `401` jusqu'à la confirmation) ; la page peut proposer `POST /accounts/verification-email` si le mail n'arrive pas. Un `409` sur `/verify` signifie « pseudo pris entre-temps : se réinscrire avec un autre ».
 
 ### Pseudo et contenu des e-mails
@@ -305,7 +305,7 @@ Seuls les champs fournis changent. Changer le mot de passe termine toutes les se
   - **IPv6** : un client IPv6 possède en général un /64 entier et peut y changer d'adresse gratuitement. Une adresse IPv6 est donc comptée par son préfixe /64
     (verrou et limitation par IP), et une adresse IPv4-mappée (`::ffff:a.b.c.d`) est traitée comme l'IPv4. Un attaquant qui change de /64 (ou d'adresse IPv4) échappe quand même au verrou.
   - **Donnée personnelle** : une adresse IP en est une. Elle n'est stockée que sous forme d'un SHA-256 non salé (pseudonymisation, pas anonymisation : l'espace IPv4 se parcourt en entier)
-    dans la table `login_failures` (migration V10), avec le nombre d'échecs et la fin du verrou. Elle est gardée au plus la durée de la fenêtre de verrouillage :
+    dans la table `login_failures`, avec le nombre d'échecs et la fin du verrou. Elle est gardée au plus la durée de la fenêtre de verrouillage :
     la purge nocturne supprime les lignes dont le dernier échec est plus ancien, et la suppression du compte efface celles du compte.
 - **Limitation par adresse IP** (`429` + `Retry-After`), en mémoire donc par instance de l'API :
 
