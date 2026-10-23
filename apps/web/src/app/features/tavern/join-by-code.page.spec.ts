@@ -54,12 +54,14 @@ describe('JoinByCodePage', () => {
     expect(tavern.main().textContent).toContain('Cette aventure a déjà commencé ou est complète.');
   });
 
-  it('tells about an unknown code through a notification', async () => {
+  it('shows an inline message for an unknown code', async () => {
     await open();
     type('NOPE');
     submit();
     tavern.backend.expectOne(accept).flush({}, { status: 404, statusText: 'Not Found' });
     await tavern.render();
     expect(tavern.router.url).toBe('/tavern/join');
+    expect(tavern.main().textContent).toContain('Ce code n’existe pas ou n’est plus valable.');
+    expect(document.body.textContent).not.toContain('Introuvable');
   });
 });
