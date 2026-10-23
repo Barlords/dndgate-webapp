@@ -1,5 +1,5 @@
 import { EntryDetail, EntrySummary } from '../../ruleset.model';
-import { ApiRef, names, ordinal } from './common';
+import { ApiRef, names, ordinal, paragraphs } from './common';
 
 /** One spell of the GraphQL list. */
 export interface GqlSpell {
@@ -15,8 +15,12 @@ export interface GqlSpell {
 export interface ApiSpell {
   index: string;
   name: string;
-  desc: string[];
-  higher_level?: string[];
+  /** SRD 2014: a list of paragraphs. */
+  desc?: string[];
+  /** SRD 2024: one string. */
+  description?: string;
+  /** A list in SRD 2014, a string in SRD 2024. */
+  higher_level?: string[] | string;
   range: string;
   components: string[];
   material?: string;
@@ -58,10 +62,11 @@ export function mapSpell(spell: ApiSpell): EntryDetail {
         { label: 'Ritual', value: yesNo(spell.ritual) },
       ],
     },
-    { kind: 'text', title: 'Description', paragraphs: spell.desc },
+    { kind: 'text', title: 'Description', paragraphs: paragraphs(spell.desc ?? spell.description) },
   ];
-  if (spell.higher_level && spell.higher_level.length > 0) {
-    blocks.push({ kind: 'text', title: 'At higher levels', paragraphs: spell.higher_level });
+  const higher = paragraphs(spell.higher_level);
+  if (higher.length > 0) {
+    blocks.push({ kind: 'text', title: 'At higher levels', paragraphs: higher });
   }
   if (spell.material) {
     blocks.push({ kind: 'text', title: 'Materials', paragraphs: [spell.material] });

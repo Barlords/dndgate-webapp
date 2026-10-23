@@ -1,0 +1,471 @@
+{
+  "index": "lich",
+  "actions": [
+    {
+      "damage": [],
+      "name": "Multiattack",
+      "desc": "The lich makes three attacks, using Eldritch Burst or Paralyzing Touch in any combination.",
+      "multiattack_type": "action_options",
+      "action_options": {
+        "desc": "Any combination",
+        "choose": 3,
+        "type": "action",
+        "from": {
+          "option_set_type": "options_array",
+          "options": [
+            {
+              "option_type": "action",
+              "action_name": "Eldritch Burst",
+              "count": 3,
+              "type": "melee"
+            },
+            {
+              "option_type": "action",
+              "action_name": "Paralyzing Touch",
+              "count": 3,
+              "type": "melee"
+            }
+          ]
+        }
+      },
+      "actions": [],
+      "attacks": []
+    },
+    {
+      "name": "Eldritch Burst",
+      "desc": "Melee or Ranged Attack Roll: +12, reach 5 ft. or range 120 ft. Hit: 31 (4d12 + 5) Force damage.",
+      "damage": [
+        {
+          "damage_type": {
+            "index": "force",
+            "name": "Force",
+            "url": "/api/2024/damage-types/force"
+          },
+          "damage_dice": "4d12+5"
+        }
+      ],
+      "attack_bonus": 12,
+      "actions": [],
+      "attacks": []
+    },
+    {
+      "name": "Paralyzing Touch",
+      "desc": "Melee Attack Roll: +12, reach 5 ft. Hit: 15 (3d6 + 5) Cold damage, and the target has the Paralyzed condition until the start of the lich’s next turn.",
+      "damage": [
+        {
+          "damage_type": {
+            "index": "cold",
+            "name": "Cold",
+            "url": "/api/2024/damage-types/cold"
+          },
+          "damage_dice": "3d6+5"
+        }
+      ],
+      "attack_bonus": 12,
+      "actions": [],
+      "attacks": []
+    },
+    {
+      "damage": [],
+      "name": "Spellcasting",
+      "desc": "The lich casts one of the following spells, using Intelligence as the spellcasting ability (spell save DC 20):",
+      "spellcasting": {
+        "ability": {
+          "index": "int",
+          "name": "INT",
+          "url": "/api/2024/ability-scores/int"
+        },
+        "dc": 20,
+        "components_required": ["V", "S", "M"],
+        "spells": [
+          {
+            "index": "detect-magic",
+            "name": "Detect Magic",
+            "level": 1,
+            "url": "/api/2024/spells/detect-magic",
+            "usage": {
+              "type": "at will"
+            }
+          },
+          {
+            "index": "detect-thoughts",
+            "name": "Detect Thoughts",
+            "level": 2,
+            "url": "/api/2024/spells/detect-thoughts",
+            "usage": {
+              "type": "at will"
+            }
+          },
+          {
+            "index": "dispel-magic",
+            "name": "Dispel Magic",
+            "level": 3,
+            "url": "/api/2024/spells/dispel-magic",
+            "usage": {
+              "type": "at will"
+            }
+          },
+          {
+            "index": "fireball",
+            "name": "Fireball",
+            "level": 5,
+            "url": "/api/2024/spells/fireball",
+            "usage": {
+              "type": "at will"
+            }
+          },
+          {
+            "index": "invisibility",
+            "name": "Invisibility",
+            "level": 2,
+            "url": "/api/2024/spells/invisibility",
+            "usage": {
+              "type": "at will"
+            }
+          },
+          {
+            "index": "lightning-bolt",
+            "name": "Lightning Bolt",
+            "level": 5,
+            "url": "/api/2024/spells/lightning-bolt",
+            "usage": {
+              "type": "at will"
+            }
+          },
+          {
+            "index": "mage-hand",
+            "name": "Mage Hand",
+            "level": 0,
+            "url": "/api/2024/spells/mage-hand",
+            "usage": {
+              "type": "at will"
+            }
+          },
+          {
+            "index": "prestidigitation",
+            "name": "Prestidigitation",
+            "level": 0,
+            "url": "/api/2024/spells/prestidigitation",
+            "usage": {
+              "type": "at will"
+            }
+          },
+          {
+            "index": "animate-dead",
+            "name": "Animate Dead",
+            "level": 3,
+            "url": "/api/2024/spells/animate-dead",
+            "usage": {
+              "type": "per day",
+              "times": 2
+            }
+          },
+          {
+            "index": "dimension-door",
+            "name": "Dimension Door",
+            "level": 4,
+            "url": "/api/2024/spells/dimension-door",
+            "usage": {
+              "type": "per day",
+              "times": 2
+            }
+          },
+          {
+            "index": "plane-shift",
+            "name": "Plane Shift",
+            "level": 7,
+            "url": "/api/2024/spells/plane-shift",
+            "usage": {
+              "type": "per day",
+              "times": 2
+            }
+          },
+          {
+            "index": "chain-lightning",
+            "name": "Chain Lightning",
+            "level": 6,
+            "url": "/api/2024/spells/chain-lightning",
+            "usage": {
+              "type": "per day",
+              "times": 1
+            }
+          },
+          {
+            "index": "finger-of-death",
+            "name": "Finger of Death",
+            "level": 7,
+            "url": "/api/2024/spells/finger-of-death",
+            "usage": {
+              "type": "per day",
+              "times": 1
+            }
+          },
+          {
+            "index": "power-word-kill",
+            "name": "Power Word Kill",
+            "level": 9,
+            "url": "/api/2024/spells/power-word-kill",
+            "usage": {
+              "type": "per day",
+              "times": 1
+            }
+          },
+          {
+            "index": "scrying",
+            "name": "Scrying",
+            "level": 5,
+            "url": "/api/2024/spells/scrying",
+            "usage": {
+              "type": "per day",
+              "times": 1
+            }
+          }
+        ]
+      },
+      "actions": [],
+      "attacks": []
+    }
+  ],
+  "alignment": "neutral evil",
+  "armor_class": [
+    {
+      "value": 20,
+      "armor": []
+    }
+  ],
+  "challenge_rating": 21,
+  "charisma": 16,
+  "condition_immunities": [
+    {
+      "index": "charmed",
+      "name": "Charmed",
+      "url": "/api/2024/conditions/charmed"
+    },
+    {
+      "index": "exhaustion",
+      "name": "Exhaustion",
+      "url": "/api/2024/conditions/exhaustion"
+    },
+    {
+      "index": "frightened",
+      "name": "Frightened",
+      "url": "/api/2024/conditions/frightened"
+    },
+    {
+      "index": "paralyzed",
+      "name": "Paralyzed",
+      "url": "/api/2024/conditions/paralyzed"
+    },
+    {
+      "index": "poisoned",
+      "name": "Poisoned",
+      "url": "/api/2024/conditions/poisoned"
+    }
+  ],
+  "constitution": 16,
+  "damage_immunities": ["necrotic", "poison"],
+  "damage_resistances": ["cold", "lightning"],
+  "damage_vulnerabilities": [],
+  "dexterity": 16,
+  "gear": "Component Pouch",
+  "hit_dice": "42d8",
+  "hit_points": 315,
+  "hit_points_roll": "42d8 + 126",
+  "image": "/api/images/monsters/lich.png",
+  "intelligence": 21,
+  "languages": "All",
+  "legendary_actions": [
+    {
+      "name": "Deathly Teleport",
+      "desc": "The lich teleports up to 60 feet to an unoccupied space it can see, and each creature within 10 feet of the space it left takes 11 (2d10) Necrotic damage.",
+      "damage": [
+        {
+          "damage_type": {
+            "index": "necrotic",
+            "name": "Necrotic",
+            "url": "/api/2024/damage-types/necrotic"
+          },
+          "damage_dice": "2d10"
+        }
+      ]
+    },
+    {
+      "name": "Disrupt Life",
+      "desc": "Constitution Saving Throw: DC 20, each creature that isn’t an Undead in a 20-foot Emanation originating from the lich. Failure: 31 (9d6) Necrotic damage. Success: Half damage. Failure or Success: The lich can’t take this action again until the start of its next turn.",
+      "damage": [
+        {
+          "damage_type": {
+            "index": "necrotic",
+            "name": "Necrotic",
+            "url": "/api/2024/damage-types/necrotic"
+          },
+          "damage_dice": "9d6"
+        }
+      ],
+      "dc": {
+        "dc_type": {
+          "index": "con",
+          "name": "CON",
+          "url": "/api/2024/ability-scores/con"
+        },
+        "dc_value": 20,
+        "success_type": "half"
+      }
+    },
+    {
+      "name": "Frightening Gaze",
+      "desc": "The lich casts Fear, using the same spellcasting ability as Spellcasting. The lich can’t take this action again until the start of its next turn.",
+      "spellcasting": {
+        "ability": {
+          "index": "int",
+          "name": "INT",
+          "url": "/api/2024/ability-scores/int"
+        },
+        "dc": 20,
+        "components_required": ["V", "S", "M"],
+        "spells": [
+          {
+            "index": "fear",
+            "name": "Fear",
+            "level": 3,
+            "url": "/api/2024/spells/fear"
+          }
+        ]
+      },
+      "damage": []
+    }
+  ],
+  "name": "Lich",
+  "proficiencies": [
+    {
+      "value": 10,
+      "proficiency": {
+        "index": "saving-throw-dex",
+        "name": "Saving Throw: DEX",
+        "url": "/api/2024/proficiencies/saving-throw-dex"
+      }
+    },
+    {
+      "value": 10,
+      "proficiency": {
+        "index": "saving-throw-con",
+        "name": "Saving Throw: CON",
+        "url": "/api/2024/proficiencies/saving-throw-con"
+      }
+    },
+    {
+      "value": 12,
+      "proficiency": {
+        "index": "saving-throw-int",
+        "name": "Saving Throw: INT",
+        "url": "/api/2024/proficiencies/saving-throw-int"
+      }
+    },
+    {
+      "value": 9,
+      "proficiency": {
+        "index": "saving-throw-wis",
+        "name": "Saving Throw: WIS",
+        "url": "/api/2024/proficiencies/saving-throw-wis"
+      }
+    },
+    {
+      "value": 19,
+      "proficiency": {
+        "index": "skill-arcana",
+        "name": "Skill: Arcana",
+        "url": "/api/2024/proficiencies/skill-arcana"
+      }
+    },
+    {
+      "value": 12,
+      "proficiency": {
+        "index": "skill-history",
+        "name": "Skill: History",
+        "url": "/api/2024/proficiencies/skill-history"
+      }
+    },
+    {
+      "value": 9,
+      "proficiency": {
+        "index": "skill-insight",
+        "name": "Skill: Insight",
+        "url": "/api/2024/proficiencies/skill-insight"
+      }
+    },
+    {
+      "value": 9,
+      "proficiency": {
+        "index": "skill-perception",
+        "name": "Skill: Perception",
+        "url": "/api/2024/proficiencies/skill-perception"
+      }
+    }
+  ],
+  "proficiency_bonus": 7,
+  "reactions": [
+    {
+      "name": "Protective Magic",
+      "desc": "The lich casts Counterspell or Shield in response to the spell’s trigger, using the same spellcasting ability as Spellcasting.",
+      "spellcasting": {
+        "ability": {
+          "index": "int",
+          "name": "INT",
+          "url": "/api/2024/ability-scores/int"
+        },
+        "dc": 20,
+        "components_required": ["V", "S", "M"],
+        "spells": [
+          {
+            "index": "counterspell",
+            "name": "Counterspell",
+            "level": 3,
+            "url": "/api/2024/spells/counterspell"
+          },
+          {
+            "index": "shield",
+            "name": "Shield",
+            "level": 1,
+            "url": "/api/2024/spells/shield"
+          }
+        ]
+      },
+      "damage": []
+    }
+  ],
+  "senses": {
+    "truesight": "120 ft.",
+    "passive_perception": 19
+  },
+  "size": "Medium",
+  "special_abilities": [
+    {
+      "name": "Legendary Resistance",
+      "desc": "If the lich fails a saving throw, it can choose to succeed instead.",
+      "usage": {
+        "type": "per day",
+        "times": 4,
+        "times_in_lair": 5,
+        "rest_types": []
+      },
+      "damage": []
+    },
+    {
+      "name": "Spirit Jar",
+      "desc": "If destroyed, the lich reforms in 1d10 days if it has a spirit jar, reviving with all its Hit Points. The new body appears in an unoccupied space within the lich’s lair.",
+      "damage": []
+    }
+  ],
+  "speed": {
+    "walk": "30 ft."
+  },
+  "strength": 11,
+  "type": "undead",
+  "updated_at": "2026-09-22T23:01:02.696Z",
+  "url": "/api/2024/monsters/lich",
+  "wisdom": 14,
+  "xp": 33000,
+  "xp_in_lair": 41000,
+  "bonus_actions": [],
+  "forms": []
+}

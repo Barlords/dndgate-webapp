@@ -1,0 +1,53 @@
+{
+  "index": "elf",
+  "url": "/api/2024/species/elf",
+  "name": "Elf",
+  "type": "Humanoid",
+  "size": "Medium",
+  "speed": 30,
+  "traits": [
+    {
+      "index": "darkvision-60",
+      "url": "/api/2024/traits/darkvision-60",
+      "name": "Darkvision (60 ft.)"
+    },
+    {
+      "index": "elven-lineage",
+      "url": "/api/2024/traits/elven-lineage",
+      "name": "Elven Lineage"
+    },
+    {
+      "index": "fey-ancestry",
+      "url": "/api/2024/traits/fey-ancestry",
+      "name": "Fey Ancestry"
+    },
+    {
+      "index": "keen-senses",
+      "url": "/api/2024/traits/keen-senses",
+      "name": "Keen Senses"
+    },
+    {
+      "index": "trance",
+      "url": "/api/2024/traits/trance",
+      "name": "Trance"
+    }
+  ],
+  "subspecies": [
+    {
+      "index": "elven-lineage-drow",
+      "url": "/api/2024/subspecies/elven-lineage-drow",
+      "name": "Elven Lineage: Drow"
+    },
+    {
+      "index": "elven-lineage-high-elf",
+      "url": "/api/2024/subspecies/elven-lineage-high-elf",
+      "name": "Elven Lineage: High Elf"
+    },
+    {
+      "index": "elven-lineage-wood-elf",
+      "url": "/api/2024/subspecies/elven-lineage-wood-elf",
+      "name": "Elven Lineage: Wood Elf"
+    }
+  ],
+  "updated_at": "2026-04-23T07:06:28.509Z"
+}

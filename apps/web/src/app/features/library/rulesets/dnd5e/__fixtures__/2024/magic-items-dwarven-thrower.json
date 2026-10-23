@@ -1,0 +1,23 @@
+{
+  "index": "dwarven-thrower",
+  "url": "/api/2024/magic-items/dwarven-thrower",
+  "image": "/api/images/magic-items/dwarven-thrower.png",
+  "name": "Dwarven Thrower",
+  "equipment_category": {
+    "index": "weapons",
+    "name": "Weapons",
+    "url": "/api/2024/equipment-categories/weapons"
+  },
+  "variants": [],
+  "variant": false,
+  "attunement": true,
+  "limited-to": "Dwarf or a Creature Attuned to a Belt of Dwarvenkind",
+  "rarity": {
+    "name": "Very Rare"
+  },
+  "desc": [
+    "Weapon (Warhammer)",
+    "You gain a +3 bonus to attack rolls and damage rolls made with this magic weapon. It has the Thrown property with a normal range of 20 feet and a long range of 60 feet. When you hit with a ranged attack using this weapon, it deals an extra 1d8 Force damage, or an extra 2d8 Force damage if the target isa Giant. Immediately after hitting or missing, theweapon flies back to your hand."
+  ],
+  "updated_at": "2026-09-30T07:13:42.657Z"
+}

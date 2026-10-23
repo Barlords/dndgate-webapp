@@ -1,0 +1,27 @@
+{
+  "data": {
+    "monsters2024": [
+      {
+        "index": "goblin-warrior",
+        "name": "Goblin Warrior",
+        "type": "fey",
+        "size": "Small",
+        "challenge_rating": 0.25
+      },
+      {
+        "index": "aboleth",
+        "name": "Aboleth",
+        "type": "aberration",
+        "size": "Large",
+        "challenge_rating": 10
+      },
+      {
+        "index": "swarm-of-rats",
+        "name": "Swarm of Rats",
+        "type": "swarm of tiny beasts",
+        "size": "Medium",
+        "challenge_rating": 0.25
+      }
+    ]
+  }
+}

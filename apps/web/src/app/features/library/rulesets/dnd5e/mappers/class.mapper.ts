@@ -8,7 +8,10 @@ export interface ApiClass {
   proficiency_choices?: { desc: string }[];
   proficiencies: ApiRef[];
   saving_throws: ApiRef[];
-  starting_equipment: { equipment: ApiRef; quantity: number }[];
+  /** SRD 2024 has only the options. */
+  starting_equipment?: { equipment: ApiRef; quantity: number }[];
+  /** SRD 2024. */
+  primary_ability?: { desc: string };
   starting_equipment_options?: { desc: string }[];
   subclasses?: ApiRef[];
   spellcasting?: { spellcasting_ability: ApiRef; info: { name: string; desc: string[] }[] };
@@ -29,6 +32,7 @@ function levelsTable(levels: ApiClassLevel[]): DetailBlock[] {
     return [];
   }
   const cantrips = levels.some((level) => level.spellcasting?.['cantrips_known'] !== undefined);
+  const prepared = levels.some((level) => level.spellcasting?.['prepared_spells'] !== undefined);
   const slots = SLOT_LEVELS.filter((slot) =>
     levels.some((level) => (level.spellcasting?.[`spell_slots_level_${slot}`] ?? 0) > 0),
   );
@@ -37,6 +41,7 @@ function levelsTable(levels: ApiClassLevel[]): DetailBlock[] {
     'Proficiency bonus',
     'Features',
     ...(cantrips ? ['Cantrips'] : []),
+    ...(prepared ? ['Prepared spells'] : []),
     ...slots.map((slot) => `${ordinal(slot)}`),
   ];
   const rows = levels.map((level) => [
@@ -44,18 +49,20 @@ function levelsTable(levels: ApiClassLevel[]): DetailBlock[] {
     `+${level.prof_bonus}`,
     names(level.features).join(', ') || '—',
     ...(cantrips ? [String(level.spellcasting?.['cantrips_known'] ?? 0)] : []),
+    ...(prepared ? [String(level.spellcasting?.['prepared_spells'] ?? 0)] : []),
     ...slots.map((slot) => String(level.spellcasting?.[`spell_slots_level_${slot}`] ?? 0)),
   ]);
   return [{ kind: 'table', title: 'Class levels', columns, rows }];
 }
 
 export function mapClass(cls: ApiClass, levels: ApiClassLevel[]): EntryDetail {
-  const equipment = cls.starting_equipment.map(
+  const equipment = (cls.starting_equipment ?? []).map(
     (item) => `${item.equipment.name}${item.quantity > 1 ? ` x${item.quantity}` : ''}`,
   );
   const equipmentChoices = (cls.starting_equipment_options ?? []).map((option) => option.desc);
   const stats = [
     { label: 'Hit die', value: `d${cls.hit_die}` },
+    ...(cls.primary_ability ? [{ label: 'Primary ability', value: cls.primary_ability.desc }] : []),
     { label: 'Saving throws', value: joinNames(cls.saving_throws) },
     { label: 'Proficiencies', value: joinNames(cls.proficiencies) },
     ...(cls.spellcasting

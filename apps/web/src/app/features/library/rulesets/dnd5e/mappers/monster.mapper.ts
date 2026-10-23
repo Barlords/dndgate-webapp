@@ -21,10 +21,12 @@ export interface ApiMonster {
   type: string;
   subtype?: string | null;
   alignment: string;
-  armor_class: { type: string; value: number; armor?: ApiRef[] }[];
+  /** SRD 2014 names the kind of armor (`type`); SRD 2024 only lists the `armor` worn. */
+  armor_class: { type?: string; value: number; armor?: ApiRef[] }[];
   hit_points: number;
   hit_dice: string;
-  speed: Record<string, string>;
+  /** A speed is a text; SRD 2024 also has the flag `hover`. */
+  speed: Record<string, string | boolean>;
   strength: number;
   dexterity: number;
   constitution: number;
@@ -39,8 +41,12 @@ export interface ApiMonster {
   languages: string;
   challenge_rating: number;
   xp: number;
+  /** SRD 2024, for the monsters that have a lair. */
+  xp_in_lair?: number;
   special_abilities?: ApiMonsterAction[];
   actions?: ApiMonsterAction[];
+  /** SRD 2024 only. */
+  bonus_actions?: ApiMonsterAction[];
   reactions?: ApiMonsterAction[];
   legendary_actions?: ApiMonsterAction[];
 }
@@ -77,6 +83,9 @@ function armorClass(monster: ApiMonster): string {
     .map((ac) => {
       const armors = (ac.armor ?? []).map((armor) => armor.name.toLowerCase());
       const source = armors.length > 0 ? armors.join(', ') : ac.type;
+      if (source === undefined) {
+        return String(ac.value);
+      }
       return `${ac.value} (${source === 'natural' ? 'natural armor' : source})`;
     })
     .join(', ');
@@ -88,6 +97,12 @@ function entries(title: string, list: ApiMonsterAction[] | undefined): DetailBlo
     : [];
 }
 
+function xp(monster: ApiMonster): string {
+  return monster.xp_in_lair
+    ? `${monster.xp} XP, or ${monster.xp_in_lair} XP in lair`
+    : `${monster.xp} XP`;
+}
+
 export function mapMonster(monster: ApiMonster): EntryDetail {
   const abilities: [string, number][] = [
     ['STR', monster.strength],
@@ -97,9 +112,14 @@ export function mapMonster(monster: ApiMonster): EntryDetail {
     ['WIS', monster.wisdom],
     ['CHA', monster.charisma],
   ];
-  const speeds = Object.entries(monster.speed).map(([mode, value]) =>
-    mode === 'walk' ? value : `${mode} ${value}`,
-  );
+  const speeds = Object.entries(monster.speed)
+    .filter(([, value]) => value !== false)
+    .map(([mode, value]) => {
+      if (typeof value === 'boolean') {
+        return mode;
+      }
+      return mode === 'walk' ? value : `${mode} ${value}`;
+    });
   const senses = Object.entries(monster.senses).map(
     ([sense, value]) => `${capitalize(sense.replace('_', ' '))} ${value}`,
   );
@@ -141,12 +161,13 @@ export function mapMonster(monster: ApiMonster): EntryDetail {
           { label: 'Languages', value: monster.languages || '—' },
           {
             label: 'Challenge',
-            value: `${formatChallenge(monster.challenge_rating)} (${monster.xp} XP)`,
+            value: `${formatChallenge(monster.challenge_rating)} (${xp(monster)})`,
           },
         ],
       },
       ...entries('Special abilities', monster.special_abilities),
       ...entries('Actions', monster.actions),
+      ...entries('Bonus actions', monster.bonus_actions),
       ...entries('Reactions', monster.reactions),
       ...entries('Legendary actions', monster.legendary_actions),
     ],

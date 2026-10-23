@@ -1,0 +1,50 @@
+{
+  "count": 9,
+  "results": [
+    {
+      "index": "dragonborn",
+      "url": "/api/2024/species/dragonborn",
+      "name": "Dragonborn"
+    },
+    {
+      "index": "dwarf",
+      "url": "/api/2024/species/dwarf",
+      "name": "Dwarf"
+    },
+    {
+      "index": "elf",
+      "url": "/api/2024/species/elf",
+      "name": "Elf"
+    },
+    {
+      "index": "gnome",
+      "url": "/api/2024/species/gnome",
+      "name": "Gnome"
+    },
+    {
+      "index": "goliath",
+      "url": "/api/2024/species/goliath",
+      "name": "Goliath"
+    },
+    {
+      "index": "halfling",
+      "url": "/api/2024/species/halfling",
+      "name": "Halfling"
+    },
+    {
+      "index": "human",
+      "url": "/api/2024/species/human",
+      "name": "Human"
+    },
+    {
+      "index": "orc",
+      "url": "/api/2024/species/orc",
+      "name": "Orc"
+    },
+    {
+      "index": "tiefling",
+      "url": "/api/2024/species/tiefling",
+      "name": "Tiefling"
+    }
+  ]
+}

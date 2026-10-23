@@ -1,0 +1,60 @@
+{
+  "index": "tiefling",
+  "url": "/api/2024/species/tiefling",
+  "name": "Tiefling",
+  "type": "Humanoid",
+  "size_options": {
+    "desc": "Choose a size when you select this species.",
+    "choose": 1,
+    "type": "size_categories",
+    "from": {
+      "option_set_type": "options_array",
+      "options": [
+        {
+          "option_type": "size",
+          "size": "Small"
+        },
+        {
+          "option_type": "size",
+          "size": "Medium"
+        }
+      ]
+    }
+  },
+  "speed": 30,
+  "traits": [
+    {
+      "index": "darkvision-60",
+      "url": "/api/2024/traits/darkvision-60",
+      "name": "Darkvision (60 ft.)"
+    },
+    {
+      "index": "fiendish-legacy",
+      "url": "/api/2024/traits/fiendish-legacy",
+      "name": "Fiendish Legacy"
+    },
+    {
+      "index": "otherworldly-presence",
+      "url": "/api/2024/traits/otherworldly-presence",
+      "name": "Otherworldly Presence"
+    }
+  ],
+  "subspecies": [
+    {
+      "index": "fiendish-legacy-abyssal",
+      "url": "/api/2024/subspecies/fiendish-legacy-abyssal",
+      "name": "Fiendish Legacy: Abyssal"
+    },
+    {
+      "index": "fiendish-legacy-chthonic",
+      "url": "/api/2024/subspecies/fiendish-legacy-chthonic",
+      "name": "Fiendish Legacy: Chthonic"
+    },
+    {
+      "index": "fiendish-legacy-infernal",
+      "url": "/api/2024/subspecies/fiendish-legacy-infernal",
+      "name": "Fiendish Legacy: Infernal"
+    }
+  ],
+  "updated_at": "2026-04-23T07:06:28.509Z"
+}

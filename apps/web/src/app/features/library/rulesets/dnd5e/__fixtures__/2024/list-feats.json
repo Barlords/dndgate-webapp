@@ -1,0 +1,90 @@
+{
+  "count": 17,
+  "results": [
+    {
+      "index": "ability-score-improvement",
+      "name": "Ability Score Improvement",
+      "url": "/api/2024/feats/ability-score-improvement"
+    },
+    {
+      "index": "alert",
+      "name": "Alert",
+      "url": "/api/2024/feats/alert"
+    },
+    {
+      "index": "archery",
+      "name": "Archery",
+      "url": "/api/2024/feats/archery"
+    },
+    {
+      "index": "boon-of-combat-prowess",
+      "name": "Boon of Combat Prowess",
+      "url": "/api/2024/feats/boon-of-combat-prowess"
+    },
+    {
+      "index": "boon-of-dimensional-travel",
+      "name": "Boon of Dimensional Travel",
+      "url": "/api/2024/feats/boon-of-dimensional-travel"
+    },
+    {
+      "index": "boon-of-fate",
+      "name": "Boon of Fate",
+      "url": "/api/2024/feats/boon-of-fate"
+    },
+    {
+      "index": "boon-of-irresistible-offense",
+      "name": "Boon of Irresistible Offense",
+      "url": "/api/2024/feats/boon-of-irresistible-offense"
+    },
+    {
+      "index": "boon-of-spell-recall",
+      "name": "Boon of Spell Recall",
+      "url": "/api/2024/feats/boon-of-spell-recall"
+    },
+    {
+      "index": "boon-of-the-night-spirit",
+      "name": "Boon of the Night Spirit",
+      "url": "/api/2024/feats/boon-of-the-night-spirit"
+    },
+    {
+      "index": "boon-of-truesight",
+      "name": "Boon of Truesight",
+      "url": "/api/2024/feats/boon-of-truesight"
+    },
+    {
+      "index": "defense",
+      "name": "Defense",
+      "url": "/api/2024/feats/defense"
+    },
+    {
+      "index": "grappler",
+      "name": "Grappler",
+      "url": "/api/2024/feats/grappler"
+    },
+    {
+      "index": "great-weapon-fighting",
+      "name": "Great Weapon Fighting",
+      "url": "/api/2024/feats/great-weapon-fighting"
+    },
+    {
+      "index": "magic-initiate",
+      "name": "Magic Initiate",
+      "url": "/api/2024/feats/magic-initiate"
+    },
+    {
+      "index": "savage-attacker",
+      "name": "Savage Attacker",
+      "url": "/api/2024/feats/savage-attacker"
+    },
+    {
+      "index": "skilled",
+      "name": "Skilled",
+      "url": "/api/2024/feats/skilled"
+    },
+    {
+      "index": "two-weapon-fighting",
+      "name": "Two Weapon Fighting",
+      "url": "/api/2024/feats/two-weapon-fighting"
+    }
+  ]
+}

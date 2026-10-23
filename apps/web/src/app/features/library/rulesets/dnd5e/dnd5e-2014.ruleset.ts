@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { catchError, forkJoin, map, Observable, of, switchMap, throwError } from 'rxjs';
+import { forkJoin, map, Observable, of, switchMap, throwError } from 'rxjs';
 import {
   EntryDetail,
   EntrySummary,
@@ -8,16 +8,18 @@ import {
   RulesetSection,
 } from '../ruleset.model';
 import { Dnd5eClient } from './dnd5e-client';
+import { fetchTraits, listRefs } from './dnd5e-resources';
+import {
+  MONSTERS_SECTION,
+  NAME_COLUMN,
+  plain,
+  SPELLS_QUERY,
+  SPELLS_SECTION,
+} from './dnd5e-sections';
 import { mapBackground, ApiBackground } from './mappers/background.mapper';
 import { ApiClass, ApiClassLevel, mapClass } from './mappers/class.mapper';
-import { ApiList, ApiRef } from './mappers/common';
-import {
-  ApiMonster,
-  formatChallenge,
-  GqlMonster,
-  mapMonster,
-  mapMonsterSummary,
-} from './mappers/monster.mapper';
+import { ApiRef } from './mappers/common';
+import { ApiMonster, GqlMonster, mapMonster, mapMonsterSummary } from './mappers/monster.mapper';
 import {
   ALIGNMENT_PREFIX,
   ApiAlignment,
@@ -34,43 +36,7 @@ import { ApiSpell, GqlSpell, mapSpell, mapSpellSummary } from './mappers/spell.m
 
 const VERSION = '2014';
 
-const SPELLS_QUERY = `{ spells(limit: 1000) { index name level school { name } classes { index name } ritual concentration } }`;
 const MONSTERS_QUERY = `{ monsters(limit: 1000) { index name type size challenge_rating } }`;
-
-const NAME_COLUMN = { key: 'name', label: 'Nom', sortable: true };
-
-function plain(
-  id: string,
-  label: string,
-  group: RulesetSection['group'],
-  icon: RulesetSection['icon'],
-): RulesetSection {
-  return { id, label, group, icon, columns: [NAME_COLUMN], filters: [] };
-}
-
-function options(values: string[]): { value: string; label: string }[] {
-  return values.map((value) => ({ value, label: value }));
-}
-
-const SPELL_LEVELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((level) => ({
-  value: String(level),
-  label: level === 0 ? 'Tour de magie' : `Niveau ${level}`,
-}));
-
-const CHALLENGE_FRACTIONS: [number, string][] = [
-  [0, '0'],
-  [0.125, '1/8'],
-  [0.25, '1/4'],
-  [0.5, '1/2'],
-];
-
-/** The challenge ratings that SRD 2014 monsters have (there is none at 18). */
-const CHALLENGE_RATINGS = [
-  ...CHALLENGE_FRACTIONS,
-  ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22, 23, 24, 30].map(
-    (value): [number, string] => [value, String(value)],
-  ),
-].map(([value, label]) => ({ value: String(value), label }));
 
 const SECTIONS: readonly RulesetSection[] = [
   plain('classes', 'Classes', 'players', 'sword'),
@@ -80,85 +46,8 @@ const SECTIONS: readonly RulesetSection[] = [
     ...plain('personality', 'Personnalité', 'players', 'user'),
     columns: [NAME_COLUMN, { key: 'kind', label: 'Type', sortable: true }],
   },
-  {
-    id: 'spells',
-    label: 'Sorts',
-    group: 'players',
-    icon: 'wand',
-    columns: [
-      NAME_COLUMN,
-      { key: 'level', label: 'Niveau', sortable: true },
-      { key: 'school', label: 'École', sortable: true },
-      { key: 'classes', label: 'Classes', sortable: false },
-    ],
-    filters: [
-      { key: 'level', label: 'Niveau', options: SPELL_LEVELS },
-      {
-        key: 'school',
-        label: 'École',
-        options: options([
-          'Abjuration',
-          'Conjuration',
-          'Divination',
-          'Enchantment',
-          'Evocation',
-          'Illusion',
-          'Necromancy',
-          'Transmutation',
-        ]),
-      },
-      {
-        key: 'classes',
-        label: 'Classe',
-        options: options([
-          'Bard',
-          'Cleric',
-          'Druid',
-          'Paladin',
-          'Ranger',
-          'Sorcerer',
-          'Warlock',
-          'Wizard',
-        ]),
-      },
-    ],
-  },
-  {
-    id: 'monsters',
-    label: 'Monstres',
-    group: 'master',
-    icon: 'skull',
-    columns: [
-      NAME_COLUMN,
-      { key: 'type', label: 'Type', sortable: true },
-      { key: 'size', label: 'Taille', sortable: true },
-      { key: 'cr', label: 'FP', sortable: true, format: (value) => formatChallenge(Number(value)) },
-    ],
-    filters: [
-      {
-        key: 'type',
-        label: 'Type',
-        options: options([
-          'aberration',
-          'beast',
-          'celestial',
-          'construct',
-          'dragon',
-          'elemental',
-          'fey',
-          'fiend',
-          'giant',
-          'humanoid',
-          'monstrosity',
-          'ooze',
-          'plant',
-          'swarm',
-          'undead',
-        ]),
-      },
-      { key: 'cr', label: 'FP', options: CHALLENGE_RATINGS },
-    ],
-  },
+  SPELLS_SECTION,
+  MONSTERS_SECTION,
   plain('rules', 'Règles', 'rules', 'scroll'),
 ];
 
@@ -216,7 +105,11 @@ export class Dnd5e2014Ruleset implements Ruleset {
         return this.client
           .rest<ApiRace>(VERSION, `races/${index}`)
           .pipe(
-            switchMap((race) => this.traits(race).pipe(map((traits) => mapRace(race, traits)))),
+            switchMap((race) =>
+              fetchTraits<ApiTrait>(this.client, VERSION, race.traits).pipe(
+                map((traits) => mapRace(race, traits)),
+              ),
+            ),
           );
       case 'backgrounds':
         return this.client
@@ -232,7 +125,7 @@ export class Dnd5e2014Ruleset implements Ruleset {
   }
 
   private refs(resource: string): Observable<ApiRef[]> {
-    return this.client.rest<ApiList>(VERSION, resource).pipe(map((list) => list.results));
+    return listRefs(this.client, VERSION, resource);
   }
 
   private personality(index: string): Observable<EntryDetail> {
@@ -247,22 +140,5 @@ export class Dnd5e2014Ruleset implements Ruleset {
         .pipe(map(mapLanguage));
     }
     return throwError(() => new RulesetEntryNotFoundError(`No personality entry ${index}`));
-  }
-
-  /** The traits of a race; one that is gone (404) is left out. */
-  private traits(race: ApiRace): Observable<ApiTrait[]> {
-    if (race.traits.length === 0) {
-      return of([]);
-    }
-    return forkJoin(
-      race.traits.map((trait) =>
-        this.client.rest<ApiTrait>(VERSION, `traits/${trait.index}`).pipe(
-          // A trait that no longer exists is skipped; any other failure fails the race.
-          catchError((error: unknown) =>
-            error instanceof RulesetEntryNotFoundError ? of(null) : throwError(() => error),
-          ),
-        ),
-      ),
-    ).pipe(map((traits) => traits.filter((trait): trait is ApiTrait => trait !== null)));
   }
 }

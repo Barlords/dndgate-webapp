@@ -33,3 +33,19 @@ export function capitalize(text: string): string {
 export function signed(n: number): string {
   return n >= 0 ? `+${n}` : `${n}`;
 }
+
+/**
+ * Paragraphs of a description: SRD 2014 gives a list, SRD 2024 a single string with line breaks
+ * (and sometimes padding spaces), which is cut into trimmed, non-empty lines.
+ */
+export function paragraphs(text: string | readonly string[] | undefined): string[] {
+  if (text === undefined) {
+    return [];
+  }
+  return typeof text === 'string'
+    ? text
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line !== '')
+    : [...text];
+}

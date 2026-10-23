@@ -1,0 +1,45 @@
+{
+  "count": 8,
+  "results": [
+    {
+      "index": "cleave",
+      "name": "Cleave",
+      "url": "/api/2024/weapon-mastery-properties/cleave"
+    },
+    {
+      "index": "graze",
+      "name": "Graze",
+      "url": "/api/2024/weapon-mastery-properties/graze"
+    },
+    {
+      "index": "nick",
+      "name": "Nick",
+      "url": "/api/2024/weapon-mastery-properties/nick"
+    },
+    {
+      "index": "push",
+      "name": "Push",
+      "url": "/api/2024/weapon-mastery-properties/push"
+    },
+    {
+      "index": "sap",
+      "name": "Sap",
+      "url": "/api/2024/weapon-mastery-properties/sap"
+    },
+    {
+      "index": "slow",
+      "name": "Slow",
+      "url": "/api/2024/weapon-mastery-properties/slow"
+    },
+    {
+      "index": "topple",
+      "name": "Topple",
+      "url": "/api/2024/weapon-mastery-properties/topple"
+    },
+    {
+      "index": "vex",
+      "name": "Vex",
+      "url": "/api/2024/weapon-mastery-properties/vex"
+    }
+  ]
+}
