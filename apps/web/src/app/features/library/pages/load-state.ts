@@ -4,6 +4,8 @@ import { catchError, map, Observable, of, startWith, switchMap } from 'rxjs';
 export interface LoadState<T> {
   value: T | null;
   failed: boolean;
+  /** Why it failed, when it did. */
+  error?: unknown;
 }
 
 export const LOADING: LoadState<never> = { value: null, failed: false };
@@ -18,7 +20,7 @@ export function loadWithRetry<T>(
     switchMap(() =>
       load().pipe(
         map((value): LoadState<T> => ({ value, failed: false })),
-        catchError(() => of<LoadState<T>>({ value: null, failed: true })),
+        catchError((error: unknown) => of<LoadState<T>>({ value: null, failed: true, error })),
         startWith(LOADING),
       ),
     ),

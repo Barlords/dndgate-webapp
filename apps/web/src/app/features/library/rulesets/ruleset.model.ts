@@ -74,3 +74,11 @@ export interface Ruleset {
 }
 
 export const RULESETS = new InjectionToken<Ruleset[]>('RULESETS');
+
+/** A ruleset's `detail` fails with this when the source has no such entry (as opposed to being down). */
+export class RulesetEntryNotFoundError extends Error {
+  constructor(message = 'Entry not found') {
+    super(message);
+    this.name = 'RulesetEntryNotFoundError';
+  }
+}

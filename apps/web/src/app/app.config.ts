@@ -11,6 +11,8 @@ import { routes } from './app.routes';
 import { provideApi } from './core/api/api.providers';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { AuthService } from './core/auth/auth.service';
+import { Dnd5e2014Ruleset } from './features/library/rulesets/dnd5e/dnd5e-2014.ruleset';
+import { RULESETS } from './features/library/rulesets/ruleset.model';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -23,6 +25,7 @@ export const appConfig: ApplicationConfig = {
     ),
     provideHttpClient(withInterceptors([authInterceptor])),
     provideApi(),
+    { provide: RULESETS, useExisting: Dnd5e2014Ruleset, multi: true },
     provideAppInitializer(() => inject(AuthService).restore()),
   ],
 };

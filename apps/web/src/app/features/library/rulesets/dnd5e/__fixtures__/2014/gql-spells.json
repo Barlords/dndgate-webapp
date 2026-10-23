@@ -1,0 +1,86 @@
+{
+  "data": {
+    "spells": [
+      {
+        "index": "acid-splash",
+        "name": "Acid Splash",
+        "level": 0,
+        "school": {
+          "name": "Conjuration"
+        },
+        "classes": [
+          {
+            "index": "sorcerer",
+            "name": "Sorcerer"
+          },
+          {
+            "index": "wizard",
+            "name": "Wizard"
+          }
+        ],
+        "ritual": false,
+        "concentration": false
+      },
+      {
+        "index": "fireball",
+        "name": "Fireball",
+        "level": 3,
+        "school": {
+          "name": "Evocation"
+        },
+        "classes": [
+          {
+            "index": "sorcerer",
+            "name": "Sorcerer"
+          },
+          {
+            "index": "wizard",
+            "name": "Wizard"
+          }
+        ],
+        "ritual": false,
+        "concentration": false
+      },
+      {
+        "index": "detect-magic",
+        "name": "Detect Magic",
+        "level": 1,
+        "school": {
+          "name": "Divination"
+        },
+        "classes": [
+          {
+            "index": "bard",
+            "name": "Bard"
+          },
+          {
+            "index": "cleric",
+            "name": "Cleric"
+          },
+          {
+            "index": "druid",
+            "name": "Druid"
+          },
+          {
+            "index": "paladin",
+            "name": "Paladin"
+          },
+          {
+            "index": "ranger",
+            "name": "Ranger"
+          },
+          {
+            "index": "sorcerer",
+            "name": "Sorcerer"
+          },
+          {
+            "index": "wizard",
+            "name": "Wizard"
+          }
+        ],
+        "ritual": true,
+        "concentration": true
+      }
+    ]
+  }
+}

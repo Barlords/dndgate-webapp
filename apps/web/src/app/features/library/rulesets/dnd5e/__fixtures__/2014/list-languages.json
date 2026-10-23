@@ -1,0 +1,20 @@
+{
+  "count": 3,
+  "results": [
+    {
+      "index": "abyssal",
+      "name": "Abyssal",
+      "url": "/api/2014/languages/abyssal"
+    },
+    {
+      "index": "celestial",
+      "name": "Celestial",
+      "url": "/api/2014/languages/celestial"
+    },
+    {
+      "index": "common",
+      "name": "Common",
+      "url": "/api/2014/languages/common"
+    }
+  ]
+}

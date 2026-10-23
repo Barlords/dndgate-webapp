@@ -1,0 +1,91 @@
+{
+  "name": "Adventuring",
+  "index": "adventuring",
+  "desc": "# Adventuring\n",
+  "subsections": [
+    {
+      "name": "Time",
+      "index": "time",
+      "url": "/api/2014/rule-sections/time"
+    },
+    {
+      "name": "Movement",
+      "index": "movement",
+      "url": "/api/2014/rule-sections/movement"
+    },
+    {
+      "name": "The Environment",
+      "index": "the-environment",
+      "url": "/api/2014/rule-sections/the-environment"
+    },
+    {
+      "name": "Traps",
+      "index": "traps",
+      "url": "/api/2014/rule-sections/traps"
+    },
+    {
+      "name": "Diseases",
+      "index": "diseases",
+      "url": "/api/2014/rule-sections/diseases"
+    },
+    {
+      "name": "Madness",
+      "index": "madness",
+      "url": "/api/2014/rule-sections/madness"
+    },
+    {
+      "name": "Resting",
+      "index": "resting",
+      "url": "/api/2014/rule-sections/resting"
+    },
+    {
+      "name": "Between Adventures",
+      "index": "between-adventures",
+      "url": "/api/2014/rule-sections/between-adventures"
+    }
+  ],
+  "url": "/api/2014/rules/adventuring",
+  "updated_at": "2026-09-24T21:12:35.682Z",
+  "children": [
+    {
+      "index": "time",
+      "name": "Time",
+      "url": "/api/2014/rules/time"
+    },
+    {
+      "index": "movement",
+      "name": "Movement",
+      "url": "/api/2014/rules/movement"
+    },
+    {
+      "index": "the-environment",
+      "name": "The Environment",
+      "url": "/api/2014/rules/the-environment"
+    },
+    {
+      "index": "traps",
+      "name": "Traps",
+      "url": "/api/2014/rules/traps"
+    },
+    {
+      "index": "diseases",
+      "name": "Diseases",
+      "url": "/api/2014/rules/diseases"
+    },
+    {
+      "index": "madness",
+      "name": "Madness",
+      "url": "/api/2014/rules/madness"
+    },
+    {
+      "index": "resting",
+      "name": "Resting",
+      "url": "/api/2014/rules/resting"
+    },
+    {
+      "index": "between-adventures",
+      "name": "Between Adventures",
+      "url": "/api/2014/rules/between-adventures"
+    }
+  ]
+}

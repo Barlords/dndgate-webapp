@@ -1,0 +1,20 @@
+{
+  "count": 3,
+  "results": [
+    {
+      "index": "chaotic-evil",
+      "name": "Chaotic Evil",
+      "url": "/api/2014/alignments/chaotic-evil"
+    },
+    {
+      "index": "chaotic-good",
+      "name": "Chaotic Good",
+      "url": "/api/2014/alignments/chaotic-good"
+    },
+    {
+      "index": "chaotic-neutral",
+      "name": "Chaotic Neutral",
+      "url": "/api/2014/alignments/chaotic-neutral"
+    }
+  ]
+}

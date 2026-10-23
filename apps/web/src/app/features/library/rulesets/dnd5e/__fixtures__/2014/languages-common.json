@@ -1,0 +1,9 @@
+{
+  "index": "common",
+  "name": "Common",
+  "type": "Standard",
+  "typical_speakers": ["Humans"],
+  "script": "Common",
+  "url": "/api/2014/languages/common",
+  "updated_at": "2026-04-01T20:35:37.652Z"
+}

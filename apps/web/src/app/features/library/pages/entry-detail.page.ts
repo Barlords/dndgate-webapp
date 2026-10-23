@@ -1,13 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { map, Subject, switchMap } from 'rxjs';
 import { BreadcrumbService } from '../../../layout/breadcrumb.service';
 import { Button } from '../../../shared/ui/button/button';
 import { Parchment } from '../../../shared/ui/parchment/parchment';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 import { RulesetRegistry } from '../rulesets/ruleset-registry';
-import { EntryDetail, Ruleset } from '../rulesets/ruleset.model';
+import { EntryDetail, Ruleset, RulesetEntryNotFoundError } from '../rulesets/ruleset.model';
 import { DetailBlocks } from './detail-blocks.component';
 import { LOADING, LoadState, loadWithRetry } from './load-state';
 
@@ -15,7 +15,7 @@ import { LOADING, LoadState, loadWithRetry } from './load-state';
 @Component({
   selector: 'dg-entry-detail-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Parchment, Spinner, Button, DetailBlocks],
+  imports: [Parchment, Spinner, Button, DetailBlocks, RouterLink],
   template: `
     <dg-parchment>
       @if (entry(); as shown) {
@@ -38,6 +38,11 @@ import { LOADING, LoadState, loadWithRetry } from './load-state';
           }
           <dg-detail-blocks [rulesetId]="ruleset().id" [blocks]="shown.blocks" />
         </article>
+      } @else if (notFound()) {
+        <div class="entry__state">
+          <p role="alert">Entrée introuvable.</p>
+          <a [routerLink]="['/library', ruleset().id, sectionId()]">Retour à la rubrique</a>
+        </div>
       } @else if (failed()) {
         <div class="entry__state">
           <p role="alert">Impossible de charger cette entrée.</p>
@@ -112,12 +117,16 @@ export class EntryDetailPage {
   private readonly loaded = signal<LoadState<EntryDetail>>(LOADING);
   protected readonly entry = computed(() => this.loaded().value);
   protected readonly failed = computed(() => this.loaded().failed);
+  protected readonly notFound = computed(
+    () => this.loaded().error instanceof RulesetEntryNotFoundError,
+  );
 
   private readonly params = toSignal(this.route.paramMap, { requireSync: true });
   // The routes only match a registered ruleset.
   protected readonly ruleset = computed<Ruleset>(() =>
     this.registry.get(this.params().get('rulesetId') ?? '')!,
   );
+  protected readonly sectionId = computed(() => this.params().get('sectionId') ?? '');
   /** Whether the entry is one of the spells of its ruleset (which spell books hold). */
   protected readonly spell = computed(
     () => this.params().get('sectionId') === this.ruleset().spellSectionId,

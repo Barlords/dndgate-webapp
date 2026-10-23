@@ -1,0 +1,20 @@
+{
+  "count": 3,
+  "results": [
+    {
+      "index": "ability-checks",
+      "name": "Ability Checks",
+      "url": "/api/2014/rules/ability-checks"
+    },
+    {
+      "index": "ability-scores-and-modifiers",
+      "name": "Ability Scores and Modifiers",
+      "url": "/api/2014/rules/ability-scores-and-modifiers"
+    },
+    {
+      "index": "actions-in-combat",
+      "name": "Actions in Combat",
+      "url": "/api/2014/rules/actions-in-combat"
+    }
+  ]
+}

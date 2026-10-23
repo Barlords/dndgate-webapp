@@ -3,7 +3,7 @@ import { of, Subject, throwError } from 'rxjs';
 import { BreadcrumbService } from '../../../layout/breadcrumb.service';
 import { LibraryTestbed, setupLibrary } from '../library.testing';
 import { FAKE_FIREBALL, FakeRuleset } from '../rulesets/fake.ruleset';
-import { EntryDetail } from '../rulesets/ruleset.model';
+import { EntryDetail, RulesetEntryNotFoundError } from '../rulesets/ruleset.model';
 
 describe('EntryDetailPage', () => {
   let ruleset: FakeRuleset;
@@ -84,6 +84,16 @@ describe('EntryDetailPage', () => {
     await library.render();
     expect(detail).toHaveBeenCalledTimes(2);
     expect(library.root.querySelector('main h1')?.textContent?.trim()).toBe('Fireball');
+  });
+
+  it('shows "Entrée introuvable." with a link back and no retry for a missing entry', async () => {
+    vi.spyOn(ruleset, 'detail').mockReturnValue(throwError(() => new RulesetEntryNotFoundError()));
+    await open('/library/dnd5e-2014/spells/nope');
+    const main = library.root.querySelector('main')!;
+    expect(main.querySelector('[role="alert"]')?.textContent).toContain('Entrée introuvable.');
+    expect(main.textContent).not.toContain('Réessayer');
+    expect(main.textContent).not.toContain('Impossible de charger');
+    expect(main.querySelector('a[href="/library/dnd5e-2014/spells"]')).not.toBeNull();
   });
 
   it('follows the index when the page is reused for another entry', async () => {
