@@ -1,0 +1,110 @@
+// Particles of the home halves. Only transform and opacity are animated, so the compositor runs
+// them without layout or paint; nothing moves until the half is active.
+
+:host {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.mote,
+.ember {
+  position: absolute;
+  bottom: -10px;
+  opacity: 0;
+}
+
+// Library: fine golden dust, slow, drifting sideways.
+.mote {
+  width: 3px;
+  height: 3px;
+  background: #f5e6b0;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #f5e6b0;
+}
+
+// Tavern: the wrapper rises and shrinks, the point inside sways on its own rhythm.
+.ember i {
+  display: block;
+  width: 4px;
+  height: 4px;
+  background: #ffb04a;
+  border-radius: 50%;
+  box-shadow:
+    0 0 8px #ff7a1a,
+    0 0 2px #fff3c4;
+}
+
+:host(.is-active) {
+  .mote,
+  .ember,
+  .ember i {
+    will-change: transform, opacity;
+  }
+
+  .mote {
+    animation: dust-rise 6s linear var(--d) infinite;
+  }
+
+  .ember {
+    animation: ember-rise var(--dur) linear var(--d) infinite;
+  }
+
+  .ember i {
+    animation: ember-sway var(--sw) ease-in-out var(--d) infinite alternate;
+  }
+}
+
+@keyframes dust-rise {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+
+  15% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), -460px);
+  }
+}
+
+@keyframes ember-rise {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(1);
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  70% {
+    opacity: 0.9;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), -460px) scale(0.5);
+  }
+}
+
+@keyframes ember-sway {
+  from {
+    transform: translateX(calc(var(--amp) * -1));
+  }
+
+  to {
+    transform: translateX(var(--amp));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host {
+    display: none;
+  }
+}

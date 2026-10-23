@@ -1,0 +1,79 @@
+// Self-hosted faces: Cinzel for engraved titles, Spectral for the reading text.
+@use '@fontsource/cinzel/500' as cinzel-500;
+@use '@fontsource/cinzel/700' as cinzel-700;
+@use '@fontsource/spectral/400' as spectral-400;
+@use '@fontsource/spectral/600' as spectral-600;
+@use '@fontsource/spectral/400-italic' as spectral-400-italic;
+
+// Global rules only: never @use this file from a component (it would copy the fonts into it).
+
+// Cinzel has no lowercase: its small letters are small capitals, so titles always read as capitals.
+@mixin title($size: var(--dg-text-xl), $tracking: 0.12em) {
+  font-family: var(--dg-font-title);
+  font-weight: 700;
+  font-size: $size;
+  letter-spacing: $tracking;
+  line-height: 1.2;
+}
+
+body {
+  font-family: var(--dg-font-body);
+  font-size: var(--dg-text-md);
+  line-height: 1.6;
+  font-kerning: normal;
+  font-variant-ligatures: common-ligatures;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0 0 var(--dg-space-3);
+  color: var(--dg-title-color);
+  text-wrap: balance;
+}
+
+h1 {
+  @include title(var(--dg-text-3xl), 0.14em);
+}
+
+h2 {
+  @include title(var(--dg-text-2xl), 0.12em);
+}
+
+h3 {
+  @include title(var(--dg-text-xl), 0.12em);
+}
+
+h4 {
+  @include title(var(--dg-text-lg), 0.12em);
+}
+
+p {
+  margin: 0 0 var(--dg-space-4);
+  max-width: 70ch;
+  text-wrap: pretty;
+}
+
+em,
+i {
+  font-style: italic;
+}
+
+strong,
+b {
+  font-weight: 600;
+}
+
+a {
+  color: inherit;
+  text-decoration-color: var(--dg-gold);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}

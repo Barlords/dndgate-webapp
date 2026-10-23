@@ -1,0 +1,21 @@
+// Parchment surface: cream gradient, inner shadow burnt at the edges, gold border.
+// Sets the contextual colours of what is written on it (blood-red titles, antique gold focus,
+// ink quiet buttons).
+@mixin parchment($padding: var(--dg-space-5)) {
+  position: relative;
+  padding: $padding;
+  color: var(--dg-ink);
+  background:
+    radial-gradient(ellipse at 18% 12%, #fff8e633, transparent 55%),
+    radial-gradient(ellipse at 85% 90%, #b8945a1f, transparent 60%),
+    linear-gradient(var(--dg-parchment-0), var(--dg-parchment-1));
+  border: 1px solid var(--dg-parchment-border);
+  border-radius: var(--dg-radius);
+  box-shadow:
+    inset 0 0 40px var(--dg-parchment-shadow),
+    0 10px 30px #0000004d;
+
+  --dg-focus-color: var(--dg-gold-deep);
+  --dg-quiet-color: var(--dg-ink);
+  --dg-title-color: var(--dg-blood);
+}

@@ -1,0 +1,80 @@
+// Global styles of DnDGate: tokens, typography, base elements, focus and the CDK overlay.
+@use '@angular/cdk' as cdk;
+@use 'styles/tokens';
+@use 'styles/typography';
+
+@include cdk.overlay();
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--dg-text-light);
+  background-color: var(--dg-leather-0);
+  // Tooled leather: a warm glow from the top left over a faint grain.
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .07 0 0 0 0 .04 0 0 0 .35 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E"),
+    radial-gradient(circle at 30% 0%, var(--dg-leather-1), var(--dg-leather-0) 70%);
+  background-attachment: fixed;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+::selection {
+  color: var(--dg-parchment-0);
+  background: var(--dg-blood);
+}
+
+// Every interactive element shows a gold focus ring when reached with the keyboard.
+:focus-visible {
+  outline: 2px solid var(--dg-focus-color);
+  outline-offset: 2px;
+}
+
+// Hidden on screen, still read by assistive technologies.
+.dg-visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+// Dialogs (CDK): the room darkens behind the open parchment.
+.dg-dialog-backdrop {
+  background: #0b0704cc;
+  backdrop-filter: blur(2px) sepia(0.4);
+}
+
+.dg-dialog-panel {
+  width: min(32rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+}

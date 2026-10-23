@@ -1,0 +1,36 @@
+:host {
+  display: block;
+}
+
+ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dg-space-2);
+  margin: 0 0 var(--dg-space-4);
+  padding: 0;
+  list-style: none;
+  font-size: var(--dg-text-sm);
+}
+
+li {
+  display: flex;
+  gap: var(--dg-space-2);
+  color: var(--dg-text-light);
+}
+
+a {
+  color: var(--dg-gold);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.separator {
+  color: var(--dg-gold-deep);
+}
+
+[aria-current='page'] {
+  color: var(--dg-gold-light);
+}

@@ -1,0 +1,89 @@
+// Encapsulation is off for this component: every rule stays under the dg-form-field selector.
+dg-form-field {
+  display: block;
+  margin-bottom: var(--dg-space-4);
+
+  .dg-form-field__label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--dg-space-1);
+  }
+
+  .dg-form-field__caption {
+    font-family: var(--dg-font-title);
+    font-weight: 500;
+    font-size: var(--dg-text-sm);
+    letter-spacing: 0.1em;
+    color: var(--dg-ink-muted);
+  }
+
+  input,
+  select,
+  textarea {
+    width: 100%;
+    min-height: 2.5rem;
+    padding: 0.4rem 0.7rem;
+    color: var(--dg-ink);
+    background: var(--dg-vellum);
+    border: 1px solid #a8885a;
+    border-bottom-width: 2px;
+    border-radius: var(--dg-radius-sm);
+    box-shadow: inset 0 1px 3px #b8945a40;
+    transition:
+      border-color var(--dg-transition),
+      background-color var(--dg-transition);
+
+    &::placeholder {
+      color: var(--dg-ink-muted);
+      font-style: italic;
+      opacity: 0.8;
+    }
+
+    &:hover {
+      border-color: var(--dg-gold-deep);
+    }
+
+    &:focus {
+      background: #fffaf0;
+      border-color: var(--dg-gold-deep);
+    }
+
+    &[aria-invalid='true'] {
+      border-color: var(--dg-blood);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+  }
+
+  textarea {
+    min-height: 6rem;
+    resize: vertical;
+  }
+
+  .dg-form-field__errors:not(:empty) {
+    margin-top: var(--dg-space-1);
+  }
+
+  // Each message opens with a small red lozenge, like a rubric in the margin.
+  .dg-form-field__error {
+    display: flex;
+    align-items: baseline;
+    gap: var(--dg-space-2);
+    margin: 0;
+    font-size: var(--dg-text-sm);
+    font-style: italic;
+    color: var(--dg-blood);
+
+    &::before {
+      content: '';
+      flex: none;
+      width: 0.4em;
+      height: 0.4em;
+      background: currentColor;
+      transform: translateY(-0.1em) rotate(45deg);
+    }
+  }
+}

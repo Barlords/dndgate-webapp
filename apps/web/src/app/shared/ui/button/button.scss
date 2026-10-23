@@ -1,0 +1,98 @@
+:host {
+  display: inline-flex;
+}
+
+// A disabled button must not let a click reach a handler bound on <dg-button>.
+:host:has(button:disabled) {
+  pointer-events: none;
+}
+
+.dg-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dg-space-2);
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.45rem 1.25rem;
+  font-family: var(--dg-font-title);
+  font-weight: 500;
+  font-size: var(--dg-text-sm);
+  letter-spacing: 0.14em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  border-radius: var(--dg-radius-sm);
+  cursor: pointer;
+  transition:
+    background-color var(--dg-transition),
+    border-color var(--dg-transition),
+    box-shadow var(--dg-transition),
+    transform var(--dg-transition);
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+}
+
+.dg-button__spinner {
+  --dg-spinner-size: 1.1em;
+  --dg-spinner-color: currentColor;
+}
+
+// Blood-red seal, gold edge and a fine inner gold rule, like an illuminated initial.
+.dg-button--primary {
+  color: var(--dg-parchment-0);
+  background: linear-gradient(#ffffff14, #00000026), var(--dg-blood);
+  border-color: var(--dg-gold);
+  box-shadow:
+    inset 0 0 0 2px var(--dg-blood),
+    inset 0 0 0 3px #e9cf8a59,
+    0 2px 6px #00000059;
+
+  &:hover:not(:disabled) {
+    background-color: var(--dg-blood-bright);
+    border-color: var(--dg-gold-light);
+    box-shadow:
+      inset 0 0 0 2px var(--dg-blood-bright),
+      inset 0 0 0 3px #e9cf8a8c,
+      0 0 14px #d9b45a40;
+  }
+}
+
+// Quiet action: outlined in the colour of its surface (gold on leather, ink on parchment).
+.dg-button--ghost {
+  color: var(--dg-quiet-color);
+  background: transparent;
+  border-color: color-mix(in srgb, currentColor 55%, transparent);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, currentColor 10%, transparent);
+    border-color: currentColor;
+  }
+}
+
+// Irreversible action: dried blood, red edge.
+.dg-button--danger {
+  color: var(--dg-parchment-0);
+  background: linear-gradient(#ffffff0d, #00000033), var(--dg-blood-deep);
+  border-color: #b3402c;
+  box-shadow:
+    inset 0 0 0 2px var(--dg-blood-deep),
+    inset 0 0 0 3px #b3402c66,
+    0 2px 6px #00000059;
+
+  &:hover:not(:disabled) {
+    background-color: var(--dg-blood);
+    box-shadow:
+      inset 0 0 0 2px var(--dg-blood),
+      inset 0 0 0 3px #e0634c80,
+      0 0 14px #b3402c4d;
+  }
+}

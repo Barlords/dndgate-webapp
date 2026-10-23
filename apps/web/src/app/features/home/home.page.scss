@@ -1,0 +1,35 @@
+// The split home page: two halves of 50vw x 100vh side by side, stacked on small screens, with
+// no top bar and no page scroll.
+
+:host {
+  position: relative;
+  display: flex;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: #0d0906;
+  font-family: var(--dg-font-body);
+}
+
+dg-home-half {
+  flex: 1 1 50%;
+  min-width: 0;
+}
+
+// The DnDGate emblem, discreet, centred above the split.
+.home__emblem {
+  position: absolute;
+  top: var(--dg-space-5);
+  left: 50%;
+  z-index: 4;
+  --dg-emblem-size: 3rem;
+  opacity: 0.85;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+@media (max-width: 767.98px) {
+  :host {
+    flex-direction: column;
+  }
+}
