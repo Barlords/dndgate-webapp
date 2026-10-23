@@ -24,6 +24,9 @@ function describe(key: string, error: unknown): string {
       return `Saisis au moins ${details['requiredLength']} caractères.`;
     case 'maxlength':
       return `${details['requiredLength']} caractères au maximum.`;
+    case 'min':
+    case 'max':
+      return `Saisis un nombre entre ${details['min'] ?? 1} et ${details['max'] ?? 100}.`;
     case 'maxbytes':
       return `${details['max']} octets au maximum (les accents en comptent plusieurs).`;
     case 'mismatch':
