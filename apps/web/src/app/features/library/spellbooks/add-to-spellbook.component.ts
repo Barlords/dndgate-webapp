@@ -1,4 +1,4 @@
-import { CdkMenu, CdkMenuItemCheckbox, CdkMenuTrigger } from '@angular/cdk/menu';
+import { CdkMenu, CdkMenuItem, CdkMenuItemCheckbox, CdkMenuTrigger } from '@angular/cdk/menu';
 import { HttpClient } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
@@ -30,7 +30,7 @@ import { NotifierService } from '../../../core/errors/notifier.service';
 @Component({
   selector: 'dg-add-to-spellbook',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CdkMenuTrigger, CdkMenu, CdkMenuItemCheckbox, RouterLink],
+  imports: [CdkMenuTrigger, CdkMenu, CdkMenuItem, CdkMenuItemCheckbox, RouterLink],
   styles: `
     :host {
       display: block;
@@ -49,6 +49,69 @@ import { NotifierService } from '../../../core/errors/notifier.service';
       border: 1px solid var(--dg-parchment-border);
       border-radius: var(--dg-radius);
       cursor: pointer;
+    }
+
+    .add-to-book__menu {
+      min-width: 14rem;
+      margin: var(--dg-space-1) 0 0;
+      padding: var(--dg-space-1);
+      list-style: none;
+      font-family: var(--dg-font-body);
+      color: var(--dg-ink);
+      text-align: left;
+      background: linear-gradient(var(--dg-parchment-0), var(--dg-parchment-1));
+      border: 1px solid var(--dg-parchment-border);
+      border-radius: var(--dg-radius);
+      box-shadow:
+        inset 0 0 12px var(--dg-parchment-shadow),
+        0 6px 18px #17100a99;
+    }
+
+    .add-to-book__item {
+      display: flex;
+      align-items: center;
+      gap: var(--dg-space-2);
+      padding: var(--dg-space-2) var(--dg-space-3);
+      color: var(--dg-ink);
+      text-decoration: none;
+      border-radius: var(--dg-radius-sm);
+      cursor: pointer;
+      transition: background var(--dg-transition);
+    }
+
+    .add-to-book__item:hover,
+    .add-to-book__item.cdk-menu-item-active,
+    .add-to-book__item:focus-visible {
+      background: var(--dg-gold-light);
+    }
+
+    .add-to-book__item[aria-disabled='true'] {
+      opacity: 0.55;
+      cursor: progress;
+    }
+
+    .add-to-book__mark {
+      flex: 0 0 1.1rem;
+      text-align: center;
+      font-weight: 700;
+      color: var(--dg-blood);
+    }
+
+    .add-to-book__create {
+      margin-top: var(--dg-space-1);
+      padding-top: var(--dg-space-2);
+      font-family: var(--dg-font-title);
+      font-size: var(--dg-text-sm);
+      letter-spacing: 0.08em;
+      color: var(--dg-blood);
+      border-top: 1px solid var(--dg-parchment-border);
+      border-radius: 0 0 var(--dg-radius-sm) var(--dg-radius-sm);
+    }
+
+    .add-to-book__empty {
+      padding: var(--dg-space-2) var(--dg-space-3);
+      font-style: italic;
+      color: var(--dg-ink-muted);
     }
 
     .add-to-book__trigger:focus-visible,
@@ -74,16 +137,22 @@ import { NotifierService } from '../../../core/errors/notifier.service';
               cdkMenuItemCheckbox
               class="add-to-book__item"
               [cdkMenuItemChecked]="holds(book)"
+              [attr.aria-disabled]="isPending(book) || null"
               (cdkMenuItemTriggered)="toggle(book)"
             >
               <span class="add-to-book__mark" aria-hidden="true">{{ holds(book) ? '✓' : '' }}</span>
               {{ book.name }}
             </li>
           } @empty {
-            <li class="add-to-book__empty">Aucun grimoire pour ce jeu de règles.</li>
+            <li class="add-to-book__empty" role="none">Aucun grimoire pour ce jeu de règles.</li>
           }
-          <li class="add-to-book__create">
-            <a [routerLink]="['/library/grimoires']" [queryParams]="{ ruleset: rulesetId() }">
+          <li role="none">
+            <a
+              cdkMenuItem
+              class="add-to-book__item add-to-book__create"
+              [routerLink]="['/library/grimoires']"
+              [queryParams]="{ ruleset: rulesetId() }"
+            >
               Créer un grimoire
             </a>
           </li>
@@ -121,6 +190,10 @@ export class AddToSpellbook {
             this.notifier.error(toApiProblem(error), 'Chargement des grimoires'),
         });
     }
+  }
+
+  protected isPending(book: SpellBookDto): boolean {
+    return this.pending().has(book.id ?? '');
   }
 
   protected holds(book: SpellBookDto): boolean {

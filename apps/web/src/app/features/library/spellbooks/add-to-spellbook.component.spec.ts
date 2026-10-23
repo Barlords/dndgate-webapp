@@ -119,8 +119,24 @@ describe('AddToSpellbook', () => {
     await open(true, [BOOKS[2]]);
     await openMenu();
     expect(items().length).toBe(0);
-    const link = document.querySelector<HTMLAnchorElement>('.add-to-book__create a');
+    const link = document.querySelector<HTMLAnchorElement>('a.add-to-book__create');
     expect(link?.getAttribute('href')).toBe('/library/grimoires?ruleset=dnd5e-2014');
+    expect(link?.getAttribute('role')).toBe('menuitem');
     expect(link?.textContent).toContain('Créer un grimoire');
+  });
+
+  it('reaches the create item with the keyboard and navigates on activation', async () => {
+    await open(true, [BOOKS[2]]);
+    await openMenu();
+    const menu = document.querySelector<HTMLElement>('[role="menu"]')!;
+    menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    await library.render();
+    const link = document.querySelector<HTMLAnchorElement>('.add-to-book__create')!;
+    expect(document.activeElement).toBe(link);
+    link.click();
+    await library.render();
+    await library.harness.fixture.whenStable();
+    expect(library.router.url).toBe('/library/grimoires?ruleset=dnd5e-2014');
+    backend.match(() => true);
   });
 });
