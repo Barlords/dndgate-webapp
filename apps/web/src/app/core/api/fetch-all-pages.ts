@@ -12,9 +12,7 @@ interface PageLike<T> {
  * Loads every page of a paginated endpoint (page 0 first) and concatenates the items in order.
  * `load` receives the page index and must request `PAGE_SIZE` items.
  */
-export function fetchAllPages<T>(
-  load: (page: number) => Observable<PageLike<T>>,
-): Observable<T[]> {
+export function fetchAllPages<T>(load: (page: number) => Observable<PageLike<T>>): Observable<T[]> {
   return load(0).pipe(
     expand((current, index) => (index + 1 < (current.totalPages ?? 1) ? load(index + 1) : [])),
     map((current) => current.content ?? []),
