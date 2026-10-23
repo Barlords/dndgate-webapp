@@ -101,9 +101,17 @@ export const TAVERN_ROUTES: Routes = [
             ],
           },
           // Built by later tasks.
+          {
+            path: 'chronicle',
+            data: { breadcrumb: 'Chronique' },
+            loadComponent: () => import('./adventure/chronicle.page').then((m) => m.ChroniclePage),
+          },
+          {
+            path: 'gm-notes',
+            data: { breadcrumb: 'Notes du MJ' },
+            loadComponent: () => import('./adventure/gm-notes.page').then((m) => m.GmNotesPage),
+          },
           ...[
-            ['chronicle', 'Chronique'],
-            ['gm-notes', 'Notes du MJ'],
             ['planning', 'Planning'],
             ['messages', 'Messagerie'],
             ['master', 'MJ'],

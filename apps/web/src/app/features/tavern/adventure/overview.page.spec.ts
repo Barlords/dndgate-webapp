@@ -329,7 +329,7 @@ describe('OverviewPage', () => {
   });
 
   it('placeholder tabs render', async () => {
-    await open({ players: ['me'] }, 'chronicle');
+    await open({ players: ['me'] }, 'planning');
     expect(tavern.main().textContent).toContain('Bientôt disponible.');
   });
 });
