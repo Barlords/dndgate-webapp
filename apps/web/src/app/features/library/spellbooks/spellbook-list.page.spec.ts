@@ -12,7 +12,7 @@ describe('SpellBookListPage', () => {
 
   const mine = (r: { url: string }) => /spellbooks\/mine$/.test(r.url);
 
-  async function open(books: object[] = []): Promise<void> {
+  async function open(books: object[] = [], url = '/library/grimoires'): Promise<void> {
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting(), provideApi()],
     });
@@ -25,7 +25,7 @@ describe('SpellBookListPage', () => {
       ],
     });
     backend = TestBed.inject(HttpTestingController);
-    await library.go('/library/grimoires');
+    await library.go(url);
     backend.expectOne((r) => r.method === 'GET' && mine(r)).flush(books);
     await library.render();
   }
@@ -98,6 +98,11 @@ describe('SpellBookListPage', () => {
     button('Nouveau grimoire').click();
     await library.render();
     expect(main().querySelector<HTMLSelectElement>('select')!.value).toBe('dnd5e-2014');
+  });
+
+  it('opens the creation form on the ruleset asked in the query', async () => {
+    await open([], '/library/grimoires?ruleset=dnd5e-2024');
+    expect(main().querySelector<HTMLSelectElement>('select')!.value).toBe('dnd5e-2024');
   });
 
   it('refuses an empty name without calling the API', async () => {

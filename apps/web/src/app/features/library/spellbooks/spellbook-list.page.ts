@@ -9,7 +9,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { map, Subject } from 'rxjs';
 import { ApiConfiguration } from '../../../core/api/generated/api-configuration';
 import {
@@ -216,13 +216,15 @@ export class SpellBookListPage {
   private readonly selected = inject(SelectedRulesetService);
   private readonly notifier = inject(NotifierService);
   private readonly destroyRef = inject(DestroyRef);
+  /** `?ruleset=` (from a spell's page): opens the creation form on that ruleset. */
+  private readonly requested = inject(ActivatedRoute).snapshot.queryParamMap.get('ruleset');
 
   private readonly form = viewChild(SpellBookForm);
 
   private readonly retries = new Subject<void>();
   protected readonly loaded = signal<LoadState<SpellBookDto[]>>(LOADING);
   protected readonly books = signal<SpellBookDto[]>([]);
-  protected readonly creating = signal(false);
+  protected readonly creating = signal(this.requested !== null);
   protected readonly saving = signal(false);
   protected readonly importing = signal(false);
   protected readonly importErrors = signal<ApiFieldError[] | null>(null);
@@ -237,7 +239,8 @@ export class SpellBookListPage {
 
   protected readonly blank = computed<SpellBookValue>(() => {
     const choices = this.choices();
-    const current = this.selected.current().id;
+    const current =
+      choices.find((choice) => choice.id === this.requested)?.id ?? this.selected.current().id;
     return {
       name: '',
       description: '',

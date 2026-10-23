@@ -6,6 +6,7 @@ import { BreadcrumbService } from '../../../layout/breadcrumb.service';
 import { Button } from '../../../shared/ui/button/button';
 import { Parchment } from '../../../shared/ui/parchment/parchment';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
+import { AddToSpellbook } from '../spellbooks/add-to-spellbook.component';
 import { RulesetRegistry } from '../rulesets/ruleset-registry';
 import { EntryDetail, Ruleset, RulesetEntryNotFoundError } from '../rulesets/ruleset.model';
 import { DetailBlocks } from './detail-blocks.component';
@@ -15,7 +16,7 @@ import { LOADING, LoadState, loadWithRetry } from './load-state';
 @Component({
   selector: 'dg-entry-detail-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Parchment, Spinner, Button, DetailBlocks, RouterLink],
+  imports: [Parchment, Spinner, Button, DetailBlocks, RouterLink, AddToSpellbook],
   template: `
     <dg-parchment>
       @if (entry(); as shown) {
@@ -34,7 +35,7 @@ import { LOADING, LoadState, loadWithRetry } from './load-state';
             }
           </header>
           @if (spell()) {
-            <!-- Extension point: the "add to a spell book" action of a spell goes here. -->
+            <dg-add-to-spellbook [rulesetId]="ruleset().id" [spellIndex]="shown.index" />
           }
           <dg-detail-blocks [rulesetId]="ruleset().id" [blocks]="shown.blocks" />
         </article>
