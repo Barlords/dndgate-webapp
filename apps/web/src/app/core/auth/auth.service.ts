@@ -10,6 +10,7 @@ import {
   Observable,
   of,
   shareReplay,
+  Subject,
   switchMap,
   tap,
   throwError,
@@ -31,6 +32,10 @@ export class AuthService {
   readonly isAuthenticated = computed(() => this.accountState() !== null);
 
   private inFlightRefresh: Observable<string> | null = null;
+
+  private readonly ended = new Subject<void>();
+  /** Emits whenever the local session is dropped: forgotten, logged out or logged out everywhere. */
+  readonly sessionEnded: Observable<void> = this.ended.asObservable();
 
   /** Runs at startup; never rejects, so the app boots even when the API is down. */
   async restore(): Promise<void> {
@@ -113,6 +118,7 @@ export class AuthService {
   forgetSession(): void {
     this.tokens.clear();
     this.accountState.set(null);
+    this.ended.next();
   }
 
   private endSession(call: Observable<unknown>): Observable<void> {

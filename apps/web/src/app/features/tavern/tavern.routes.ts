@@ -116,15 +116,17 @@ export const TAVERN_ROUTES: Routes = [
             data: { breadcrumb: 'Planning' },
             loadComponent: () => import('./adventure/planning.page').then((m) => m.PlanningPage),
           },
-          ...[
-            ['messages', 'Messagerie'],
-            ['master', 'MJ'],
-          ].map(([path, breadcrumb]) => ({
-            path,
-            data: { breadcrumb },
+          {
+            path: 'messages',
+            data: { breadcrumb: 'Messagerie' },
+            loadComponent: () => import('./adventure/messages.page').then((m) => m.MessagesPage),
+          },
+          {
+            path: 'master',
+            data: { breadcrumb: 'MJ' },
             loadComponent: () =>
               import('./adventure/coming-soon.page').then((m) => m.ComingSoonPage),
-          })),
+          },
         ],
       },
     ],
