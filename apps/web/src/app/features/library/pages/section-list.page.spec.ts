@@ -83,7 +83,7 @@ describe('SectionListPage', () => {
     await open('/library/dnd5e-2014/spells');
     const school = field<HTMLSelectElement>('École');
     expect([...school.options].map((option) => option.textContent?.trim())).toEqual([
-      'Toutes',
+      'Tout',
       'Évocation',
       'Abjuration',
     ]);
@@ -95,6 +95,16 @@ describe('SectionListPage', () => {
     await change(field<HTMLSelectElement>('Niveau'), '3');
     expect(names()).toEqual(['Fireball', 'Éclair']);
     expect(query()['school']).toBeUndefined();
+  });
+
+  it('ignores a filter value of the url that is not one of its options', async () => {
+    await open('/library/dnd5e-2014/spells?school=xyz&level=03');
+    expect(names().length).toBe(4);
+    for (const label of ['École', 'Niveau']) {
+      const select = field<HTMLSelectElement>(label);
+      expect(select.value).toBe('');
+      expect(select.selectedOptions[0].textContent?.trim()).toBe('Tout');
+    }
   });
 
   it('list applies a filter to a list of values', async () => {

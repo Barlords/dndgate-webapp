@@ -86,9 +86,14 @@ export class SectionListPage {
   );
 
   protected readonly search = computed(() => this.query().get('q') ?? '');
+  /** The option chosen per filter; a value of the URL that is not one of its options is ignored. */
   protected readonly filterValues = computed<Record<string, string>>(() =>
     Object.fromEntries(
-      this.section().filters.map((filter) => [filter.key, this.query().get(filter.key) ?? '']),
+      this.section().filters.map((filter) => {
+        const chosen = this.query().get(filter.key) ?? '';
+        const known = filter.options.some((option) => option.value === chosen);
+        return [filter.key, known ? chosen : ''];
+      }),
     ),
   );
   protected readonly sort = computed(() => {

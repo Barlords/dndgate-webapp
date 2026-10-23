@@ -17,7 +17,7 @@
       <label class="list__field">
         <span class="list__caption">{{ filter.label }}</span>
         <select #filterField (change)="filterBy(filter.key, filterField.value)">
-          <option value="" [selected]="filterValues()[filter.key] === ''">Toutes</option>
+          <option value="" [selected]="filterValues()[filter.key] === ''">Tout</option>
           @for (option of filter.options; track option.value) {
             <option [value]="option.value" [selected]="filterValues()[filter.key] === option.value">
               {{ option.label }}

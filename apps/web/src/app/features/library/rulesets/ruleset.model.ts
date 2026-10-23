@@ -21,6 +21,7 @@ export interface ColumnDef {
 
 /** A select over `fields[key]`; an entry matches when its value equals (or, for a list, holds) the option. */
 export interface FilterDef {
+  /** Not `q`, `sort`, `dir`, `page` or `size`: the list's URL state already uses those. */
   key: string;
   label: string;
   options: { value: string; label: string }[];
