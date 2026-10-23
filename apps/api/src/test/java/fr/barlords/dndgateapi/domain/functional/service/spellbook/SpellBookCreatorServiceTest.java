@@ -53,6 +53,16 @@ class SpellBookCreatorServiceTest {
     }
 
     @Test
+    void creating_a_spell_book_keeps_its_ruleset() {
+        when(currentAccountService.getAccountById(wizard.getId())).thenReturn(wizard);
+        when(spi.save(any(SpellBook.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        SpellBook created = service.create(wizard.getId(), SpellBook.builder().name("X").ruleset("dnd5e-2024").build());
+
+        Assertions.assertEquals("dnd5e-2024", created.getRuleset());
+    }
+
+    @Test
     void an_unknown_caller_creates_nothing() {
         when(currentAccountService.getAccountById(wizard.getId())).thenThrow(new TokenNotValidException());
 

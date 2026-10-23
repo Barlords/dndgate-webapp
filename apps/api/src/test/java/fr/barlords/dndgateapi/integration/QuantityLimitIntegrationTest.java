@@ -91,7 +91,7 @@ class QuantityLimitIntegrationTest extends ApiIntegrationTestSupport {
     // ---- spell books and spells ----
 
     private ResponseEntity<String> createSpellBook(TestAccount account) {
-        return call(HttpMethod.POST, "/spellbooks", account.token(), Map.of("name", "Book", "description", "Spells"));
+        return call(HttpMethod.POST, "/spellbooks", account.token(), Map.of("name", "Book", "description", "Spells", "ruleset", "dnd5e-2014"));
     }
 
     private ResponseEntity<String> addSpell(TestAccount account, String bookId, String spell) {

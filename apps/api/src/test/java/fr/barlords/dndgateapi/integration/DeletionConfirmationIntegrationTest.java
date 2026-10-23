@@ -229,7 +229,7 @@ class DeletionConfirmationIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount owner = registerAndLogin();
         TestAccount other = registerAndLogin();
         UUID bookId = UUID.fromString(body(call(HttpMethod.POST, "/spellbooks", owner.token(),
-                Map.of("name", "Fireballs", "description", "d"))).get("id").asString());
+                Map.of("name", "Fireballs", "description", "d", "ruleset", "dnd5e-2014"))).get("id").asString());
         String path = "/spellbooks/" + bookId;
 
         Assertions.assertEquals(400, delete(path, owner, null));

@@ -25,7 +25,7 @@ class AuditLogFormatIntegrationTest extends ApiIntegrationTestSupport {
     void a_deletion_reaches_the_collector_as_one_json_line_with_the_id_of_its_request(CapturedOutput output) {
         TestAccount owner = registerAndLogin();
         UUID bookId = UUID.fromString(body(call(HttpMethod.POST, "/spellbooks", owner.token(),
-                Map.of("name", "Fireballs", "description", "d"))).get("id").asString());
+                Map.of("name", "Fireballs", "description", "d", "ruleset", "dnd5e-2014"))).get("id").asString());
 
         ResponseEntity<String> response = client().method(HttpMethod.DELETE).uri("/spellbooks/" + bookId)
                 .header("Authorization", "Bearer " + owner.token())

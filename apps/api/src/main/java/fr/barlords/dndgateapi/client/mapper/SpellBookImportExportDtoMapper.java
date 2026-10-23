@@ -9,6 +9,7 @@ public interface SpellBookImportExportDtoMapper {
         return new SpellBookImportExportDto(
                 domain.getName(),
                 domain.getDescription(),
+                domain.getRuleset(),
                 domain.getSpellList()
         );
     }
@@ -17,6 +18,7 @@ public interface SpellBookImportExportDtoMapper {
         return SpellBook.builder()
                 .name(importDto.name().trim())
                 .description(importDto.description() == null ? null : importDto.description().trim())
+                .ruleset(importDto.ruleset() == null ? SpellBook.LEGACY_RULESET : importDto.ruleset())
                 .spellList(importDto.spellList())
                 .build();
     }

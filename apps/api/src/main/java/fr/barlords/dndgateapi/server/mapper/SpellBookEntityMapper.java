@@ -13,6 +13,7 @@ public interface SpellBookEntityMapper {
                 .owner(AccountEntityMapper.toDomain(entity.getOwner()))
                 .name(entity.getName())
                 .description(entity.getDescription())
+                .ruleset(entity.getRuleset())
                 .spellList(new HashSet<>(entity.getSpellList()))
                 .version(entity.getVersion())
                 .build();
@@ -24,6 +25,7 @@ public interface SpellBookEntityMapper {
                 .owner(AccountEntityMapper.fromDomain(domain.getOwner()))
                 .name(domain.getName())
                 .description(domain.getDescription())
+                .ruleset(domain.getRuleset())
                 .spellList(new HashSet<>(domain.getSpellList()))
                 .version(domain.getVersion())
                 .build();

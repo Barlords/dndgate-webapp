@@ -13,6 +13,7 @@ public interface SpellBookDtoMapper {
                 domain.getId(),
                 domain.getName(),
                 domain.getDescription(),
+                domain.getRuleset(),
                 domain.getSpellList()
         );
     }
@@ -21,6 +22,7 @@ public interface SpellBookDtoMapper {
         return SpellBook.builder()
                 .name(request.name().trim())
                 .description(request.description().trim())
+                .ruleset(request.ruleset())
                 .build();
     }
 

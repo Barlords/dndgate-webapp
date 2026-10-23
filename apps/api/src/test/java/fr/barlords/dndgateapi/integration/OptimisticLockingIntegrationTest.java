@@ -118,7 +118,7 @@ class OptimisticLockingIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     private UUID createSpellBook() {
-        ResponseEntity<String> response = call(HttpMethod.POST, "/spellbooks", master.token(), Map.of("name", "Book", "description", "Spells"));
+        ResponseEntity<String> response = call(HttpMethod.POST, "/spellbooks", master.token(), Map.of("name", "Book", "description", "Spells", "ruleset", "dnd5e-2014"));
         Assertions.assertEquals(201, response.getStatusCode().value(), response.getBody());
         return UUID.fromString(body(response).get("id").asString());
     }
@@ -362,7 +362,7 @@ class OptimisticLockingIntegrationTest extends ApiIntegrationTestSupport {
 
         Assertions.assertEquals(1, statementsFor(() -> accounts.save(Account.builder()
                 .email(UUID.randomUUID() + "@test.fr").password("hash").pseudo("new" + UUID.randomUUID().toString().substring(0, 8)).build())), "account");
-        Assertions.assertEquals(1, statementsFor(() -> spellBooks.save(SpellBook.builder().owner(owner).name("Book").build())), "spell book");
+        Assertions.assertEquals(1, statementsFor(() -> spellBooks.save(SpellBook.builder().owner(owner).name("Book").ruleset(SpellBook.LEGACY_RULESET).build())), "spell book");
         Assertions.assertEquals(1, statementsFor(() -> characters.save(GameCharacter.builder().owner(owner).adventure(adventure)
                 .name("Hero").race("Elf").martialClass("Bard").personality("Kind").background("Old").picturePath("p.png").build())), "character");
         Assertions.assertEquals(1, statementsFor(() -> adventureNotes.save(AdventureNote.builder().adventure(adventure)

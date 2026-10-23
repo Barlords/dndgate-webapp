@@ -211,7 +211,7 @@ class AccountAnonymizationIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     void the_personal_spell_books_are_deleted() {
         TestAccount account = registerAndLogin();
-        call(HttpMethod.POST, "/spellbooks", account.token(), Map.of("name", "My book", "description", "Fireballs"));
+        call(HttpMethod.POST, "/spellbooks", account.token(), Map.of("name", "My book", "description", "Fireballs", "ruleset", "dnd5e-2014"));
         Assertions.assertEquals(1, jdbc.queryForObject("select count(*) from spellbook where account_id = ?", Integer.class, account.id()));
 
         deleteAccount(account);

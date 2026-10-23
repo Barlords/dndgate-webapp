@@ -102,7 +102,7 @@ class InputValidationIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     void a_spell_needs_an_index() {
         UUID bookId = UUID.fromString(call(HttpMethod.POST, "/spellbooks", master.token(),
-                Map.of("name", "Book", "description", "d")).getBody().toString().replaceAll(".*\"id\":\"([^\"]+)\".*", "$1"));
+                Map.of("name", "Book", "description", "d", "ruleset", "dnd5e-2014")).getBody().toString().replaceAll(".*\"id\":\"([^\"]+)\".*", "$1"));
         String path = "/spellbooks/" + bookId + "/spells";
 
         Assertions.assertEquals(400, status(HttpMethod.POST, path, Map.of()));
@@ -118,7 +118,7 @@ class InputValidationIntegrationTest extends ApiIntegrationTestSupport {
                 "name", "   ", "description", "A quest", "maxPlayer", 4, "visibility", "PUBLIC", "postalCode", "75001", "city", "Paris")));
         Assertions.assertEquals(400, status(HttpMethod.POST, "/adventures", Map.of(
                 "name", "Quest", "description", " \n ", "maxPlayer", 4, "visibility", "PUBLIC", "postalCode", "75001", "city", "Paris")));
-        Assertions.assertEquals(400, status(HttpMethod.POST, "/spellbooks", Map.of("name", "  ", "description", "x")));
+        Assertions.assertEquals(400, status(HttpMethod.POST, "/spellbooks", Map.of("name", "  ", "description", "x", "ruleset", "dnd5e-2014")));
     }
 
     @Test

@@ -153,7 +153,7 @@ class ParticipantRuleIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     void spell_books_are_personal() {
         UUID bookId = idOf(call(HttpMethod.POST, "/spellbooks", player.token(),
-                Map.of("name", "My book", "description", "Fireballs")));
+                Map.of("name", "My book", "description", "Fireballs", "ruleset", "dnd5e-2014")));
 
         Assertions.assertEquals(200, status(HttpMethod.GET, "/spellbooks/" + bookId, player, null));
         Assertions.assertEquals(200, status(HttpMethod.GET, "/spellbooks/" + bookId + "/export-file", player, null));

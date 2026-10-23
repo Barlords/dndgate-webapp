@@ -2365,9 +2365,15 @@ components:
           type: string
           maxLength: 5000
           minLength: 1
+        ruleset:
+          type: string
+          maxLength: 50
+          minLength: 0
+          pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
       required:
       - description
       - name
+      - ruleset
     SpellBookDto:
       type: object
       properties:
@@ -2377,6 +2383,8 @@ components:
         name:
           type: string
         description:
+          type: string
+        ruleset:
           type: string
         spellList:
           type: array
@@ -2863,6 +2871,11 @@ components:
           type: string
           maxLength: 5000
           minLength: 0
+        ruleset:
+          type: string
+          maxLength: 50
+          minLength: 0
+          pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
         spellList:
           type: array
           items:
