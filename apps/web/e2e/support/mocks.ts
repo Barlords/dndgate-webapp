@@ -18,7 +18,17 @@ export async function mockDnd5eApi(page: Page): Promise<void> {
   await page.route('https://www.dnd5eapi.co/**', (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.startsWith('/graphql/')) {
-      return json(route, fixture('spells-list.json'));
+      const query = String((route.request().postDataJSON() as { query?: string }).query);
+      return json(
+        route,
+        fixture(query.includes('features(') ? 'class-wizard-features.json' : 'spells-list.json'),
+      );
+    }
+    if (url.pathname.endsWith('/classes/wizard')) {
+      return json(route, fixture('class-wizard.json'));
+    }
+    if (url.pathname.endsWith('/classes/wizard/levels')) {
+      return json(route, fixture('class-wizard-levels.json'));
     }
     if (url.pathname.endsWith('/spells/fireball')) {
       return json(route, fixture('spell-fireball.json'));

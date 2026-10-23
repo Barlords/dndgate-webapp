@@ -27,6 +27,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -188,9 +189,13 @@ abstract class ApiIntegrationTestSupport {
         };
         LinkedMultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
         parts.add("picturePresentation", new HttpEntity<>(picture, pictureHeaders));
-        parts.add("createGameCharacterRequest", new HttpEntity<>(json.writeValueAsString(Map.of(
-                "adventureId", adventureId.toString(), "name", name, "race", "Human", "martialClass", "Wizard",
-                "personality", "Wise", "background", background)), requestHeaders));
+        Map<String, String> request = new LinkedHashMap<>(Map.of("name", name, "race", "Human", "martialClass", "Wizard",
+                "personality", "Wise", "background", background));
+        // Without an adventure, the character is kept outside any adventure of the application
+        if (adventureId != null) {
+            request.put("adventureId", adventureId.toString());
+        }
+        parts.add("createGameCharacterRequest", new HttpEntity<>(json.writeValueAsString(request), requestHeaders));
 
         return client().post().uri("/game-characters")
                 .headers(headers -> headers.setBearerAuth(account.token()))

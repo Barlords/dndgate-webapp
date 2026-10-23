@@ -11,13 +11,19 @@ import { Dnd5eClient } from './dnd5e-client';
 import { fetchTraits, listPersonality, listRefs, personalityDetail } from './dnd5e-resources';
 import {
   MONSTERS_SECTION,
-  NAME_COLUMN,
+  PERSONALITY_SECTION,
   plain,
   SPELLS_QUERY,
   SPELLS_SECTION,
 } from './dnd5e-sections';
 import { mapBackground, ApiBackground } from './mappers/background.mapper';
-import { ApiClass, ApiClassLevel, mapClass } from './mappers/class.mapper';
+import {
+  ApiClass,
+  ApiClassLevel,
+  CLASS_FEATURES_QUERIES,
+  GqlClassFeatures,
+  mapClass,
+} from './mappers/class.mapper';
 import { ApiRef } from './mappers/common';
 import { ApiMonster, GqlMonster, mapMonster, mapMonsterSummary } from './mappers/monster.mapper';
 import { mapAlignment, mapLanguage } from './mappers/personality.mapper';
@@ -30,16 +36,13 @@ const VERSION = '2014';
 const MONSTERS_QUERY = `{ monsters(limit: 1000) { index name type size challenge_rating } }`;
 
 const SECTIONS: readonly RulesetSection[] = [
-  plain('classes', 'Classes', 'players', 'sword'),
-  plain('races', 'Races', 'players', 'users'),
-  plain('backgrounds', 'Historiques', 'players', 'book'),
-  {
-    ...plain('personality', 'Personnalité', 'players', 'user'),
-    columns: [NAME_COLUMN, { key: 'kind', label: 'Type', sortable: true }],
-  },
+  plain('classes', 'Classes', 'players', 'sword', 'Les maîtres de guilde ouvrent leurs registres…'),
+  plain('races', 'Races', 'players', 'users', 'Recensement des peuples du royaume…'),
+  plain('backgrounds', 'Historiques', 'players', 'book', 'Le barde rassemble ses souvenirs…'),
+  PERSONALITY_SECTION,
   SPELLS_SECTION,
   MONSTERS_SECTION,
-  plain('rules', 'Règles', 'rules', 'scroll'),
+  plain('rules', 'Règles', 'rules', 'scroll', 'Le MJ relit ses règles…'),
 ];
 
 /** "DnD 5e — SRD 2014", read from dnd5eapi.co. */
@@ -86,7 +89,10 @@ export class Dnd5e2014Ruleset implements Ruleset {
         return forkJoin([
           this.client.rest<ApiClass>(VERSION, `classes/${index}`),
           this.client.rest<ApiClassLevel[]>(VERSION, `classes/${index}/levels`),
-        ]).pipe(map(([cls, levels]) => mapClass(cls, levels)));
+          this.client.graphql<GqlClassFeatures>(VERSION, CLASS_FEATURES_QUERIES[VERSION], {
+            class: index,
+          }),
+        ]).pipe(map(([cls, levels, features]) => mapClass(cls, levels, features)));
       case 'races':
         return this.client
           .rest<ApiRace>(VERSION, `races/${index}`)

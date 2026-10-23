@@ -7,21 +7,17 @@ export const TAVERN_ROUTES: Routes = [
     path: '',
     component: TavernShell,
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'quests' },
+      { path: '', pathMatch: 'full', redirectTo: 'adventures' },
       {
-        path: 'quests',
-        data: { breadcrumb: 'Tableau des quêtes' },
+        path: 'adventures',
+        pathMatch: 'full',
+        data: { breadcrumb: 'Aventures' },
         loadComponent: () => import('./quest-board.page').then((m) => m.QuestBoardPage),
       },
       {
-        path: 'join',
-        data: { breadcrumb: 'Rejoindre avec un code' },
-        loadComponent: () => import('./join-by-code.page').then((m) => m.JoinByCodePage),
-      },
-      {
-        path: 'master-code',
-        data: { breadcrumb: 'Devenir MJ avec un code' },
-        loadComponent: () => import('./accept-master.page').then((m) => m.AcceptMasterPage),
+        path: 'code',
+        data: { breadcrumb: 'Utiliser un code' },
+        loadComponent: () => import('./use-code.page').then((m) => m.UseCodePage),
       },
       {
         path: 'new',
@@ -31,20 +27,95 @@ export const TAVERN_ROUTES: Routes = [
       {
         path: 'mine',
         data: { breadcrumb: 'Mes aventures' },
+        loadComponent: () => import('./my-adventures.page').then((m) => m.MyAdventuresPage),
+      },
+      {
+        path: 'characters',
+        data: { breadcrumb: 'Mes personnages' },
         children: [
-          { path: '', pathMatch: 'full', redirectTo: 'ongoing' },
           {
-            path: 'ongoing',
-            data: { breadcrumb: 'En cours', closed: false },
-            loadComponent: () => import('./my-adventures.page').then((m) => m.MyAdventuresPage),
+            path: '',
+            pathMatch: 'full',
+            loadComponent: () =>
+              import('./characters/my-characters.page').then((m) => m.MyCharactersPage),
           },
           {
-            path: 'finished',
-            data: { breadcrumb: 'Terminées', closed: true },
-            loadComponent: () => import('./my-adventures.page').then((m) => m.MyAdventuresPage),
+            // Not an adventure's page: the frame draws the parchment around them.
+            path: '',
+            loadComponent: () =>
+              import('./characters/character-frame').then((m) => m.CharacterFrame),
+            children: [
+              {
+                path: 'new',
+                data: { breadcrumb: 'Nouveau personnage' },
+                loadComponent: () =>
+                  import('./adventure/characters/character-form.page').then(
+                    (m) => m.CharacterFormPage,
+                  ),
+              },
+              {
+                path: ':characterId',
+                data: { breadcrumb: 'Personnage' },
+                children: [
+                  {
+                    path: '',
+                    pathMatch: 'full',
+                    loadComponent: () =>
+                      import('./adventure/characters/character-detail.page').then(
+                        (m) => m.CharacterDetailPage,
+                      ),
+                  },
+                  {
+                    path: 'edit',
+                    data: { breadcrumb: 'Modifier' },
+                    loadComponent: () =>
+                      import('./adventure/characters/character-form.page').then(
+                        (m) => m.CharacterFormPage,
+                      ),
+                  },
+                ],
+              },
+            ],
           },
         ],
       },
+      {
+        path: 'grimoires',
+        data: { breadcrumb: 'Mes grimoires' },
+        loadComponent: () =>
+          import('../library/spellbooks/spellbook-list.page').then((m) => m.SpellBookListPage),
+      },
+      {
+        path: 'magic-items',
+        data: { breadcrumb: 'Mes objets magiques' },
+        children: [
+          {
+            path: '',
+            pathMatch: 'full',
+            loadComponent: () =>
+              import('./magic-items/my-magic-items.page').then((m) => m.MyMagicItemsPage),
+          },
+          {
+            path: 'new',
+            data: { breadcrumb: 'Nouvel objet magique' },
+            loadComponent: () =>
+              import('./magic-items/magic-item-form.page').then((m) => m.MagicItemFormPage),
+          },
+          {
+            path: ':id',
+            // Replaced by the item's name once it has loaded.
+            data: { breadcrumb: 'Objet magique' },
+            loadComponent: () =>
+              import('./magic-items/magic-item-form.page').then((m) => m.MagicItemFormPage),
+          },
+        ],
+      },
+      // The former addresses of these pages, kept for bookmarks.
+      { path: 'quests', redirectTo: 'adventures' },
+      { path: 'join', redirectTo: 'code' },
+      { path: 'master-code', redirectTo: 'code' },
+      { path: 'mine/ongoing', redirectTo: 'mine' },
+      { path: 'mine/finished', redirectTo: 'mine' },
       {
         path: 'adventures/:id',
         data: { breadcrumb: 'Aventure' },

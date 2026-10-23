@@ -1,4 +1,4 @@
-// Styles shared by the Tavern pages: heading, grid of cards, loading and empty states.
+// Styles shared by the Tavern pages: heading, grid of cards, tables, loading and empty states.
 h1 {
   margin: 0 0 var(--dg-space-4);
   font-family: var(--dg-font-title);
@@ -34,4 +34,54 @@ h1 {
     color: var(--dg-blood);
     font-weight: 600;
   }
+}
+
+// The table display of the lists (the other one being the cards).
+.table-scroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: var(--dg-space-2);
+    text-align: left;
+    vertical-align: middle;
+  }
+
+  th {
+    font-family: var(--dg-font-title);
+    font-size: var(--dg-text-sm);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    color: var(--dg-blood);
+    border-bottom: 2px solid var(--dg-parchment-border);
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--dg-parchment-shadow);
+    transition: background-color var(--dg-transition);
+
+    &:hover {
+      background: color-mix(in srgb, var(--dg-vellum) 70%, transparent);
+    }
+  }
+
+  td a:first-child {
+    font-weight: 600;
+    color: var(--dg-blood);
+  }
+
+  .table__actions {
+    text-align: right;
+  }
+}
+
+.muted {
+  font-style: italic;
+  color: var(--dg-ink-muted);
 }

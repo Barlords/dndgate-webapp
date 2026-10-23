@@ -1,0 +1,70 @@
+@if (open()) {
+  <div class="panel__veil" (click)="closed.emit()" aria-hidden="true"></div>
+}
+<aside
+  class="panel"
+  [class.panel--open]="open()"
+  [id]="panelId()"
+  role="dialog"
+  [attr.aria-labelledby]="panelId() + '-title'"
+  [attr.aria-hidden]="!open()"
+  [attr.inert]="open() ? null : ''"
+>
+  @if (open()) {
+    <div class="panel__body" cdkTrapFocus [cdkTrapFocusAutoCapture]="true">
+      <header class="panel__head">
+        <h2 class="panel__title" [id]="panelId() + '-title'">Filtres</h2>
+        <dg-icon-button icon="close" label="Fermer" (click)="closed.emit()" />
+      </header>
+
+      @for (filter of filters(); track filter.key) {
+        <fieldset class="panel__group">
+          <legend>{{ filter.label }}</legend>
+          @for (option of options()[filter.key]; track option.value) {
+            <label class="panel__choice">
+              <input
+                #box
+                type="checkbox"
+                [checked]="ticked()[filter.key].includes(option.value)"
+                (change)="ticks.emit({ key: filter.key, option: option.value, on: box.checked })"
+              />
+              {{ option.label }}
+            </label>
+          } @empty {
+            <p class="panel__none">Aucune valeur.</p>
+          }
+        </fieldset>
+      }
+      @if (tickedCount() > 0) {
+        <button type="button" class="panel__clear" (click)="cleared.emit()">
+          Effacer les filtres
+        </button>
+      }
+
+      <fieldset class="panel__group">
+        <legend>Colonnes</legend>
+        @for (column of columns(); track column.key; let first = $first) {
+          <label class="panel__choice">
+            <input
+              #shownBox
+              type="checkbox"
+              [checked]="first || !hidden().has(column.key)"
+              [disabled]="first"
+              (change)="columnShown.emit({ column, on: shownBox.checked })"
+            />
+            {{ column.label }}
+          </label>
+        }
+      </fieldset>
+
+      <label class="panel__size">
+        <span>Par page</span>
+        <select #sizeField (change)="resized.emit(sizeField.value)">
+          @for (size of pageSizes; track size) {
+            <option [value]="size" [selected]="size === pageSize()">{{ size }}</option>
+          }
+        </select>
+      </label>
+    </div>
+  }
+</aside>

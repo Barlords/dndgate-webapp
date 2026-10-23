@@ -99,6 +99,16 @@ export type { GetMessageByAdventureId$Params as GetMessageByAdventureId$Params }
 export { getMessageByAdventureId as getMessageByAdventureId } from './fn/messages/get-message-by-adventure-id';
 export type { SendMessage$Params as SendMessage$Params } from './fn/messages/send-message';
 export { sendMessage as sendMessage } from './fn/messages/send-message';
+export type { CreateMagicItem$Params as CreateMagicItem$Params } from './fn/magic-items/create-magic-item';
+export { createMagicItem as createMagicItem } from './fn/magic-items/create-magic-item';
+export type { GetMagicItemById$Params as GetMagicItemById$Params } from './fn/magic-items/get-magic-item-by-id';
+export { getMagicItemById as getMagicItemById } from './fn/magic-items/get-magic-item-by-id';
+export type { DeleteMagicItemById$Params as DeleteMagicItemById$Params } from './fn/magic-items/delete-magic-item-by-id';
+export { deleteMagicItemById as deleteMagicItemById } from './fn/magic-items/delete-magic-item-by-id';
+export type { PatchMagicItem$Params as PatchMagicItem$Params } from './fn/magic-items/patch-magic-item';
+export { patchMagicItem as patchMagicItem } from './fn/magic-items/patch-magic-item';
+export type { GetMyMagicItems$Params as GetMyMagicItems$Params } from './fn/magic-items/get-my-magic-items';
+export { getMyMagicItems as getMyMagicItems } from './fn/magic-items/get-my-magic-items';
 export type { GetHistoricalNotesByAdventureId$Params as GetHistoricalNotesByAdventureId$Params } from './fn/historical-notes/get-historical-notes-by-adventure-id';
 export { getHistoricalNotesByAdventureId as getHistoricalNotesByAdventureId } from './fn/historical-notes/get-historical-notes-by-adventure-id';
 export type { CreateHistoricalNote$Params as CreateHistoricalNote$Params } from './fn/historical-notes/create-historical-note';

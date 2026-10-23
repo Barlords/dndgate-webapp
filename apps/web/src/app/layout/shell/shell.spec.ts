@@ -5,6 +5,7 @@ import { provideRouter, Router } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import { AccountDto } from '../../core/api/generated/models/account-dto';
 import { AuthService } from '../../core/auth/auth.service';
+import { ICON_PATHS } from '../../shared/ui/icon/icon-paths';
 import { NavGroup } from '../nav.model';
 import { Shell } from './shell';
 
@@ -63,12 +64,14 @@ describe('Shell', () => {
 
   beforeEach(() => account.set(null));
 
-  it('centres the emblem and the name in a bar linking to the home page', async () => {
+  it('has no top bar: the logo, linking to the home page, tops the sidebar', async () => {
     await render();
-    const brand = element.querySelector<HTMLAnchorElement>('.topbar__brand')!;
+    expect(element.querySelector('dg-topbar')).toBeNull();
+    const brand = element.querySelector<HTMLAnchorElement>('.sidebar__head .sidebar__brand')!;
     expect(brand.getAttribute('href')).toBe('/');
+    expect(brand.getAttribute('aria-label')).toBe("DnDGate, retour à l'accueil");
     expect(brand.textContent).toContain('DNDGATE');
-    expect(brand.querySelector('dg-emblem')).not.toBeNull();
+    expect(brand.querySelectorAll('dg-brand dg-emblem')).toHaveLength(2);
   });
 
   it('leaves no title attribute on the host (no native tooltip over the whole shell)', async () => {
@@ -81,6 +84,32 @@ describe('Shell', () => {
     expect(element.querySelector('.sidebar .header-slot')?.textContent).toBe('Jeux de règles');
     expect(element.querySelector('main .content-slot')?.textContent).toBe('Contenu');
     expect(element.querySelector('.sidebar__title')?.textContent).toBe('BIBLIOTHÈQUE');
+  });
+
+  it('puts the title under the logo and the toggle at the bottom, just above the account', async () => {
+    await render();
+    expect([...element.querySelector('.sidebar__head')!.children]).toEqual([
+      element.querySelector('.sidebar__brand'),
+    ]);
+    expect(element.querySelector('.sidebar__heading .sidebar__title')?.textContent).toBe(
+      'BIBLIOTHÈQUE',
+    );
+    expect(toggle().nextElementSibling).toBe(element.querySelector('.sidebar__footer'));
+    expect(toggle().previousElementSibling?.tagName).toBe('NAV');
+    const drawn = [...toggle().querySelectorAll('path')].map((path) => path.getAttribute('d'));
+    expect(drawn).toEqual([...ICON_PATHS.sidebar]);
+  });
+
+  it('folds the logo into the emblem, which still leads home', async () => {
+    await render();
+    toggle().click();
+    await fixture.whenStable();
+    const brand = element.querySelector<HTMLAnchorElement>('.sidebar__head .sidebar__brand')!;
+    expect(brand.getAttribute('href')).toBe('/');
+    expect(brand.getAttribute('title')).toBe("DnDGate, retour à l'accueil");
+    expect(brand.querySelector('dg-brand')).toBeNull();
+    expect(brand.querySelector('dg-emblem')).not.toBeNull();
+    expect(toggle().getAttribute('title')).toBe('Ouvrir le sommaire');
   });
 
   it('lists the groups and marks the current item', async () => {
@@ -122,7 +151,16 @@ describe('Shell', () => {
     expect(link.getAttribute('title')).toBe('Classes');
     expect(link.querySelector('dg-icon')).not.toBeNull();
     expect(element.querySelector('.sidebar__title')).toBeNull();
-    expect(element.querySelector('.sidebar__header')).toBeNull();
+    // The header stays (the ruleset select folds into an icon), so that the links do not move.
+    expect(element.querySelector('.sidebar__header .header-slot')).not.toBeNull();
+    expect(element.querySelector('.sidebar__group')?.textContent?.trim()).toBe('POUR LES JOUEURS');
+  });
+
+  it('marks the link of the page shown as the current page', async () => {
+    await render();
+    const current = element.querySelector('.sidebar__link[aria-current="page"]');
+    expect(current?.textContent).toContain('Sorts');
+    expect(current?.classList).toContain('on');
   });
 
   it('open shell has no tooltip and exposes the toggle state', async () => {

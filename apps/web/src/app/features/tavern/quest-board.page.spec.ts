@@ -1,6 +1,6 @@
 import { adventure, page, setupTavern, TavernTestbed } from './tavern.testing';
 
-describe('QuestBoardPage', () => {
+describe('QuestBoardPage (Aventures)', () => {
   let tavern: TavernTestbed;
 
   const available = (r: { url: string; method: string }) =>
@@ -10,7 +10,7 @@ describe('QuestBoardPage', () => {
 
   async function open(content = [adventure()], totalPages = 1) {
     tavern = await setupTavern();
-    await tavern.go('/tavern/quests');
+    await tavern.go('/tavern/adventures');
     tavern.backend.expectOne(available).flush(page(content, totalPages));
     await tavern.render();
   }
@@ -31,7 +31,7 @@ describe('QuestBoardPage', () => {
 
   it('asks the server for 20 quests per page and pages through them', async () => {
     tavern = await setupTavern();
-    await tavern.go('/tavern/quests');
+    await tavern.go('/tavern/adventures');
     const first = tavern.backend.expectOne(available);
     expect(first.request.params.get('size')).toBe('20');
     expect(first.request.params.get('page')).toBe('0');
@@ -48,10 +48,10 @@ describe('QuestBoardPage', () => {
 
   it('shows an empty message', async () => {
     await open([]);
-    expect(tavern.main().textContent).toContain('Aucune quête');
+    expect(tavern.main().textContent).toContain('Aucune aventure');
   });
 
-  it('quest board joins and opens the adventure', async () => {
+  it('joins and opens the adventure', async () => {
     await open();
     tavern.button('Rejoindre').click();
     tavern.backend.expectOne(join).flush(adventure());
@@ -68,12 +68,58 @@ describe('QuestBoardPage', () => {
     await tavern.render();
     tavern.backend.expectOne(available).flush(page([]));
     await tavern.render();
-    expect(tavern.router.url).toBe('/tavern/quests');
+    expect(tavern.router.url).toBe('/tavern/adventures');
+  });
+
+  it('shows the adventures as a table once chosen, and remembers it', async () => {
+    await open([adventure({ masterVacant: true })]);
+    tavern.main().querySelector<HTMLButtonElement>('[aria-label="Afficher en tableau"]')!.click();
+    await tavern.render();
+    expect(tavern.main().querySelector('dg-adventure-card')).toBeNull();
+    const cells = [...tavern.main().querySelectorAll('tbody td')].map((td) =>
+      td.textContent?.trim(),
+    );
+    expect(cells).toEqual([
+      'La mine perdue · MJ recherché',
+      'Pas commencée',
+      'Paris (75001)',
+      '1 / 4',
+      'Publique',
+      'Rejoindre',
+    ]);
+    expect(tavern.main().querySelector('tbody a')!.getAttribute('href')).toBe(
+      '/tavern/adventures/a1',
+    );
+    expect(localStorage.getItem('dg.tavern.adventures.view')).toBe('table');
+
+    tavern.button('Rejoindre').click();
+    tavern.backend.expectOne(join).flush(adventure());
+    await tavern.render();
+    expect(tavern.router.url).toBe('/tavern/adventures/a1/overview');
+    tavern.backend.match(() => true);
+  });
+
+  it('opens the creation of an adventure from its button', async () => {
+    await open();
+    const create = tavern.main().querySelector('dg-list-header dg-icon-button button')!;
+    expect(create.getAttribute('aria-label')).toBe('Créer mon aventure');
+    (create as HTMLButtonElement).click();
+    await tavern.render();
+    expect(tavern.router.url).toBe('/tavern/new');
+  });
+
+  it('is what the Tavern opens on, also from its former address', async () => {
+    tavern = await setupTavern();
+    await tavern.go('/tavern');
+    expect(tavern.router.url).toBe('/tavern/adventures');
+    tavern.backend.expectOne(available).flush(page([]));
+    await tavern.go('/tavern/quests');
+    expect(tavern.router.url).toBe('/tavern/adventures');
   });
 
   it('offers a retry when the board cannot load', async () => {
     tavern = await setupTavern();
-    await tavern.go('/tavern/quests');
+    await tavern.go('/tavern/adventures');
     tavern.backend.expectOne(available).flush({}, { status: 500, statusText: 'Error' });
     await tavern.render();
     expect(tavern.main().querySelector('[role="alert"]')).not.toBeNull();

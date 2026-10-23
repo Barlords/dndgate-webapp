@@ -29,6 +29,7 @@ export function mapRace(race: ApiRace, traits: ApiTrait[]): EntryDetail {
   const blocks: DetailBlock[] = [
     {
       kind: 'stats',
+      layout: 'rows',
       items: [
         { label: 'Ability score increase', value: bonuses || 'None' },
         { label: 'Size', value: race.size },

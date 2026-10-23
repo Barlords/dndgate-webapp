@@ -21,7 +21,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { toApiProblem } from '../../core/errors/api-problem';
 import { NotifierService } from '../../core/errors/notifier.service';
 import { Paginator } from '../../shared/ui/paginator/paginator';
-import { Spinner } from '../../shared/ui/spinner/spinner';
+import { Loading } from '../../shared/ui/loading/loading';
 import { StarRating } from '../../shared/ui/star-rating/star-rating';
 import { AccountLayout } from './account-layout';
 
@@ -35,7 +35,7 @@ interface Profile {
 @Component({
   selector: 'dg-public-profile-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AccountLayout, Spinner, StarRating, Paginator, DatePipe],
+  imports: [AccountLayout, Loading, StarRating, Paginator, DatePipe],
   styles: `
     .summary {
       display: flex;
@@ -109,7 +109,12 @@ interface Profile {
       } @else if (failed()) {
         <p role="alert">Ce joueur est introuvable.</p>
       } @else {
-        <div class="dg-account__actions"><dg-spinner label="Chargement du joueur" /></div>
+        <div class="dg-account__actions">
+          <dg-loading
+            label="Chargement du joueur"
+            message="On cherche ce joueur dans la taverne…"
+          />
+        </div>
       }
     </dg-account-layout>
   `,

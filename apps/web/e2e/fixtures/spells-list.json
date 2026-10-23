@@ -5,46 +5,91 @@
         "index": "acid-splash",
         "name": "Acid Splash",
         "level": 0,
-        "school": { "name": "Conjuration" },
-        "classes": [{ "index": "wizard", "name": "Wizard" }],
+        "school": {
+          "name": "Conjuration"
+        },
+        "classes": [
+          {
+            "index": "wizard",
+            "name": "Wizard"
+          }
+        ],
         "ritual": false,
-        "concentration": false
+        "concentration": false,
+        "components": ["V", "S"],
+        "casting_time": "1 action"
       },
       {
         "index": "detect-magic",
         "name": "Detect Magic",
         "level": 1,
-        "school": { "name": "Divination" },
-        "classes": [{ "index": "cleric", "name": "Cleric" }],
+        "school": {
+          "name": "Divination"
+        },
+        "classes": [
+          {
+            "index": "cleric",
+            "name": "Cleric"
+          }
+        ],
         "ritual": true,
-        "concentration": true
+        "concentration": true,
+        "components": ["V", "S"],
+        "casting_time": "1 action"
       },
       {
         "index": "fire-bolt",
         "name": "Fire Bolt",
         "level": 0,
-        "school": { "name": "Evocation" },
-        "classes": [{ "index": "wizard", "name": "Wizard" }],
+        "school": {
+          "name": "Evocation"
+        },
+        "classes": [
+          {
+            "index": "wizard",
+            "name": "Wizard"
+          }
+        ],
         "ritual": false,
-        "concentration": false
+        "concentration": false,
+        "components": ["V", "S"],
+        "casting_time": "1 action"
       },
       {
         "index": "fireball",
         "name": "Fireball",
         "level": 3,
-        "school": { "name": "Evocation" },
-        "classes": [{ "index": "wizard", "name": "Wizard" }],
+        "school": {
+          "name": "Evocation"
+        },
+        "classes": [
+          {
+            "index": "wizard",
+            "name": "Wizard"
+          }
+        ],
         "ritual": false,
-        "concentration": false
+        "concentration": false,
+        "components": ["V", "S", "M"],
+        "casting_time": "1 action"
       },
       {
         "index": "wall-of-fire",
         "name": "Wall of Fire",
         "level": 4,
-        "school": { "name": "Evocation" },
-        "classes": [{ "index": "wizard", "name": "Wizard" }],
+        "school": {
+          "name": "Evocation"
+        },
+        "classes": [
+          {
+            "index": "wizard",
+            "name": "Wizard"
+          }
+        ],
         "ritual": false,
-        "concentration": true
+        "concentration": true,
+        "components": ["V", "S", "M"],
+        "casting_time": "1 action"
       }
     ]
   }

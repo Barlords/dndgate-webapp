@@ -11,7 +11,8 @@ import java.util.UUID;
 public interface GameCharacterFinderApi {
 
     /**
-     * Readable by the character owner and by the participants of its adventure.
+     * Readable by the character owner and by the participants of its adventure; a character outside any adventure
+     * is only readable by its owner.
      */
     Optional<GameCharacter> findById(UUID accountId, UUID id);
 
@@ -28,7 +29,7 @@ public interface GameCharacterFinderApi {
     List<GameCharacter> findMyCharacter(UUID accountId);
 
     /**
-     * Same rule as {@link #findById}: the owner and the participants of the adventure. The pictures are not public:
+     * Same rule as {@link #findById}: the owner and the participants of the adventure, if any. The pictures are not public:
      * this is the only way to read one.
      */
     GameCharacterPicture findPicture(UUID accountId, UUID id);

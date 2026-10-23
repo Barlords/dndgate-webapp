@@ -73,7 +73,7 @@ describe('OverviewPage', () => {
     tavern.backend.expectOne(get).flush({}, { status: 404, statusText: 'Not Found' });
     await tavern.render();
     expect(tavern.main().textContent).toContain('Cette aventure est introuvable ou privée.');
-    expect(tavern.main().querySelector('a[href="/tavern/quests"]')).not.toBeNull();
+    expect(tavern.main().querySelector('a[href="/tavern/adventures"]')).not.toBeNull();
   });
 
   it('a failed load can be retried', async () => {
@@ -168,7 +168,7 @@ describe('OverviewPage', () => {
     expect(request.request.body).toEqual({ confirmation: 'La mine perdue' });
     request.flush(null, { status: 204, statusText: 'No Content' });
     await tavern.render();
-    expect(tavern.router.url).toBe('/tavern/mine/ongoing');
+    expect(tavern.router.url).toBe('/tavern/mine');
     tavern.backend.match(() => true);
   });
 
@@ -322,7 +322,7 @@ describe('OverviewPage', () => {
       .expectOne((r) => r.method === 'DELETE' && /\/adventures\/a1\/players\/me$/.test(r.url))
       .flush(adventure());
     await tavern.render();
-    expect(tavern.router.url).toBe('/tavern/mine/ongoing');
+    expect(tavern.router.url).toBe('/tavern/mine');
     tavern.backend.match(() => true);
   });
 

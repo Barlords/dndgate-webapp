@@ -9,6 +9,7 @@ describe('background mapper', () => {
     const detail = mapBackground(api);
     expect(detail.blocks[0]).toEqual({
       kind: 'stats',
+      layout: 'rows',
       items: [
         { label: 'Skill proficiencies', value: 'Skill: Insight, Skill: Religion' },
         { label: 'Starting gold', value: '15 gp' },

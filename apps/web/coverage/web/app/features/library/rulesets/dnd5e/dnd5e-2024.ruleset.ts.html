@@ -200,7 +200,25 @@
 <a name='L135'></a><a href='#L135'>135</a>
 <a name='L136'></a><a href='#L136'>136</a>
 <a name='L137'></a><a href='#L137'>137</a>
-<a name='L138'></a><a href='#L138'>138</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L138'></a><a href='#L138'>138</a>
+<a name='L139'></a><a href='#L139'>139</a>
+<a name='L140'></a><a href='#L140'>140</a>
+<a name='L141'></a><a href='#L141'>141</a>
+<a name='L142'></a><a href='#L142'>142</a>
+<a name='L143'></a><a href='#L143'>143</a>
+<a name='L144'></a><a href='#L144'>144</a>
+<a name='L145'></a><a href='#L145'>145</a>
+<a name='L146'></a><a href='#L146'>146</a>
+<a name='L147'></a><a href='#L147'>147</a>
+<a name='L148'></a><a href='#L148'>148</a>
+<a name='L149'></a><a href='#L149'>149</a>
+<a name='L150'></a><a href='#L150'>150</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -261,13 +279,16 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">20x</span>
-<span class="cline-any cline-yes">20x</span>
-<span class="cline-any cline-yes">20x</span>
-<span class="cline-any cline-yes">20x</span>
-<span class="cline-any cline-yes">20x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">20x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">21x</span>
+<span class="cline-any cline-yes">21x</span>
+<span class="cline-any cline-yes">21x</span>
+<span class="cline-any cline-yes">21x</span>
+<span class="cline-any cline-yes">21x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">21x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">13x</span>
@@ -299,6 +320,9 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
@@ -350,7 +374,7 @@ import { Dnd5eClient } from './dnd5e-client';
 import { fetchTraits, listPersonality, listRefs, personalityDetail } from './dnd5e-resources';
 import {
   MONSTERS_SECTION,
-  NAME_COLUMN,
+  PERSONALITY_SECTION,
   plain,
   SPELLS_QUERY,
   SPELLS_SECTION,
@@ -361,7 +385,13 @@ import { ApiMagicItem, mapMagicItem } from './mappers/2024/magic-item.mapper';
 import { mapAlignment, mapLanguage } from './mappers/2024/personality.mapper';
 import { ApiSpecies, ApiSpeciesTrait, mapSpecies } from './mappers/2024/species.mapper';
 import { ApiWeaponMastery, mapWeaponMastery } from './mappers/2024/weapon-mastery.mapper';
-import { ApiClass, ApiClassLevel, mapClass } from './mappers/class.mapper';
+import {
+  ApiClass,
+  ApiClassLevel,
+  CLASS_FEATURES_QUERIES,
+  GqlClassFeatures,
+  mapClass,
+} from './mappers/class.mapper';
 import { ApiRef } from './mappers/common';
 import { ApiMonster, GqlMonster, mapMonster, mapMonsterSummary } from './mappers/monster.mapper';
 import { ApiSpell, GqlSpell, mapSpell, mapSpellSummary } from './mappers/spell.mapper';
@@ -382,18 +412,21 @@ const REST_LISTS = [
 ];
 &nbsp;
 const SECTIONS: readonly RulesetSection[] = [
-  plain('classes', 'Classes', 'players', 'sword'),
-  plain('species', 'Espèces', 'players', 'users'),
-  plain('backgrounds', 'Historiques', 'players', 'book'),
-  plain('feats', 'Dons', 'players', 'star'),
-  {
-    ...plain('personality', 'Personnalité', 'players', 'user'),
-    columns: [NAME_COLUMN, { key: 'kind', label: 'Type', sortable: true }],
-  },
+  plain('classes', 'Classes', 'players', 'sword', 'Les maîtres de guilde ouvrent leurs registres…'),
+  plain('species', 'Espèces', 'players', 'users', 'Recensement des peuples du royaume…'),
+  plain('backgrounds', 'Historiques', 'players', 'book', 'Le barde rassemble ses souvenirs…'),
+  plain('feats', 'Dons', 'players', 'star', 'Les vétérans racontent leurs exploits…'),
+  PERSONALITY_SECTION,
   SPELLS_SECTION,
-  plain('weapon-mastery-properties', "Maîtrises d'armes", 'players', 'sword'),
+  plain(
+    'weapon-mastery-properties',
+    "Maîtrises d'armes",
+    'players',
+    'sword',
+    "Le maître d'armes aiguise ses lames…",
+  ),
   MONSTERS_SECTION,
-  plain('magic-items', 'Objets magiques', 'master', 'crown'),
+  plain('magic-items', 'Objets magiques', 'master', 'crown', 'Inventaire du trésor du dragon…'),
 ];
 &nbsp;
 /** "DnD 5e — SRD 2024", read from dnd5eapi.co. It has no rules section. */
@@ -438,7 +471,10 @@ export class Dnd5e2024Ruleset implements Ruleset {
         return forkJoin([
           this.client.rest&lt;ApiClass&gt;(VERSION, `classes/${index}`),
           this.client.rest&lt;ApiClassLevel[]&gt;(VERSION, `classes/${index}/levels`),
-        ]).pipe(map(([cls, levels]) =&gt; mapClass(cls, levels)));
+          this.client.graphql&lt;GqlClassFeatures&gt;(VERSION, CLASS_FEATURES_QUERIES[VERSION], {
+            class: index,
+          }),
+        ]).pipe(map(([cls, levels, features]) =&gt; mapClass(cls, levels, features)));
       case 'species':
         return this.client
           .rest&lt;ApiSpecies&gt;(VERSION, `species/${index}`)
@@ -481,7 +517,7 @@ export class Dnd5e2024Ruleset implements Ruleset {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-10-23T04:32:08.726Z
+                at 2026-10-23T17:10:15.500Z
             </div>
         <script src="../../../../../prettify.js"></script>
         <script>

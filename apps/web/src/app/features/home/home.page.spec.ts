@@ -59,7 +59,7 @@ describe('HomePage', () => {
     expect(tavern.querySelector('h2')?.textContent).toBe('TAVERNE');
     expect(tavern.textContent).toContain('Tes aventures, ta table, tes compagnons');
     expect(tavern.textContent).toContain('S’ATTABLER');
-    expect(element.querySelector('dg-emblem')).not.toBeNull();
+    expect(element.querySelector('dg-brand')?.textContent?.trim()).toBe('DNDGATE');
     expect(tavern.hasAttribute('title')).toBe(false);
   });
 

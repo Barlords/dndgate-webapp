@@ -1,0 +1,153 @@
+:host {
+  display: block;
+}
+
+.table__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--dg-space-3);
+  margin-bottom: var(--dg-space-4);
+}
+
+.table__search {
+  flex: 1;
+}
+
+input[type='search'] {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.4rem 0.7rem;
+  color: var(--dg-ink);
+  background: var(--dg-vellum);
+  border: 1px solid #a8885a;
+  border-bottom-width: 2px;
+  border-radius: var(--dg-radius-sm);
+  box-shadow: inset 0 1px 3px #b8945a40;
+  transition: border-color var(--dg-transition);
+
+  &::placeholder {
+    color: var(--dg-ink-muted);
+    font-style: italic;
+  }
+
+  &:hover,
+  &:focus {
+    border-color: var(--dg-gold-deep);
+  }
+}
+
+.table__empty {
+  margin: var(--dg-space-6) 0;
+  font-style: italic;
+  text-align: center;
+  color: var(--dg-ink-muted);
+}
+
+.table__count {
+  margin: 0 0 var(--dg-space-2);
+  font-size: var(--dg-text-sm);
+  font-style: italic;
+  color: var(--dg-ink-muted);
+}
+
+.table__scroll {
+  overflow-x: auto;
+}
+
+// Tight enough for the eight columns of the spells beside the open sidebar.
+.table {
+  width: 100%;
+  font-size: 0.95rem;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: var(--dg-space-2);
+    text-align: left;
+  }
+
+  th {
+    font-family: var(--dg-font-title);
+    font-size: var(--dg-text-sm);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    color: var(--dg-blood);
+    border-bottom: 2px solid var(--dg-parchment-border);
+  }
+
+  tbody tr {
+    // The first cell's link stretches over the whole row.
+    position: relative;
+    border-bottom: 1px solid color-mix(in srgb, var(--dg-parchment-border) 50%, transparent);
+    transition: background-color var(--dg-transition);
+
+    &:hover,
+    &:focus-within {
+      background: color-mix(in srgb, var(--dg-parchment-border) 16%, transparent);
+    }
+  }
+}
+
+.table__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dg-space-1);
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.table__arrow {
+  display: inline-block;
+  min-width: 1em;
+  font-size: 0.75em;
+}
+
+.table__link {
+  font-weight: 600;
+  color: var(--dg-ink);
+  text-decoration: none;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  &:focus-visible {
+    outline: none;
+
+    &::after {
+      outline: 2px solid var(--dg-focus-color);
+      outline-offset: -2px;
+    }
+  }
+}
+
+// The actions of a row sit above the link stretched over it. Their column keeps the width of the
+// folded buttons: a label unfolding grows to the left, over the row, and never moves the columns.
+.table .table__actions {
+  position: relative;
+  z-index: 1;
+  width: 4rem;
+  min-width: 4rem;
+  padding: 0;
+}
+
+.table__actions-inner {
+  position: absolute;
+  top: 50%;
+  right: var(--dg-space-2);
+  display: flex;
+  gap: var(--dg-space-2);
+  transform: translateY(-50%);
+}

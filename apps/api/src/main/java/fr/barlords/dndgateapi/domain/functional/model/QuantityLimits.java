@@ -13,13 +13,15 @@ public record QuantityLimits(
         int spellsPerSpellBook,
         int adventureNotesPerAdventure,
         int historicalNotesPerAdventure,
+        int charactersWithoutAdventurePerAccount,
+        int magicItemsPerAccount,
         int messagesPerWindow,
         Duration messageWindow) {
 
     public QuantityLimits {
         if (charactersPerPlayerAndAdventure < 1 || activeAdventuresPerMaster < 1 || spellBooksPerAccount < 1
                 || spellsPerSpellBook < 1 || adventureNotesPerAdventure < 1 || historicalNotesPerAdventure < 1
-                || messagesPerWindow < 1) {
+                || charactersWithoutAdventurePerAccount < 1 || magicItemsPerAccount < 1 || messagesPerWindow < 1) {
             throw new IllegalArgumentException("Every quantity limit must be at least 1");
         }
         if (messageWindow == null || messageWindow.isZero() || messageWindow.isNegative()) {
@@ -28,7 +30,7 @@ public record QuantityLimits(
     }
 
     public static QuantityLimits defaults() {
-        return new QuantityLimits(10, 50, 100, 1000, 500, 500, 30, Duration.ofMinutes(1));
+        return new QuantityLimits(10, 50, 100, 1000, 500, 500, 50, 500, 30, Duration.ofMinutes(1));
     }
 
 }

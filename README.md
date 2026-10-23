@@ -93,7 +93,7 @@ La réponse est `{ "content": [...], "page": 0, "size": 20, "totalElements": 57,
 La visibilité (aventures publiques ou auxquelles on participe, notes privées du MJ) est décidée **dans la requête** : le total ne compte que ce que la personne a le droit de voir.
 `POST /planning/{planningId}/availability` (et `PUT`) est « créer ou remplacer » : un seul vote par compte et par planning (index unique), le vote enregistré est renvoyé. La date d'un message est fixée par le serveur à la réception (`Instant`, UTC) : `sendDate` n'existe plus dans la requête d'envoi (rupture de contrat), et la liste reste du plus récent au plus ancien.
 
-Les listes bornées par nature (personnages d'une aventure ou d'un compte, grimoires, disponibilités) ne sont pas paginées.
+Les listes bornées par nature (personnages d'une aventure ou d'un compte, grimoires, objets magiques, disponibilités) ne sont pas paginées.
 
 ## Limites et validation des entrées
 
@@ -103,9 +103,11 @@ Les listes bornées par nature (personnages d'une aventure ou d'un compte, grimo
 - **Plannings et disponibilités** : de 1 à 100 dates. **Dates** (plannings, disponibilités, notes) : entre les années 1900 et 2200, sinon `400` (le format accepte des années que PostgreSQL ne sait pas stocker, ce qui finissait en `500`). **Signaux WebRTC** : type `offer`, `answer` ou `candidate`, contenu de 20 000 caractères au plus.
 - **Quantités** : au-delà d'un plafond, la création répond `409` (`application/problem+json`) ; les plafonds sont comptés en base par des requêtes `COUNT` et appliqués par le domaine (clés `limits.*` de `application-dev.properties` / `application-prod.properties`) :
   - **10 personnages** par joueur et par aventure (`limits.characters-per-player-and-adventure`), vérifié avant le stockage de l'image ;
+  - **50 personnages hors aventure** par compte (`limits.characters-without-adventure-per-account`), vérifié de même ;
   - **50 aventures actives** par compte comme MJ (`limits.active-adventures-per-master`) : celles dont le compte est le MJ (`creator_id`, sans MJ vacant) et dont le statut est `NOT_STARTED` ou `ONGOING` ; une aventure terminée ou abandonnée ne compte plus ;
   - **100 grimoires** par compte (`limits.spell-books-per-account`), import compris ;
   - **1 000 sorts** par grimoire (`limits.spells-per-spell-book`), import compris ; ajouter un sort déjà présent n'est pas une erreur ;
+  - **500 objets magiques** par compte (`limits.magic-items-per-account`) ;
   - **500 notes d'aventure** et **500 notes d'historique** par aventure (`limits.adventure-notes-per-adventure`, `limits.historical-notes-per-adventure`) ;
   - **30 messages par compte et par minute** (`limits.messages.max`, `limits.messages.window`) : au-delà, `429` avec `Retry-After` (secondes). Les messages sont comptés en base sur la dernière minute (index `message(sender_id, send_date)`).
   Une aventure terminée ou abandonnée ne peut pas être rouverte (machine à états du statut, voir « Statut d'une aventure ») : le plafond d'aventures actives ne se contourne donc pas ainsi. Le transfert de MJ (cession, réclamation) ne vérifie volontairement pas le plafond du nouveau MJ.
@@ -118,7 +120,7 @@ Les listes bornées par nature (personnages d'une aventure ou d'un compte, grimo
 ## Images des personnages
 
 Le bucket MinIO est **privé** : au démarrage, l'API crée le bucket s'il manque et **retire toute politique publique** laissée par une ancienne version.
-Une image se lit par `GET /game-characters/{id}/picture` (authentification comme le reste de l'API) : le propriétaire du personnage et les participants de l'aventure, personne d'autre.
+Une image se lit par `GET /game-characters/{id}/picture` (authentification comme le reste de l'API) : le propriétaire du personnage et les participants de l'aventure (s'il en a une), personne d'autre.
 Le personnage renvoie `pictureUrl` (cette route) et non plus `picturePath` (le chemin interne). Réponse : `Content-Type` du format réel, `Cache-Control: private, max-age=3600`, `Content-Disposition: inline`.
 Pour l'afficher, le front récupère l'image avec le jeton (`HttpClient`, `responseType: 'blob'`) puis l'affiche (`URL.createObjectURL`) : une balise `<img src>` seule n'envoie pas l'en-tête d'authentification.
 
@@ -207,8 +209,8 @@ Une invitation refusée n'est pas comptée. Les lignes plus anciennes que la plu
 
 `DELETE /accounts` (avec le mot de passe, voir plus haut) **anonymise** le compte au lieu de le supprimer :
 
-- Ce qui identifie la personne disparaît : pseudo, e-mail, mot de passe, sessions, spellbooks. Le compte ne peut plus se connecter.
-- Ce sur quoi les autres joueurs s'appuient reste : personnages, messages, votes et évaluations pointent vers le même identifiant, devenu anonyme
+- Ce qui identifie la personne disparaît : pseudo, e-mail, mot de passe, sessions, spellbooks, objets magiques, et les personnages hors aventure (avec leur image) : personne d'autre ne les lit. Le compte ne peut plus se connecter.
+- Ce sur quoi les autres joueurs s'appuient reste : personnages d'une aventure, messages, votes et évaluations pointent vers le même identifiant, devenu anonyme
   (`anonymized: true` dans la réponse publique, pseudo `deleted-…`).
 - Les aventures du compte qui n'ont pas démarré sont annulées et masquées ; celles qui ont démarré restent consultables par leurs joueurs.
   Sa place est libérée dans les aventures qui n'ont pas démarré, conservée dans les autres.
@@ -255,6 +257,7 @@ Elle se passe dans le corps JSON de la requête :
 | `DELETE /adventures/{id}` | `{ "confirmation": "<nom de l'aventure>" }` |
 | `DELETE /game-characters/{id}` | `{ "confirmation": "<nom du personnage>" }` |
 | `DELETE /spellbooks/{id}` | `{ "confirmation": "<nom du spellbook>" }` |
+| `DELETE /magic-items/{id}` | `{ "confirmation": "<nom de l'objet magique>" }` |
 | `DELETE /adventure-notes/{id}`, `DELETE /historical-notes/{id}` | `{ "confirm": true }` (une note n'a pas de nom) |
 
 - Le nom est comparé tel qu'il est saisi : même casse, mêmes lettres. Les espaces autour et la façon d'encoder un accent sont sans effet.
@@ -332,10 +335,12 @@ Règles d'accès :
 
 - Seuls `POST /accounts` (inscription), `POST /accounts/login` (connexion), `POST /accounts/refresh`, `POST /accounts/verify`, `POST /accounts/email/confirm` et `POST /accounts/verification-email` sont publics.
 - Une aventure privée n'est visible que par son propriétaire et ses joueurs. Seul le propriétaire peut la supprimer.
-- **Règle « participant »** (propriétaire ou joueur d'une aventure) : messages, signalisation WebRTC, abonnements WebSocket, notes historiques, notes du MJ et personnages ne sont accessibles qu'aux participants. Créer un personnage exige aussi d'être participant.
+- **Règle « participant »** (propriétaire ou joueur d'une aventure) : messages, signalisation WebRTC, abonnements WebSocket, notes historiques, notes du MJ et personnages ne sont accessibles qu'aux participants. Créer un personnage dans une aventure exige aussi d'être participant.
 - Les notes du MJ de visibilité `PRIVATE` ne sont lisibles que par le propriétaire de l'aventure.
 - Un personnage est lisible par son propriétaire et par les participants de son aventure ; on ne peut lister que ses propres personnages.
+- **Personnage hors aventure** : `adventureId` est facultatif à la création (`POST /game-characters`). Sans lui, le personnage n'appartient à aucune aventure de l'application (un personnage joué à une table « réelle », simplement numérisé) : seul son propriétaire le lit, ainsi que son image (`403` pour les autres). `GameCharacterDto.adventureId` vaut alors `null`.
 - Les spellbooks sont personnels : seul leur propriétaire peut les lire, les exporter ou les modifier.
+- **Objets magiques** (`/magic-items`) : personnels comme les spellbooks (`403` pour un autre compte). Nom, type (`ARMOR`, `POTION`, `RING`, `ROD`, `SCROLL`, `STAFF`, `WAND`, `WEAPON`, `WONDROUS_ITEM`), rareté (`COMMON` à `ARTIFACT`), harmonisation requise, description. `GET /magic-items/mine` les liste triés par nom ; un `PATCH` ne change que les champs donnés.
 - **Jeu de règles d'un grimoire** : un grimoire appartient à un jeu de règles (`ruleset`, par exemple `dnd5e-2014` ou `dnd5e-2024`), choisi à la création, obligatoire. L'API ne connaît pas le contenu des règles : elle vérifie seulement le format de l'identifiant (minuscules, chiffres et tirets, 50 caractères au plus, `^[a-z0-9]+(-[a-z0-9]+)*$`), sinon `400`. Un `PATCH` ne le change jamais. Le fichier d'import peut le porter ; absent, il vaut `dnd5e-2014` (comme les grimoires existants avant l'ajout du champ). L'export l'écrit toujours.
 - **Évaluations (ratings)** : on ne peut noter un compte que si l'on a joué une aventure avec lui, c'est-à-dire une aventure démarrée (`ONGOING` ou `FINISH`) dont les deux comptes sont participants. On ne peut pas se noter soi-même, ni noter deux fois le même compte (`POST` répond 409, `PUT` met à jour). La note est comprise entre 1 et 5. La moyenne d'un compte est publique ; le détail des notes reçues n'est lisible que par le compte noté.
 - Planning : lisible tant que l'aventure est visible (publique, ou participant), pour que des candidats puissent voter avant de rejoindre ; créé ou modifié par le propriétaire seulement. Les votes de tous ne sont lisibles que par les participants, et chacun ne peut voter que pour soi.

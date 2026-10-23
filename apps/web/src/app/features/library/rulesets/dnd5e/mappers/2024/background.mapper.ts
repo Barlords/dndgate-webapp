@@ -21,6 +21,7 @@ export function mapBackground(background: ApiBackground): EntryDetail {
     blocks: [
       {
         kind: 'stats',
+        layout: 'rows',
         items: [
           { label: 'Ability scores', value: names(background.ability_scores).join(', ') },
           { label: 'Origin feat', value: feat },

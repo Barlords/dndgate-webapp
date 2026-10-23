@@ -1,54 +1,82 @@
 import { CdkMenu, CdkMenuItem, CdkMenuItemCheckbox, CdkMenuTrigger } from '@angular/cdk/menu';
-import { HttpClient } from '@angular/common/http';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  DestroyRef,
-  inject,
-  input,
-  signal,
-} from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { map, Observable } from 'rxjs';
-import { ApiConfiguration } from '../../../core/api/generated/api-configuration';
-import {
-  addSpellToBook,
-  getMySpellBooks,
-  removeSpellFromBook,
-} from '../../../core/api/generated/functions';
-import { SpellBookDto } from '../../../core/api/generated/models/spell-book-dto';
 import { AuthService } from '../../../core/auth/auth.service';
-import { toApiProblem } from '../../../core/errors/api-problem';
-import { NotifierService } from '../../../core/errors/notifier.service';
+import { SpellBookDto } from '../../../core/api/generated/models/spell-book-dto';
+import { Icon } from '../../../shared/ui/icon/icon';
+import { MySpellBooksStore } from './my-spellbooks.store';
 
 /**
- * « Ajouter au grimoire » menu of a spell's page: the reader's spell books of the spell's ruleset,
- * ticked when they already hold the spell. Choosing one adds or removes the spell.
+ * The « + grimoire » button of a spell, on its page and on each row of the spell list: a menu of
+ * the reader's spell books of the spell's ruleset, ticked when they already hold the spell.
+ * Choosing one adds or removes the spell. The books come from the page's `MySpellBooksStore`.
+ *
+ * With `revealLabel`, the words « Ajouter au grimoire » unfold beside the icons on hover or focus;
+ * in a table row they would push the columns, so there the button only has its accessible name.
  */
 @Component({
   selector: 'dg-add-to-spellbook',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CdkMenuTrigger, CdkMenu, CdkMenuItem, CdkMenuItemCheckbox, RouterLink],
+  imports: [CdkMenuTrigger, CdkMenu, CdkMenuItem, CdkMenuItemCheckbox, RouterLink, Icon],
   styles: `
     :host {
-      display: block;
-      margin: var(--dg-space-3) 0;
-      text-align: center;
+      display: inline-flex;
     }
 
     .add-to-book__trigger {
-      padding: var(--dg-space-2) var(--dg-space-4);
+      display: inline-flex;
+      align-items: center;
+      padding: var(--dg-space-1) var(--dg-space-2);
       font-family: var(--dg-font-title);
       font-size: var(--dg-text-sm);
       letter-spacing: 0.1em;
       text-transform: uppercase;
+      white-space: nowrap;
       color: var(--dg-blood);
       background: var(--dg-vellum);
       border: 1px solid var(--dg-parchment-border);
       border-radius: var(--dg-radius);
       cursor: pointer;
+      transition:
+        background var(--dg-transition),
+        border-color var(--dg-transition);
+
+      &:hover,
+      &[aria-expanded='true'] {
+        background: var(--dg-parchment-0);
+        border-color: var(--dg-blood);
+      }
+    }
+
+    .add-to-book__plus {
+      --dg-icon-size: 0.85em;
+      margin-right: -0.1em;
+    }
+
+    // Folded to nothing until the button is hovered, focused or open.
+    .add-to-book__label {
+      display: inline-block;
+      max-width: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition:
+        max-width 250ms ease-out,
+        opacity 250ms ease-out,
+        margin-left 250ms ease-out;
+
+      @media (prefers-reduced-motion: reduce) {
+        transition: none;
+      }
+    }
+
+    .add-to-book__trigger:hover,
+    .add-to-book__trigger:focus-visible,
+    .add-to-book__trigger[aria-expanded='true'] {
+      .add-to-book__label {
+        max-width: 14rem;
+        margin-left: var(--dg-space-2);
+        opacity: 1;
+      }
     }
 
     .add-to-book__menu {
@@ -127,8 +155,14 @@ import { NotifierService } from '../../../core/errors/notifier.service';
         class="add-to-book__trigger"
         [cdkMenuTriggerFor]="menu"
         aria-haspopup="menu"
+        [attr.aria-label]="accessibleName()"
+        [attr.title]="revealLabel() ? null : accessibleName()"
       >
-        Ajouter au grimoire
+        <dg-icon class="add-to-book__plus" name="plus" />
+        <dg-icon name="book" />
+        @if (revealLabel()) {
+          <span class="add-to-book__label" aria-hidden="true">Ajouter au grimoire</span>
+        }
       </button>
       <ng-template #menu>
         <ul cdkMenu class="add-to-book__menu" aria-label="Mes grimoires">
@@ -163,83 +197,37 @@ import { NotifierService } from '../../../core/errors/notifier.service';
 })
 export class AddToSpellbook {
   protected readonly auth = inject(AuthService);
-  private readonly http = inject(HttpClient);
-  private readonly rootUrl = inject(ApiConfiguration).rootUrl;
-  private readonly notifier = inject(NotifierService);
-  private readonly destroyRef = inject(DestroyRef);
+  private readonly store = inject(MySpellBooksStore);
 
   readonly rulesetId = input.required<string>();
   readonly spellIndex = input.required<string>();
+  /** Named in the button's accessible name, so that the buttons of a list tell apart. */
+  readonly spellName = input<string>();
+  readonly revealLabel = input(true);
 
-  private readonly books = signal<SpellBookDto[]>([]);
-  private readonly pending = signal<ReadonlySet<string>>(new Set());
+  protected readonly accessibleName = computed(() => {
+    const name = this.spellName();
+    return name ? `Ajouter ${name} au grimoire` : 'Ajouter au grimoire';
+  });
   protected readonly fitting = computed(() =>
-    this.books().filter((book) => book.ruleset === this.rulesetId()),
+    this.store.books().filter((book) => book.ruleset === this.rulesetId()),
   );
 
   constructor() {
     if (this.auth.isAuthenticated()) {
-      getMySpellBooks(this.http, this.rootUrl)
-        .pipe(
-          map((response) => response.body),
-          takeUntilDestroyed(),
-        )
-        .subscribe({
-          next: (books) => this.books.set(books),
-          error: (error: unknown) =>
-            this.notifier.error(toApiProblem(error), 'Chargement des grimoires'),
-        });
+      this.store.load();
     }
   }
 
   protected isPending(book: SpellBookDto): boolean {
-    return this.pending().has(book.id ?? '');
+    return this.store.isPending(book, this.spellIndex());
   }
 
   protected holds(book: SpellBookDto): boolean {
-    return book.spellList?.includes(this.spellIndex()) ?? false;
+    return this.store.holds(book, this.spellIndex());
   }
 
   protected toggle(book: SpellBookDto): void {
-    const id = book.id ?? '';
-    if (this.pending().has(id)) {
-      return; // A request for this book is already on its way.
-    }
-    const adding = !this.holds(book);
-    const spellIndex = this.spellIndex();
-    // The removal answers 204: the book is updated here.
-    const call: Observable<SpellBookDto> = adding
-      ? addSpellToBook(this.http, this.rootUrl, { id, body: { spellIndex } }).pipe(
-          map((response) => response.body),
-        )
-      : removeSpellFromBook(this.http, this.rootUrl, { id, spellIndex }).pipe(
-          map(() => ({
-            ...book,
-            spellList: (book.spellList ?? []).filter((index) => index !== spellIndex),
-          })),
-        );
-    this.pending.update((ids) => new Set(ids).add(id));
-    call.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (updated) => {
-        this.settle(id);
-        this.books.update((books) => books.map((b) => (b.id === id ? updated : b)));
-        this.notifier.success(adding ? `Ajouté à ${book.name}` : `Retiré de ${book.name}`);
-      },
-      error: (error: unknown) => {
-        this.settle(id);
-        this.notifier.error(
-          toApiProblem(error),
-          adding ? 'Ajout au grimoire' : 'Retrait du grimoire',
-        );
-      },
-    });
-  }
-
-  private settle(id: string): void {
-    this.pending.update((ids) => {
-      const next = new Set(ids);
-      next.delete(id);
-      return next;
-    });
+    this.store.toggle(book, this.spellIndex());
   }
 }

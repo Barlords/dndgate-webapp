@@ -1,10 +1,10 @@
 import list from '../__fixtures__/2014/gql-spells.json';
 import acidArrow from '../__fixtures__/2014/spells-acid-arrow.json';
 import fireball from '../__fixtures__/2014/spells-fireball.json';
-import { mapSpell, mapSpellSummary } from './spell.mapper';
+import { mapSpell, mapSpellSummary, shortCastingTime } from './spell.mapper';
 
 describe('spell mapper', () => {
-  it('maps a list entry to level, school, classes, ritual and concentration', () => {
+  it('maps a list entry to level, school, classes, casting time, components, ritual and concentration', () => {
     const summaries = list.data.spells.map(mapSpellSummary);
     expect(summaries[0]).toEqual({
       index: 'acid-splash',
@@ -13,6 +13,8 @@ describe('spell mapper', () => {
         level: 0,
         school: 'Conjuration',
         classes: ['Sorcerer', 'Wizard'],
+        castingTime: '1 action',
+        components: ['V', 'S'],
         ritual: false,
         concentration: false,
       },
@@ -58,5 +60,15 @@ describe('spell mapper', () => {
     expect(subtitle(1)).toBe('1st-level evocation');
     expect(subtitle(2)).toBe('2nd-level evocation');
     expect(subtitle(9)).toBe('9th-level evocation');
+  });
+
+  it('keeps a casting time short, without the trigger SRD 2024 spells out', () => {
+    expect(shortCastingTime('1 bonus action')).toBe('1 bonus action');
+    expect(shortCastingTime('Reaction, which you take when you are hit by an attack roll')).toBe(
+      'Reaction',
+    );
+    expect(shortCastingTime('Action (Overgrowth) or 8 hours (Enrichment)')).toBe(
+      'Action (Overgrowth) or 8 hours (Enrichment)',
+    );
   });
 });

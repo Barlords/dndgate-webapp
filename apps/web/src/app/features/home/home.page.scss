@@ -16,14 +16,24 @@ dg-home-half {
   min-width: 0;
 }
 
-// The DnDGate emblem, discreet, centred above the split.
-.home__emblem {
+// The full DnDGate logo, centred above the split, on a small dark plate edged with its own gold.
+.home__brand {
   position: absolute;
   top: var(--dg-space-5);
   left: 50%;
   z-index: 4;
-  --dg-emblem-size: 3rem;
-  opacity: 0.85;
+  padding: 0.35em 0.8em;
+  font-size: 1.75rem;
+  white-space: nowrap;
+  text-shadow: 0 0 12px #d9b45a59;
+  background: #0d0906d9;
+  border: 1px solid var(--dg-gold);
+  border-radius: var(--dg-radius);
+  box-shadow:
+    inset 0 0 0 3px #0d0906d9,
+    inset 0 0 0 4px #d9b45a59,
+    0 4px 16px #00000080;
+  opacity: 0.95;
   transform: translateX(-50%);
   pointer-events: none;
 }
@@ -31,5 +41,9 @@ dg-home-half {
 @media (max-width: 767.98px) {
   :host {
     flex-direction: column;
+  }
+
+  .home__brand {
+    font-size: 1.125rem;
   }
 }

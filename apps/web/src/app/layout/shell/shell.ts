@@ -1,19 +1,19 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ViewportScroller } from '@angular/common';
+import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { NavGroup } from '../nav.model';
 import { Breadcrumb } from './breadcrumb';
 import { Sidebar } from './sidebar';
-import { Topbar } from './topbar';
 
 /**
- * Layout of the inner pages: top bar, sidebar (`heading`, `groups`, and whatever is projected into
- * `[sidebarHeader]` under the title) and, beside it, the breadcrumb above the projected content.
+ * Layout of the inner pages: the sidebar (the DnDGate logo, `heading`, `groups`, and whatever is
+ * projected into `[sidebarHeader]` under the title) and, beside it, the breadcrumb above the
+ * projected content.
  */
 @Component({
   selector: 'dg-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Topbar, Sidebar, Breadcrumb],
+  imports: [Sidebar, Breadcrumb],
   template: `
-    <dg-topbar />
     <div class="shell__body">
       <dg-sidebar [heading]="heading()" [groups]="groups()">
         <ng-container ngProjectAs="[sidebarHeader]">
@@ -31,4 +31,9 @@ import { Topbar } from './topbar';
 export class Shell {
   readonly heading = input.required<string>();
   readonly groups = input.required<NavGroup[]>();
+
+  constructor() {
+    // A link to an anchor leaves a little room above what it leads to.
+    inject(ViewportScroller).setOffset([0, 16]);
+  }
 }

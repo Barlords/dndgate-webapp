@@ -5,24 +5,24 @@ import { Shell } from '../../layout/shell/shell';
 
 export const TAVERN_GROUPS: NavGroup[] = [
   {
-    label: 'QUÊTES',
+    label: 'SALLE COMMUNE',
     items: [
-      { label: 'Tableau des quêtes', icon: 'scroll', link: '/tavern/quests' },
-      { label: 'Rejoindre avec un code', icon: 'key', link: '/tavern/join' },
-      { label: 'Devenir MJ avec un code', icon: 'crown', link: '/tavern/master-code' },
-      { label: 'Créer une aventure', icon: 'plus', link: '/tavern/new' },
+      { label: 'Aventures', icon: 'scroll', link: '/tavern/adventures', exact: true },
+      { label: 'Utiliser un code', icon: 'key', link: '/tavern/code' },
     ],
   },
   {
-    label: 'MES AVENTURES',
+    label: 'MON ESPACE',
     items: [
-      { label: 'En cours', icon: 'sword', link: '/tavern/mine/ongoing' },
-      { label: 'Terminées', icon: 'book', link: '/tavern/mine/finished' },
+      { label: 'Mes aventures', icon: 'sword', link: '/tavern/mine' },
+      { label: 'Mes personnages', icon: 'user', link: '/tavern/characters' },
+      { label: 'Mes grimoires', icon: 'book', link: '/tavern/grimoires' },
+      { label: 'Mes objets magiques', icon: 'gem', link: '/tavern/magic-items' },
     ],
   },
 ];
 
-/** Layout of every Tavern page: the sidebar of quests and of the reader's adventures. */
+/** Layout of every Tavern page: the sidebar of the common room and of the reader's own space. */
 @Component({
   selector: 'dg-tavern-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -11,7 +11,7 @@ import {
 import { Button } from '../../../shared/ui/button/button';
 import { LoadError } from '../../../shared/ui/load-error/load-error';
 import { Paginator } from '../../../shared/ui/paginator/paginator';
-import { Spinner } from '../../../shared/ui/spinner/spinner';
+import { Loading } from '../../../shared/ui/loading/loading';
 import { NoteEditor, NoteValue } from './note-editor';
 import { NoteTimeline } from './note-timeline';
 import { NOTES_PAGE_SIZE, NotesPage } from './notes-page';
@@ -23,7 +23,7 @@ import { NOTES_PAGE_SIZE, NotesPage } from './notes-page';
 @Component({
   selector: 'dg-gm-notes-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LoadError, Button, Spinner, Paginator, NoteEditor, NoteTimeline],
+  imports: [LoadError, Button, Loading, Paginator, NoteEditor, NoteTimeline],
   styleUrl: '../tavern-page.scss',
   styles: `
     .head {
@@ -87,7 +87,12 @@ import { NOTES_PAGE_SIZE, NotesPage } from './notes-page';
         </div>
       }
       @default {
-        <div class="state"><dg-spinner label="Chargement des notes du MJ" /></div>
+        <div class="state">
+          <dg-loading
+            label="Chargement des notes du MJ"
+            message="Le MJ fouille derrière son écran…"
+          />
+        </div>
       }
     }
   `,

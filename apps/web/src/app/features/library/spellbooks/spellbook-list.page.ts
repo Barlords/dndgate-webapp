@@ -23,7 +23,9 @@ import { NotifierService } from '../../../core/errors/notifier.service';
 import { Button } from '../../../shared/ui/button/button';
 import { LoadError } from '../../../shared/ui/load-error/load-error';
 import { Parchment } from '../../../shared/ui/parchment/parchment';
-import { Spinner } from '../../../shared/ui/spinner/spinner';
+import { Loading } from '../../../shared/ui/loading/loading';
+import { ViewMode } from '../../../shared/ui/view-toggle/view-toggle';
+import { ListHeader } from '../../tavern/list-header';
 import { LOADING, LoadState, loadWithRetry } from '../pages/load-state';
 import { RulesetRegistry } from '../rulesets/ruleset-registry';
 import { SelectedRulesetService } from '../rulesets/selected-ruleset.service';
@@ -35,36 +37,15 @@ const LIMIT_REACHED: ApiProblem = {
   errors: [],
 };
 
-/** « Mes grimoires »: the signed-in reader's spell books, with creation and file import. */
+/**
+ * « Mes grimoires »: the signed-in reader's spell books, as a table or as cards, with creation and
+ * file import. Reached from the Library and from the Tavern.
+ */
 @Component({
   selector: 'dg-spellbook-list-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LoadError, Parchment, Spinner, Button, RouterLink, SpellBookForm],
+  imports: [LoadError, Parchment, Loading, Button, RouterLink, SpellBookForm, ListHeader],
   styles: `
-    .head {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--dg-space-3);
-      margin-bottom: var(--dg-space-4);
-    }
-
-    h1 {
-      margin: 0;
-      font-family: var(--dg-font-title);
-      font-size: var(--dg-text-xl);
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--dg-title-color);
-    }
-
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--dg-space-3);
-    }
-
     .file {
       display: none;
     }
@@ -120,6 +101,40 @@ const LIMIT_REACHED: ApiProblem = {
       color: var(--dg-ink-muted);
     }
 
+    .table-scroll {
+      overflow-x: auto;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+
+      th,
+      td {
+        padding: var(--dg-space-2);
+        text-align: left;
+      }
+
+      th {
+        font-family: var(--dg-font-title);
+        font-size: var(--dg-text-sm);
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        white-space: nowrap;
+        color: var(--dg-blood);
+        border-bottom: 2px solid var(--dg-parchment-border);
+      }
+
+      tbody tr {
+        border-bottom: 1px solid var(--dg-parchment-shadow);
+      }
+
+      td a {
+        font-weight: 600;
+        color: var(--dg-blood);
+      }
+    }
+
     .state {
       display: flex;
       flex-direction: column;
@@ -137,23 +152,25 @@ const LIMIT_REACHED: ApiProblem = {
   `,
   template: `
     <dg-parchment>
-      <header class="head">
-        <h1>Mes grimoires</h1>
-        <div class="actions">
-          <dg-button (click)="toggleCreate()">Nouveau grimoire</dg-button>
-          <dg-button variant="ghost" [loading]="importing()" (click)="file.click()">
-            Importer
-          </dg-button>
-          <input
-            #file
-            class="file"
-            type="file"
-            accept="application/json,.json"
-            aria-label="Fichier de grimoire à importer"
-            (change)="importFile($event)"
-          />
-        </div>
-      </header>
+      <dg-list-header
+        heading="Mes grimoires"
+        storageKey="dg.spellbooks.view"
+        createLabel="Créer un grimoire"
+        [(mode)]="view"
+        (create)="toggleCreate()"
+      >
+        <dg-button variant="ghost" [loading]="importing()" (click)="file.click()">
+          Importer
+        </dg-button>
+        <input
+          #file
+          class="file"
+          type="file"
+          accept="application/json,.json"
+          aria-label="Fichier de grimoire à importer"
+          (change)="importFile($event)"
+        />
+      </dg-list-header>
 
       @if (importErrors(); as errors) {
         <div class="import-errors" role="alert">
@@ -185,17 +202,42 @@ const LIMIT_REACHED: ApiProblem = {
 
       @if (loaded().value !== null) {
         @if (books().length > 0) {
-          <ul class="books">
-            @for (book of books(); track book.id) {
-              <li class="book">
-                <a class="book__name" [routerLink]="['/library/grimoires', book.id]">{{
-                  book.name
-                }}</a>
-                <p class="book__meta">{{ rulesetLabel(book) }}</p>
-                <p class="book__meta">{{ count(book) }}</p>
-              </li>
-            }
-          </ul>
+          @if (view() === 'table') {
+            <div class="table-scroll">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th scope="col">Nom</th>
+                    <th scope="col">Jeu de règles</th>
+                    <th scope="col">Sorts</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (book of books(); track book.id) {
+                    <tr>
+                      <td>
+                        <a [routerLink]="['/library/grimoires', book.id]">{{ book.name }}</a>
+                      </td>
+                      <td>{{ rulesetLabel(book) }}</td>
+                      <td>{{ count(book) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <ul class="books">
+              @for (book of books(); track book.id) {
+                <li class="book">
+                  <a class="book__name" [routerLink]="['/library/grimoires', book.id]">{{
+                    book.name
+                  }}</a>
+                  <p class="book__meta">{{ rulesetLabel(book) }}</p>
+                  <p class="book__meta">{{ count(book) }}</p>
+                </li>
+              }
+            </ul>
+          }
         } @else {
           <p>Tu n’as pas encore de grimoire.</p>
         }
@@ -208,7 +250,9 @@ const LIMIT_REACHED: ApiProblem = {
           />
         </div>
       } @else {
-        <div class="state"><dg-spinner label="Chargement des grimoires" /></div>
+        <div class="state">
+          <dg-loading label="Chargement des grimoires" message="Dépoussiérage des grimoires…" />
+        </div>
       }
     </dg-parchment>
   `,
@@ -226,6 +270,7 @@ export class SpellBookListPage {
   private readonly form = viewChild(SpellBookForm);
 
   private readonly retries = new Subject<void>();
+  protected readonly view = signal<ViewMode>('cards');
   protected readonly loaded = signal<LoadState<SpellBookDto[]>>(LOADING);
   protected readonly loadProblem = computed(() => toApiProblem(this.loaded().error));
   protected readonly books = signal<SpellBookDto[]>([]);

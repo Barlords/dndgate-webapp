@@ -6,7 +6,9 @@ import fr.barlords.dndgateapi.domain.functional.service.adventure.master.MasterT
 
 import fr.barlords.dndgateapi.domain.functional.exception.account.AccountNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.WrongPasswordException;
+import fr.barlords.dndgateapi.domain.functional.model.GameCharacter;
 import fr.barlords.dndgateapi.domain.functional.model.SpellBook;
+import fr.barlords.dndgateapi.domain.functional.model.magicitem.MagicItem;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.functional.model.account.ClientAddress;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
@@ -21,6 +23,9 @@ import fr.barlords.dndgateapi.domain.port.out.MasterClaimPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.OpaqueTokenSpi;
 import fr.barlords.dndgateapi.domain.port.out.PasswordHasherSpi;
 import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.MagicItemPersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -64,6 +69,15 @@ public class AccountAnonymizerServiceTest {
     private SpellBookPersistenceSpi spellBooks;
 
     @Mock
+    private MagicItemPersistenceSpi magicItems;
+
+    @Mock
+    private GameCharacterPersistenceSpi gameCharacters;
+
+    @Mock
+    private MinioSpi minio;
+
+    @Mock
     private PasswordHasherSpi passwordHasher;
 
     @Mock
@@ -92,7 +106,8 @@ public class AccountAnonymizerServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new AccountAnonymizerService(accounts, adventures, masterClaims, spellBooks, passwordHasher, opaqueTokens,
+        service = new AccountAnonymizerService(accounts, adventures, masterClaims, spellBooks, magicItems, gameCharacters, minio,
+                passwordHasher, opaqueTokens,
                 passwordVerifier, sessionRevoker, notifier, Clock.fixed(NOW, ZoneOffset.UTC), audit, loginFailures);
         lenient().when(accounts.findById(account.getId())).thenReturn(Optional.of(account));
         lenient().when(opaqueTokens.generate()).thenReturn("random-secret");
@@ -104,6 +119,8 @@ public class AccountAnonymizerServiceTest {
         lenient().when(masterClaims.findOpenByCandidateId(account.getId())).thenReturn(List.of());
         lenient().when(masterClaims.save(any(MasterClaim.class))).thenAnswer(i -> i.getArguments()[0]);
         lenient().when(spellBooks.findByOwnerId(account.getId())).thenReturn(List.of());
+        lenient().when(magicItems.findByOwnerId(account.getId())).thenReturn(List.of());
+        lenient().when(gameCharacters.findByOwnerId(account.getId())).thenReturn(List.of());
     }
 
     private Account savedAccount() {
@@ -209,6 +226,8 @@ public class AccountAnonymizerServiceTest {
         verify(accounts, never()).save(any());
         verify(adventures, never()).save(any());
         verify(spellBooks, never()).deleteById(any());
+        verify(magicItems, never()).deleteById(any());
+        verify(gameCharacters, never()).deleteById(any());
         verify(sessionRevoker, never()).logoutAll(any());
     }
 
@@ -231,6 +250,35 @@ public class AccountAnonymizerServiceTest {
 
         verify(spellBooks).deleteById(first.getId());
         verify(spellBooks).deleteById(second.getId());
+    }
+
+    // ---- magic items and characters ----
+
+    @Test
+    void the_personal_magic_items_are_deleted() {
+        MagicItem first = MagicItem.builder().owner(account).name("Ring").build();
+        MagicItem second = MagicItem.builder().owner(account).name("Wand").build();
+        when(magicItems.findByOwnerId(account.getId())).thenReturn(List.of(first, second));
+
+        service.anonymize(account.getId(), "password", CLIENT);
+
+        verify(magicItems).deleteById(first.getId());
+        verify(magicItems).deleteById(second.getId());
+    }
+
+    @Test
+    void a_character_outside_any_adventure_is_deleted_with_its_picture_and_one_of_an_adventure_stays() {
+        GameCharacter alone = GameCharacter.builder().owner(account).name("Alone").picturePath("account/alone.png").build();
+        GameCharacter played = GameCharacter.builder().owner(account).name("Played").picturePath("account/played.png")
+                .adventure(Adventure.builder().name("Quest").build()).build();
+        when(gameCharacters.findByOwnerId(account.getId())).thenReturn(List.of(alone, played));
+
+        service.anonymize(account.getId(), "password", CLIENT);
+
+        verify(gameCharacters).deleteById(alone.getId());
+        verify(minio).deleteAfterCommit("account/alone.png");
+        verify(gameCharacters, never()).deleteById(played.getId());
+        verify(minio, never()).deleteAfterCommit("account/played.png");
     }
 
     // ---- adventures owned by the account ----

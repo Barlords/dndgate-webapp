@@ -32,6 +32,10 @@ public class GameCharacterFinderService implements GameCharacterFinderApi {
     public Optional<GameCharacter> findById(UUID accountId, UUID id) {
         return spi.findById(id).map(character -> {
             if (!accountId.equals(character.getOwner().getId())) {
+                // Outside any adventure, nobody but the owner takes part in the character's story
+                if (!character.hasAdventure()) {
+                    throw new GameCharacterOwnerException();
+                }
                 adventureAccessVerifierApi.verifyParticipant(accountId, character.getAdventure().getId());
             }
             return character;

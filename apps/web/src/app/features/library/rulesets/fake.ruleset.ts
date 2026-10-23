@@ -8,6 +8,7 @@ const SPELLS: RulesetSection = {
   label: 'Sorts',
   group: 'players',
   icon: 'wand',
+  defaultSort: 'level',
   columns: [
     { key: 'name', label: 'Nom', sortable: true },
     { key: 'level', label: 'Niveau', sortable: true },

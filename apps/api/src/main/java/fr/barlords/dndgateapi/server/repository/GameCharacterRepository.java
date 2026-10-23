@@ -31,4 +31,6 @@ public interface GameCharacterRepository extends JpaRepository<GameCharacterEnti
 
 
     long countByOwner_IdAndAdventure_Id(UUID ownerId, UUID adventureId);
+
+    long countByOwner_IdAndAdventureIsNull(UUID ownerId);
 }

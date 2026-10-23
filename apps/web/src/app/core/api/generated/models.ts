@@ -27,6 +27,9 @@ export type { HistoricalNoteCreationRequest } from './models/historical-note-cre
 export type { HistoricalNoteDto } from './models/historical-note-dto';
 export type { HistoricalNotePatchRequest } from './models/historical-note-patch-request';
 export type { JoinAdventureByCodeRequest } from './models/join-adventure-by-code-request';
+export type { MagicItemCreationRequest } from './models/magic-item-creation-request';
+export type { MagicItemDto } from './models/magic-item-dto';
+export type { MagicItemPatchRequest } from './models/magic-item-patch-request';
 export type { MasterClaimDto } from './models/master-claim-dto';
 export type { MasterInvitationDto } from './models/master-invitation-dto';
 export type { MasterVoteRequest } from './models/master-vote-request';

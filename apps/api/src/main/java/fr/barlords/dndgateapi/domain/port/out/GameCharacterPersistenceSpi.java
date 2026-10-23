@@ -12,4 +12,6 @@ public interface GameCharacterPersistenceSpi extends PersistenceSpi<GameCharacte
     List<GameCharacter> findByAdventureId(UUID adventureId);
 
     long countByOwnerIdAndAdventureId(UUID ownerId, UUID adventureId);
+
+    long countByOwnerIdWithoutAdventure(UUID ownerId);
 }

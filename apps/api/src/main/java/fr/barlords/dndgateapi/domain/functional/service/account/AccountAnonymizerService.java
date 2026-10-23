@@ -4,6 +4,7 @@ import fr.barlords.dndgateapi.domain.port.out.AuditSpi;
 import fr.barlords.dndgateapi.domain.port.out.LoginFailureSpi;
 import fr.barlords.dndgateapi.domain.functional.exception.account.AccountNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.WrongPasswordException;
+import fr.barlords.dndgateapi.domain.functional.model.GameCharacter;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.functional.model.account.ClientAddress;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
@@ -16,7 +17,10 @@ import fr.barlords.dndgateapi.domain.port.in.account.AccountAnonymizerApi;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountSessionRevokerApi;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.MagicItemPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MasterClaimPersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
 import fr.barlords.dndgateapi.domain.port.out.OpaqueTokenSpi;
 import fr.barlords.dndgateapi.domain.port.out.PasswordHasherSpi;
 import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
@@ -44,6 +48,12 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
     private final MasterClaimPersistenceSpi masterClaims;
 
     private final SpellBookPersistenceSpi spellBooks;
+
+    private final MagicItemPersistenceSpi magicItems;
+
+    private final GameCharacterPersistenceSpi gameCharacters;
+
+    private final MinioSpi minio;
 
     private final PasswordHasherSpi passwordHasher;
 
@@ -96,6 +106,8 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
         freeSeatsInAdventuresThatHaveNotStarted(accountId);
         cancelOpenMasterClaims(account);
         deleteSpellBooks(accountId);
+        deleteMagicItems(accountId);
+        deleteCharactersWithoutAdventure(accountId);
 
         accounts.save(anonymousVersionOf(account));
 
@@ -166,6 +178,23 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
     private void deleteSpellBooks(UUID accountId) {
         spellBooks.findByOwnerId(accountId)
                 .forEach(spellBook -> spellBooks.deleteById(spellBook.getId()));
+    }
+
+    private void deleteMagicItems(UUID accountId) {
+        magicItems.findByOwnerId(accountId)
+                .forEach(magicItem -> magicItems.deleteById(magicItem.getId()));
+    }
+
+    /** Nobody else reads a character kept outside any adventure: it goes with its picture. Those of adventures stay. */
+    private void deleteCharactersWithoutAdventure(UUID accountId) {
+        for (GameCharacter character : gameCharacters.findByOwnerId(accountId)) {
+            if (!character.hasAdventure()) {
+                gameCharacters.deleteById(character.getId());
+                if (character.getPicturePath() != null) {
+                    minio.deleteAfterCommit(character.getPicturePath());
+                }
+            }
+        }
     }
 
 }
