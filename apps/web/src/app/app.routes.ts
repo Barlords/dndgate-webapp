@@ -28,8 +28,17 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/account/confirm-email.page').then((m) => m.ConfirmEmailPage),
   },
-  { path: 'account', canActivate: [authGuard], loadComponent: notBuilt },
-  { path: 'players/:accountId', canActivate: [authGuard], loadComponent: notBuilt },
+  {
+    path: 'account',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/account/profile.page').then((m) => m.ProfilePage),
+  },
+  {
+    path: 'players/:accountId',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/account/public-profile.page').then((m) => m.PublicProfilePage),
+  },
   {
     path: 'library',
     data: { breadcrumb: 'Bibliothèque' },
