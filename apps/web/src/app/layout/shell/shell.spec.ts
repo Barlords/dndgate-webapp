@@ -21,7 +21,7 @@ const GROUPS: NavGroup[] = [
 @Component({
   imports: [Shell],
   template: `
-    <dg-shell title="BIBLIOTHÈQUE" [groups]="groups">
+    <dg-shell heading="BIBLIOTHÈQUE" [groups]="groups">
       <p sidebarHeader class="header-slot">Jeux de règles</p>
       <p class="content-slot">Contenu</p>
     </dg-shell>
@@ -69,6 +69,11 @@ describe('Shell', () => {
     expect(brand.getAttribute('href')).toBe('/');
     expect(brand.textContent).toContain('DNDGATE');
     expect(brand.querySelector('dg-emblem')).not.toBeNull();
+  });
+
+  it('leaves no title attribute on the host (no native tooltip over the whole shell)', async () => {
+    await render();
+    expect(element.querySelector('dg-shell')?.hasAttribute('title')).toBe(false);
   });
 
   it('projects the sidebar header and the content', async () => {

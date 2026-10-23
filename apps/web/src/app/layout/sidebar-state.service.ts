@@ -36,7 +36,10 @@ export class SidebarStateService {
   toggle(): void {
     const next = !this.collapsedState();
     this.collapsedState.set(next);
-    this.storage.set(STORAGE_KEY, String(next));
+    // The drawer of a small screen must not overwrite the preference made on a large one.
+    if (!this.smallState()) {
+      this.storage.set(STORAGE_KEY, String(next));
+    }
   }
 
   /** Closes without remembering it (a drawer closing after a navigation). */

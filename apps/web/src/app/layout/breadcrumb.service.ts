@@ -16,28 +16,31 @@ export class BreadcrumbService {
   private readonly router = inject(Router);
 
   private readonly trail = signal<Crumb[]>([]);
-  private readonly lastLabel = signal<string | null>(null);
+  private readonly currentUrl = signal(this.router.url);
+  // The label set by `setLast`, valid for the URL that set it only.
+  private readonly override = signal<{ url: string; label: string } | null>(null);
 
   readonly crumbs = computed<Crumb[]>(() => {
     const trail = this.trail();
-    const last = this.lastLabel();
-    if (last === null || trail.length === 0) {
+    const override = this.override();
+    if (override === null || override.url !== this.currentUrl() || trail.length === 0) {
       return trail;
     }
-    return [...trail.slice(0, -1), { ...trail[trail.length - 1], label: last }];
+    return [...trail.slice(0, -1), { ...trail[trail.length - 1], label: override.label }];
   });
 
   constructor() {
     // The service may be created after the navigation it should describe has ended.
     this.trail.set(this.build(this.router.routerState.snapshot.root));
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe(() => {
-      this.lastLabel.set(null);
+      this.currentUrl.set(this.router.url);
       this.trail.set(this.build(this.router.routerState.snapshot.root));
     });
   }
 
+  /** Names the last crumb for the current URL; a page may call it while it is still activating. */
   setLast(label: string): void {
-    this.lastLabel.set(label);
+    this.override.set({ url: this.router.url, label });
   }
 
   private build(root: ActivatedRouteSnapshot): Crumb[] {

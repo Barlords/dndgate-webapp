@@ -24,7 +24,7 @@ import { SidebarStateService } from '../sidebar-state.service';
   },
 })
 export class Sidebar {
-  readonly title = input.required<string>();
+  readonly heading = input.required<string>();
   readonly groups = input.required<NavGroup[]>();
 
   protected readonly panelId = 'dg-sidebar-panel';

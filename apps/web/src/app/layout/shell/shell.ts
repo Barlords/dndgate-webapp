@@ -5,7 +5,7 @@ import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
 
 /**
- * Layout of the inner pages: top bar, sidebar (`title`, `groups`, and whatever is projected into
+ * Layout of the inner pages: top bar, sidebar (`heading`, `groups`, and whatever is projected into
  * `[sidebarHeader]` under the title) and, beside it, the breadcrumb above the projected content.
  */
 @Component({
@@ -15,7 +15,7 @@ import { Topbar } from './topbar';
   template: `
     <dg-topbar />
     <div class="shell__body">
-      <dg-sidebar [title]="title()" [groups]="groups()">
+      <dg-sidebar [heading]="heading()" [groups]="groups()">
         <ng-container ngProjectAs="[sidebarHeader]">
           <ng-content select="[sidebarHeader]" />
         </ng-container>
@@ -29,6 +29,6 @@ import { Topbar } from './topbar';
   styleUrl: './shell.scss',
 })
 export class Shell {
-  readonly title = input.required<string>();
+  readonly heading = input.required<string>();
   readonly groups = input.required<NavGroup[]>();
 }

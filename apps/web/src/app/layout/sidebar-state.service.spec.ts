@@ -59,6 +59,14 @@ describe('SidebarStateService', () => {
     expect(service.collapsed()).toBe(false);
   });
 
+  it('toggling on a small screen does not overwrite the desktop preference', () => {
+    localStorage.setItem(KEY, 'true');
+    const service = create(true);
+    service.toggle();
+    expect(service.collapsed()).toBe(false);
+    expect(localStorage.getItem(KEY)).toBe('true');
+  });
+
   it('collapse() closes the drawer without remembering it', () => {
     const service = create();
     service.collapse();

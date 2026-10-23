@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { ActivationEnd, provideRouter, Router } from '@angular/router';
 import { BreadcrumbService } from './breadcrumb.service';
 
 @Component({ template: '' })
@@ -71,6 +71,24 @@ describe('BreadcrumbService', () => {
     service.setLast('Acid Arrow');
     await router.navigateByUrl('/library/spells');
     expect(service.crumbs().map((c) => c.label)).toEqual(['Bibliothèque', 'Sorts']);
+  });
+
+  it('setLast during activation survives NavigationEnd', async () => {
+    const stop = router.events.subscribe((event) => {
+      if (event instanceof ActivationEnd && event.snapshot.routeConfig?.path === ':index') {
+        service.setLast('Acid Arrow');
+      }
+    });
+    await router.navigateByUrl('/library/spells/acid-arrow');
+    stop.unsubscribe();
+    expect(service.crumbs().map((c) => c.label)).toEqual(['Bibliothèque', 'Sorts', 'Acid Arrow']);
+  });
+
+  it('setLast for a previous URL is ignored', async () => {
+    await router.navigateByUrl('/library/spells/acid-arrow');
+    service.setLast('Acid Arrow');
+    await router.navigateByUrl('/library/spells/aid');
+    expect(service.crumbs().map((c) => c.label)).toEqual(['Bibliothèque', 'Sorts', 'Sort']);
   });
 
   it('ignores setLast when there are no crumbs', () => {
