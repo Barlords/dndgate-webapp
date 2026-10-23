@@ -10,8 +10,9 @@ export function plain(
   label: string,
   group: RulesetSection['group'],
   icon: RulesetSection['icon'],
+  loadingMessage?: string,
 ): RulesetSection {
-  return { id, label, group, icon, columns: [NAME_COLUMN], filters: [] };
+  return { id, label, group, icon, columns: [NAME_COLUMN], filters: [], loadingMessage };
 }
 
 export function options(values: string[]): { value: string; label: string }[] {
@@ -19,7 +20,12 @@ export function options(values: string[]): { value: string; label: string }[] {
 }
 
 /** The spells of a ruleset, through GraphQL (the same query in SRD 2014 and 2024). */
-export const SPELLS_QUERY = `{ spells(limit: 1000) { index name level school { name } classes { index name } ritual concentration } }`;
+export const SPELLS_QUERY = `{ spells(limit: 1000) { index name level school { name } classes { index name } ritual concentration components casting_time } }`;
+
+const YES_NO = [
+  { value: 'true', label: 'Oui' },
+  { value: 'false', label: 'Non' },
+];
 
 const SPELL_LEVELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((level) => ({
   value: String(level),
@@ -41,16 +47,42 @@ const CHALLENGE_RATINGS = [
   ),
 ].map(([value, label]) => ({ value: String(value), label }));
 
+/** Alignments and languages, one tab each (see `listPersonality`). */
+export const PERSONALITY_SECTION: RulesetSection = {
+  ...plain(
+    'personality',
+    'Personnalité',
+    'players',
+    'user',
+    'Le sage déchiffre les langues anciennes…',
+  ),
+  tabs: {
+    key: 'kind',
+    label: 'Type',
+    options: [
+      { value: 'Alignment', label: 'Alignements' },
+      { value: 'Language', label: 'Langues' },
+    ],
+  },
+};
+
 export const SPELLS_SECTION: RulesetSection = {
   id: 'spells',
   label: 'Sorts',
   group: 'players',
   icon: 'wand',
+  // By level, then alphabetically within a level.
+  defaultSort: 'level',
+  loadingMessage: 'Demande en cours à Mystra…',
   columns: [
     NAME_COLUMN,
     { key: 'level', label: 'Niveau', sortable: true },
     { key: 'school', label: 'École', sortable: true },
     { key: 'classes', label: 'Classes', sortable: false },
+    { key: 'castingTime', label: 'Incantation', sortable: true },
+    { key: 'components', label: 'Composantes', sortable: false },
+    { key: 'ritual', label: 'Rituel', sortable: true },
+    { key: 'concentration', label: 'Concentration', sortable: true },
   ],
   filters: [
     { key: 'level', label: 'Niveau', options: SPELL_LEVELS },
@@ -82,6 +114,19 @@ export const SPELLS_SECTION: RulesetSection = {
         'Wizard',
       ]),
     },
+    // The casting times differ between SRD 2014 and 2024: the list offers those it has.
+    { key: 'castingTime', label: "Temps d'incantation" },
+    {
+      key: 'components',
+      label: 'Composantes',
+      options: [
+        { value: 'V', label: 'Verbale (V)' },
+        { value: 'S', label: 'Somatique (S)' },
+        { value: 'M', label: 'Matérielle (M)' },
+      ],
+    },
+    { key: 'ritual', label: 'Rituel', options: YES_NO },
+    { key: 'concentration', label: 'Concentration', options: YES_NO },
   ],
 };
 
@@ -90,6 +135,7 @@ export const MONSTERS_SECTION: RulesetSection = {
   label: 'Monstres',
   group: 'master',
   icon: 'skull',
+  loadingMessage: 'En attente du retour des explorateurs…',
   columns: [
     NAME_COLUMN,
     { key: 'type', label: 'Type', sortable: true },

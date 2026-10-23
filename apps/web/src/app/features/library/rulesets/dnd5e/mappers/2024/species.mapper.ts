@@ -33,6 +33,7 @@ export function mapSpecies(species: ApiSpecies, traits: ApiSpeciesTrait[]): Entr
   const blocks: DetailBlock[] = [
     {
       kind: 'stats',
+      layout: 'rows',
       items: [
         { label: 'Size', value: size },
         { label: 'Speed', value: `${species.speed} ft.` },

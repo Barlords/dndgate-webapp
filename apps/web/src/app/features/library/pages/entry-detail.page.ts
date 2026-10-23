@@ -5,9 +5,10 @@ import { map, Subject, switchMap } from 'rxjs';
 import { BreadcrumbService } from '../../../layout/breadcrumb.service';
 import { toApiProblem } from '../../../core/errors/api-problem';
 import { LoadError } from '../../../shared/ui/load-error/load-error';
+import { DEFAULT_LOADING_MESSAGE, Loading } from '../../../shared/ui/loading/loading';
 import { Parchment } from '../../../shared/ui/parchment/parchment';
-import { Spinner } from '../../../shared/ui/spinner/spinner';
 import { AddToSpellbook } from '../spellbooks/add-to-spellbook.component';
+import { MySpellBooksStore } from '../spellbooks/my-spellbooks.store';
 import { RulesetRegistry } from '../rulesets/ruleset-registry';
 import { EntryDetail, Ruleset, RulesetEntryNotFoundError } from '../rulesets/ruleset.model';
 import { DetailBlocks } from './detail-blocks.component';
@@ -17,13 +18,24 @@ import { LOADING, LoadState, loadWithRetry } from './load-state';
 @Component({
   selector: 'dg-entry-detail-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LoadError, Parchment, Spinner, DetailBlocks, RouterLink, AddToSpellbook],
+  imports: [LoadError, Loading, Parchment, DetailBlocks, RouterLink, AddToSpellbook],
+  // One read of the reader's spell books per visit.
+  providers: [MySpellBooksStore],
   template: `
     <dg-parchment>
       @if (entry(); as shown) {
         <article class="entry">
           <header class="entry__header">
-            <h1 class="entry__title">{{ shown.name }}</h1>
+            <div class="entry__heading">
+              <h1 class="entry__title">{{ shown.name }}</h1>
+              @if (spell()) {
+                <dg-add-to-spellbook
+                  class="entry__add"
+                  [rulesetId]="ruleset().id"
+                  [spellIndex]="shown.index"
+                />
+              }
+            </div>
             @if (shown.subtitle) {
               <p class="entry__subtitle">{{ shown.subtitle }}</p>
             }
@@ -35,9 +47,6 @@ import { LOADING, LoadState, loadWithRetry } from './load-state';
               </ul>
             }
           </header>
-          @if (spell()) {
-            <dg-add-to-spellbook [rulesetId]="ruleset().id" [spellIndex]="shown.index" />
-          }
           <dg-detail-blocks [rulesetId]="ruleset().id" [blocks]="shown.blocks" />
         </article>
       } @else if (notFound()) {
@@ -54,7 +63,9 @@ import { LOADING, LoadState, loadWithRetry } from './load-state';
           />
         </div>
       } @else {
-        <div class="entry__state"><dg-spinner label="Chargement de l'entrée" /></div>
+        <div class="entry__state">
+          <dg-loading label="Chargement de l'entrée" [message]="loadingMessage()" />
+        </div>
       }
     </dg-parchment>
   `,
@@ -63,12 +74,25 @@ import { LOADING, LoadState, loadWithRetry } from './load-state';
       text-align: center;
     }
 
+    // The name stays centred; the button sits right after it and unfolds into the free space.
+    .entry__heading {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: var(--dg-space-3);
+    }
+
     .entry__title {
+      grid-column: 2;
       margin: 0;
       font-family: var(--dg-font-title);
       font-size: var(--dg-text-2xl);
       letter-spacing: 0.12em;
       color: var(--dg-title-color);
+    }
+
+    .entry__add {
+      justify-self: start;
     }
 
     .entry__subtitle {
@@ -133,6 +157,11 @@ export class EntryDetailPage {
     this.registry.get(this.params().get('rulesetId') ?? '')!,
   );
   protected readonly sectionId = computed(() => this.params().get('sectionId') ?? '');
+  protected readonly loadingMessage = computed(
+    () =>
+      this.ruleset().sections.find((section) => section.id === this.sectionId())?.loadingMessage ??
+      DEFAULT_LOADING_MESSAGE,
+  );
   /** Whether the entry is one of the spells of its ruleset (which spell books hold). */
   protected readonly spell = computed(
     () => this.params().get('sectionId') === this.ruleset().spellSectionId,

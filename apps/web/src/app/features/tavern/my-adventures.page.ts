@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { catchError, forkJoin, map, of, startWith, Subject, switchMap } from 'rxjs';
 import { ApiConfiguration } from '../../core/api/generated/api-configuration';
 import { getAdventuresAsMaster, getAdventuresAsPlayer } from '../../core/api/generated/functions';
@@ -10,9 +10,11 @@ import { fetchAllPages, PAGE_SIZE } from '../../core/api/fetch-all-pages';
 import { ApiProblem, toApiProblem } from '../../core/errors/api-problem';
 import { LoadError } from '../../shared/ui/load-error/load-error';
 import { Parchment } from '../../shared/ui/parchment/parchment';
-import { Spinner } from '../../shared/ui/spinner/spinner';
+import { Loading } from '../../shared/ui/loading/loading';
+import { ViewMode } from '../../shared/ui/view-toggle/view-toggle';
 import { AdventureCard } from './adventure-card';
-import { isClosed, Status } from './adventure-status';
+import { STATUS_LABEL, Status, VISIBILITY_LABEL, Visibility } from './adventure-status';
+import { ListHeader } from './list-header';
 
 interface Mine {
   adventure: AdventureDto;
@@ -22,25 +24,66 @@ interface Mine {
 type Loaded =
   { state: 'loading' } | { state: 'failed'; problem: ApiProblem } | { state: 'ready'; all: Mine[] };
 
-/** The adventures the reader plays or runs, on the « En cours » or the « Terminées » tab. */
+/** « Mes aventures »: those the reader plays or runs, whatever their status, as a table or cards. */
 @Component({
   selector: 'dg-my-adventures-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LoadError, Parchment, AdventureCard, Spinner],
+  imports: [LoadError, Parchment, AdventureCard, Loading, ListHeader, RouterLink],
   styleUrl: './tavern-page.scss',
   template: `
     <dg-parchment>
-      <h1>{{ closed ? 'Aventures terminées' : 'Aventures en cours' }}</h1>
+      <dg-list-header
+        heading="Mes aventures"
+        storageKey="dg.tavern.mine.view"
+        createLabel="Créer mon aventure"
+        [(mode)]="view"
+        (create)="createAdventure()"
+      />
       @let current = loaded();
       @if (current.state === 'ready') {
-        @if (shown().length > 0) {
-          <ul class="cards">
-            @for (item of shown(); track item.adventure.id) {
-              <li><dg-adventure-card [adventure]="item.adventure" [role]="item.role" /></li>
-            }
-          </ul>
+        @if (current.all.length > 0) {
+          @if (view() === 'table') {
+            <div class="table-scroll">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th scope="col">Nom</th>
+                    <th scope="col">Rôle</th>
+                    <th scope="col">Statut</th>
+                    <th scope="col">Lieu</th>
+                    <th scope="col">Joueurs</th>
+                    <th scope="col">Visibilité</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of current.all; track item.adventure.id) {
+                    <tr>
+                      <td>
+                        <a [routerLink]="['/tavern/adventures', item.adventure.id]">{{
+                          item.adventure.name
+                        }}</a>
+                      </td>
+                      <td>{{ item.role }}</td>
+                      <td>{{ statusLabel(item.adventure.status) }}</td>
+                      <td>{{ item.adventure.city }} ({{ item.adventure.postalCode }})</td>
+                      <td>
+                        {{ item.adventure.players?.length ?? 0 }} / {{ item.adventure.maxPlayer }}
+                      </td>
+                      <td>{{ visibilityLabel(item.adventure.visibility) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <ul class="cards">
+              @for (item of current.all; track item.adventure.id) {
+                <li><dg-adventure-card [adventure]="item.adventure" [role]="item.role" /></li>
+              }
+            </ul>
+          }
         } @else {
-          <p>{{ closed ? 'Aucune aventure terminée.' : 'Aucune aventure en cours.' }}</p>
+          <p>Tu ne joues ni ne mènes encore aucune aventure.</p>
         }
       } @else if (current.state === 'failed') {
         <div class="state">
@@ -51,7 +94,12 @@ type Loaded =
           />
         </div>
       } @else {
-        <div class="state"><dg-spinner label="Chargement des aventures" /></div>
+        <div class="state">
+          <dg-loading
+            label="Chargement des aventures"
+            message="Vos compagnons d’armes répondent à l’appel…"
+          />
+        </div>
       }
     </dg-parchment>
   `,
@@ -59,18 +107,11 @@ type Loaded =
 export class MyAdventuresPage {
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
+  private readonly router = inject(Router);
 
-  /** `true` on the « Terminées » tab (route data). */
-  protected readonly closed = inject(ActivatedRoute).snapshot.data['closed'] === true;
+  protected readonly view = signal<ViewMode>('cards');
   protected readonly retries = new Subject<void>();
   protected readonly loaded = signal<Loaded>({ state: 'loading' });
-
-  protected readonly shown = computed<Mine[]>(() => {
-    const current = this.loaded();
-    return current.state === 'ready'
-      ? current.all.filter((item) => isClosed(item.adventure.status as Status) === this.closed)
-      : [];
-  });
 
   constructor() {
     this.retries
@@ -99,6 +140,18 @@ export class MyAdventuresPage {
         takeUntilDestroyed(),
       )
       .subscribe((loaded) => this.loaded.set(loaded));
+  }
+
+  protected statusLabel(status: string | undefined): string {
+    return STATUS_LABEL[status as Status] ?? '';
+  }
+
+  protected visibilityLabel(visibility: string | undefined): string {
+    return VISIBILITY_LABEL[visibility as Visibility] ?? '';
+  }
+
+  protected createAdventure(): void {
+    void this.router.navigate(['/tavern/new']);
   }
 }
 

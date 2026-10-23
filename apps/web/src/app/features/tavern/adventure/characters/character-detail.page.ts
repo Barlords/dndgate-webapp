@@ -26,17 +26,20 @@ import { BreadcrumbService } from '../../../../layout/breadcrumb.service';
 import { Button } from '../../../../shared/ui/button/button';
 import { LoadError } from '../../../../shared/ui/load-error/load-error';
 import { ConfirmService } from '../../../../shared/ui/confirm-dialog/confirm.service';
-import { Spinner } from '../../../../shared/ui/spinner/spinner';
+import { Loading } from '../../../../shared/ui/loading/loading';
 import { AdventureContext } from '../adventure-context.service';
 import { CharacterPortrait } from './character-portrait';
 
 type DetailState = 'loading' | 'ready' | 'missing' | 'failed';
 
-/** One character: portrait and fields; its owner can edit or delete it. */
+/**
+ * One character: portrait and fields; its owner can edit or delete it. Under « Mes personnages »
+ * (no adventure around), it also leads to its adventure, if it has one.
+ */
 @Component({
   selector: 'dg-character-detail-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LoadError, RouterLink, Button, Spinner, CharacterPortrait],
+  imports: [LoadError, RouterLink, Button, Loading, CharacterPortrait],
   styleUrl: '../../tavern-page.scss',
   styles: `
     .sheet {
@@ -54,6 +57,10 @@ type DetailState = 'loading' | 'ready' | 'missing' | 'failed';
 
     .identity h1 {
       margin-bottom: var(--dg-space-2);
+    }
+
+    .adventure {
+      margin: 0 0 var(--dg-space-3);
     }
 
     .owner {
@@ -92,6 +99,15 @@ type DetailState = 'loading' | 'ready' | 'missing' | 'failed';
           <div class="identity">
             <h1>{{ c.name }}</h1>
             <p class="owner">{{ pseudo(c.ownerId!) }}</p>
+            @if (!inAdventure) {
+              <p class="adventure">
+                @if (c.adventureId) {
+                  <a [routerLink]="['/tavern/adventures', c.adventureId]">Voir son aventure</a>
+                } @else {
+                  Hors aventure
+                }
+              </p>
+            }
             <dl>
               <dt>Race</dt>
               <dd>{{ c.race }}</dd>
@@ -130,7 +146,9 @@ type DetailState = 'loading' | 'ready' | 'missing' | 'failed';
         </div>
       }
       @default {
-        <div class="state"><dg-spinner label="Chargement du personnage" /></div>
+        <div class="state">
+          <dg-loading label="Chargement du personnage" message="Le héros ajuste son équipement…" />
+        </div>
       }
     }
   `,
@@ -138,7 +156,8 @@ type DetailState = 'loading' | 'ready' | 'missing' | 'failed';
 export class CharacterDetailPage {
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
-  private readonly context = inject(AdventureContext);
+  /** Null under « Mes personnages ». */
+  private readonly context = inject(AdventureContext, { optional: true });
   private readonly auth = inject(AuthService);
   private readonly directory = inject(AccountDirectory);
   private readonly confirmer = inject(ConfirmService);
@@ -157,16 +176,22 @@ export class CharacterDetailPage {
   protected readonly isOwner = computed(
     () => this.character()?.ownerId === this.auth.account()?.id,
   );
-  protected readonly listLink = computed(() => [
-    '/tavern/adventures',
-    this.context.adventure()?.id,
-    'characters',
-  ]);
+  protected readonly inAdventure = this.context !== null;
+  protected readonly listLink = computed(() =>
+    this.context === null
+      ? ['/tavern/characters']
+      : ['/tavern/adventures', this.context.adventure()?.id, 'characters'],
+  );
 
   constructor() {
+    const context = this.context;
+    if (context === null) {
+      this.load();
+      return;
+    }
     effect(() => {
       // No request before the reader is known to be a participant: a visitor is redirected away.
-      if (this.context.state() === 'ready' && this.context.isParticipant()) {
+      if (context.state() === 'ready' && context.isParticipant()) {
         untracked(() => {
           if (!this.requested) {
             this.load();

@@ -1,3 +1,4 @@
+import { Location } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -9,7 +10,7 @@ import {
   ValidationErrors,
   Validators,
 } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { ApiConfiguration } from '../../core/api/generated/api-configuration';
 import { deleteMyAccount, patchAccount } from '../../core/api/generated/functions';
 import { AccountUpdateRequest } from '../../core/api/generated/models/account-update-request';
@@ -41,19 +42,72 @@ function sameAsNewPassword(control: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'dg-profile-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, AccountLayout, FormField, Button],
+  imports: [ReactiveFormsModule, AccountLayout, FormField, Button],
   styles: `
+    // Two columns: identity then the danger zone on the left, password then sessions on the
+    // right. On a narrow screen, one column in reading order (the danger zone last).
+    .profile {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      align-items: start;
+      gap: var(--dg-space-5);
+    }
+
+    .profile__column {
+      display: flex;
+      flex-direction: column;
+      gap: var(--dg-space-5);
+    }
+
+    @media (max-width: 767.98px) {
+      .profile {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .profile__column {
+        display: contents;
+      }
+
+      .profile__identity {
+        order: 1;
+      }
+
+      .profile__password {
+        order: 2;
+      }
+
+      .profile__sessions {
+        order: 3;
+      }
+
+      .profile__danger {
+        order: 4;
+      }
+    }
+
     section {
-      margin-bottom: var(--dg-space-5);
+      padding: var(--dg-space-4) var(--dg-space-5);
+      background: color-mix(in srgb, var(--dg-parchment-border) 8%, transparent);
+      border: 1px solid color-mix(in srgb, var(--dg-parchment-border) 70%, transparent);
+      border-radius: var(--dg-radius);
+    }
+
+    .profile__danger {
+      border-color: color-mix(in srgb, var(--dg-blood) 55%, transparent);
+      background: color-mix(in srgb, var(--dg-blood) 5%, transparent);
     }
 
     h2 {
       margin: 0 0 var(--dg-space-3);
+      padding-bottom: var(--dg-space-2);
       font-family: var(--dg-font-title);
       font-size: var(--dg-text-md);
       letter-spacing: 0.14em;
       text-transform: uppercase;
       color: var(--dg-title-color);
+      border-bottom: 1px solid color-mix(in srgb, var(--dg-parchment-border) 70%, transparent);
     }
 
     .pending {
@@ -72,83 +126,91 @@ function sameAsNewPassword(control: AbstractControl): ValidationErrors | null {
     }
   `,
   template: `
-    <dg-account-layout heading="Mon compte">
-      <section aria-labelledby="profile-identity">
-        <h2 id="profile-identity">Identité</h2>
-        <form id="identity-form" [formGroup]="identity" (ngSubmit)="saveIdentity()" novalidate>
-          <dg-form-field label="Pseudo" [control]="identity.controls.pseudo">
-            <input formControlName="pseudo" type="text" autocomplete="username" />
-          </dg-form-field>
-          <dg-form-field label="Adresse e-mail" [control]="identity.controls.email">
-            <input formControlName="email" type="email" autocomplete="email" />
-          </dg-form-field>
-          @if (pendingEmail(); as pending) {
-            <p class="pending" role="status">en attente de confirmation : {{ pending }}</p>
-          }
-          <dg-form-field label="Mot de passe actuel" [control]="identity.controls.currentPassword">
-            <input
-              formControlName="currentPassword"
-              type="password"
-              autocomplete="current-password"
-            />
-          </dg-form-field>
-          <div class="dg-account__actions">
-            <dg-button type="submit" [loading]="savingIdentity()">Enregistrer</dg-button>
-          </div>
-        </form>
-      </section>
+    <dg-account-layout heading="Mon compte" [wide]="true">
+      <div class="profile">
+        <div class="profile__column">
+          <section class="profile__identity" aria-labelledby="profile-identity">
+            <h2 id="profile-identity">Identité</h2>
+            <form id="identity-form" [formGroup]="identity" (ngSubmit)="saveIdentity()" novalidate>
+              <dg-form-field label="Pseudo" [control]="identity.controls.pseudo">
+                <input formControlName="pseudo" type="text" autocomplete="username" />
+              </dg-form-field>
+              <dg-form-field label="Adresse e-mail" [control]="identity.controls.email">
+                <input formControlName="email" type="email" autocomplete="email" />
+              </dg-form-field>
+              @if (pendingEmail(); as pending) {
+                <p class="pending" role="status">en attente de confirmation : {{ pending }}</p>
+              }
+              @if (identityFailure(); as message) {
+                <p class="dg-account__alert" role="alert">{{ message }}</p>
+              }
+              <div class="dg-account__actions">
+                <dg-button type="submit" [loading]="savingIdentity()">Enregistrer</dg-button>
+              </div>
+            </form>
+          </section>
 
-      <section aria-labelledby="profile-password">
-        <h2 id="profile-password">Mot de passe</h2>
-        <form id="password-form" [formGroup]="password" (ngSubmit)="savePassword()" novalidate>
-          <dg-form-field label="Nouveau mot de passe" [control]="password.controls.newPassword">
-            <input formControlName="newPassword" type="password" autocomplete="new-password" />
-          </dg-form-field>
-          <dg-form-field
-            label="Confirmation du nouveau mot de passe"
-            [control]="password.controls.confirmation"
-          >
-            <input formControlName="confirmation" type="password" autocomplete="new-password" />
-          </dg-form-field>
-          <dg-form-field label="Mot de passe actuel" [control]="password.controls.currentPassword">
-            <input
-              formControlName="currentPassword"
-              type="password"
-              autocomplete="current-password"
-            />
-          </dg-form-field>
-          <div class="dg-account__actions">
-            <dg-button type="submit" [loading]="savingPassword()">
-              Changer le mot de passe
+          <section class="profile__danger" aria-labelledby="profile-danger">
+            <h2 id="profile-danger">Zone dangereuse</h2>
+            <p>
+              Supprimer ton compte l'anonymise : ton pseudo, ton adresse et tes grimoires
+              disparaissent, tes personnages et tes messages restent sous un nom effacé. C'est
+              irréversible.
+            </p>
+            @if (deleteFailure(); as message) {
+              <p class="dg-account__alert" role="alert">{{ message }}</p>
+            }
+            <dg-button variant="danger" [loading]="deleting()" (click)="deleteAccount()">
+              Supprimer mon compte
             </dg-button>
-          </div>
-        </form>
-      </section>
-
-      <section aria-labelledby="profile-sessions">
-        <h2 id="profile-sessions">Sessions</h2>
-        <div class="sessions">
-          <dg-button variant="ghost" (click)="signOut(false)">Se déconnecter</dg-button>
-          <dg-button variant="ghost" (click)="signOut(true)">Se déconnecter de partout</dg-button>
+          </section>
         </div>
-      </section>
 
-      <section aria-labelledby="profile-danger">
-        <h2 id="profile-danger">Zone dangereuse</h2>
-        <p>
-          Supprimer ton compte l'anonymise : ton pseudo, ton adresse et tes grimoires disparaissent,
-          tes personnages et tes messages restent sous un nom effacé. C'est irréversible.
-        </p>
-        @if (deleteFailure(); as message) {
-          <p class="dg-account__alert" role="alert">{{ message }}</p>
-        }
-        <dg-button variant="danger" [loading]="deleting()" (click)="deleteAccount()">
-          Supprimer mon compte
-        </dg-button>
-      </section>
+        <div class="profile__column">
+          <section class="profile__password" aria-labelledby="profile-password">
+            <h2 id="profile-password">Mot de passe</h2>
+            <form id="password-form" [formGroup]="password" (ngSubmit)="savePassword()" novalidate>
+              <dg-form-field
+                label="Mot de passe actuel"
+                [control]="password.controls.currentPassword"
+              >
+                <input
+                  formControlName="currentPassword"
+                  type="password"
+                  autocomplete="current-password"
+                />
+              </dg-form-field>
+              <dg-form-field label="Nouveau mot de passe" [control]="password.controls.newPassword">
+                <input formControlName="newPassword" type="password" autocomplete="new-password" />
+              </dg-form-field>
+              <dg-form-field
+                label="Confirmation du nouveau mot de passe"
+                [control]="password.controls.confirmation"
+              >
+                <input formControlName="confirmation" type="password" autocomplete="new-password" />
+              </dg-form-field>
+              <div class="dg-account__actions">
+                <dg-button type="submit" [loading]="savingPassword()">
+                  Changer le mot de passe
+                </dg-button>
+              </div>
+            </form>
+          </section>
+
+          <section class="profile__sessions" aria-labelledby="profile-sessions">
+            <h2 id="profile-sessions">Sessions</h2>
+            <div class="sessions">
+              <dg-button variant="ghost" (click)="signOut(false)">Se déconnecter</dg-button>
+              <dg-button variant="ghost" (click)="signOut(true)">
+                Se déconnecter de partout
+              </dg-button>
+            </div>
+          </section>
+        </div>
+      </div>
 
       <div class="dg-account__actions">
-        <a routerLink="/tavern">Retour à la taverne</a>
+        <dg-button variant="ghost" (click)="back()">Retour</dg-button>
       </div>
     </dg-account-layout>
   `,
@@ -158,6 +220,7 @@ export class ProfilePage {
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly location = inject(Location);
   private readonly notifier = inject(NotifierService);
   private readonly confirm = inject(ConfirmService);
   private readonly destroyRef = inject(DestroyRef);
@@ -166,6 +229,7 @@ export class ProfilePage {
   protected readonly savingPassword = signal(false);
   protected readonly deleting = signal(false);
   protected readonly deleteFailure = signal<string | null>(null);
+  protected readonly identityFailure = signal<string | null>(null);
   protected readonly pendingEmail = signal<string | null>(
     this.auth.account()?.pendingEmail ?? null,
   );
@@ -184,7 +248,6 @@ export class ProfilePage {
         Validators.email,
       ],
     }),
-    currentPassword: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
 
   protected readonly password = new FormGroup({
@@ -213,22 +276,41 @@ export class ProfilePage {
       this.identity.markAllAsTouched();
       return;
     }
-    const { pseudo, email, currentPassword } = this.identity.getRawValue();
+    const { pseudo, email } = this.identity.getRawValue();
     const account = this.auth.account();
-    const body: AccountUpdateRequest = { currentPassword };
+    const changes: Omit<AccountUpdateRequest, 'currentPassword'> = {};
     if (pseudo.trim() !== account?.pseudo) {
-      body.pseudo = pseudo.trim();
+      changes.pseudo = pseudo.trim();
     }
     if (email.trim() !== account?.email) {
-      body.email = email.trim();
+      changes.email = email.trim();
     }
-    if (body.pseudo === undefined && body.email === undefined) {
+    if (changes.pseudo === undefined && changes.email === undefined) {
       this.notifier.success('Rien à modifier.');
       return;
     }
+    this.identityFailure.set(null);
+    // The API asks for the current password with any change; it is asked only once the reader
+    // saves, so that the form keeps to what it changes.
+    this.confirm
+      .typeToConfirm({
+        title: 'Confirmer les modifications',
+        message: 'Saisis ton mot de passe pour enregistrer ton pseudo et ton adresse.',
+        inputLabel: 'Mot de passe',
+        inputType: 'password',
+        confirmLabel: 'Enregistrer',
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((currentPassword) => {
+        if (currentPassword !== null) {
+          this.sendIdentity({ ...changes, currentPassword });
+        }
+      });
+  }
+
+  private sendIdentity(body: AccountUpdateRequest): void {
     this.savingIdentity.set(true);
     this.update(body, this.identity, this.savingIdentity, () => {
-      this.identity.controls.currentPassword.reset('');
       this.notifier.success(
         body.email === undefined
           ? 'Ton profil est à jour.'
@@ -284,7 +366,10 @@ export class ProfilePage {
     body: AccountUpdateRequest,
     form: FormGroup,
   ): void {
-    if (problem.status === 403) {
+    if (problem.status === 403 && form === this.identity) {
+      // The password was typed in the dialog, which is closed: the section says it.
+      this.identityFailure.set(WRONG_PASSWORD);
+    } else if (problem.status === 403) {
       this.fail(form, 'currentPassword', WRONG_PASSWORD);
     } else if (problem.status === 409 && body.email !== undefined) {
       this.fail(form, 'email', 'Cette adresse est déjà utilisée.');
@@ -299,6 +384,15 @@ export class ProfilePage {
     const control = form.get(field)!;
     control.setErrors({ server: message });
     control.markAsTouched();
+  }
+
+  /** Back to the page the reader came from; home when they opened this one directly. */
+  protected back(): void {
+    if (this.router.lastSuccessfulNavigation()?.previousNavigation) {
+      this.location.back();
+    } else {
+      void this.router.navigateByUrl('/');
+    }
   }
 
   protected signOut(everywhere: boolean): void {

@@ -24,32 +24,26 @@ import { SpellBookPatchRequest } from '../../../core/api/generated/models/spell-
 import { toApiProblem } from '../../../core/errors/api-problem';
 import { NotifierService } from '../../../core/errors/notifier.service';
 import { BreadcrumbService } from '../../../layout/breadcrumb.service';
-import { Button } from '../../../shared/ui/button/button';
+import { Icon } from '../../../shared/ui/icon/icon';
+import { IconButton } from '../../../shared/ui/icon-button/icon-button';
 import { LoadError } from '../../../shared/ui/load-error/load-error';
 import { ConfirmService } from '../../../shared/ui/confirm-dialog/confirm.service';
 import { Parchment } from '../../../shared/ui/parchment/parchment';
-import { Spinner } from '../../../shared/ui/spinner/spinner';
+import { Loading } from '../../../shared/ui/loading/loading';
 import { LOADING, LoadState, loadWithRetry } from '../pages/load-state';
 import { RulesetRegistry } from '../rulesets/ruleset-registry';
-import { EntrySummary } from '../rulesets/ruleset.model';
+import { EntryTable } from '../pages/entry-table.component';
+import { EntrySummary, Ruleset, RulesetSection } from '../rulesets/ruleset.model';
 import { SpellBookForm, SpellBookValue } from './spellbook-form';
 import { downloadSpellBook } from './spellbook-file';
 
 /** What the book's ruleset tells about its spells: their summaries, or why nothing is known. */
 interface Catalog {
   entries: Map<string, EntrySummary> | null;
-  /** Where a spell page lives in the ruleset (`/library/<ruleset>/<spells section>`). */
-  path: string[] | null;
+  /** The ruleset and its spell section, whose table shows the spells. */
+  ruleset: Ruleset | null;
+  section: RulesetSection | null;
   note: string | null;
-}
-
-interface SpellRow {
-  index: string;
-  label: string;
-  level: number | null;
-  school: string;
-  link: string[] | null;
-  unknown: boolean;
 }
 
 interface Loaded {
@@ -57,28 +51,63 @@ interface Loaded {
   catalog: Catalog;
 }
 
-const NO_RULESET: Catalog = { entries: null, path: null, note: 'Jeu de règles indisponible.' };
-const NO_DETAILS: Catalog = {
+const NO_RULESET: Catalog = {
   entries: null,
-  path: null,
+  ruleset: null,
+  section: null,
+  note: 'Jeu de règles indisponible.',
+};
+const NO_DETAILS: Catalog = {
+  ...NO_RULESET,
   note: 'Détails des sorts indisponibles pour le moment.',
 };
 
-function levelLabel(level: number | null): string {
-  if (level === null) {
-    return '';
-  }
-  return level === 0 ? 'Tour de magie' : `Niveau ${level}`;
-}
-
-/** One spell book: its name and description, and its spells as the book's ruleset describes them. */
+/**
+ * One spell book: its name, its actions and its description, then its spells in the table of the
+ * book's ruleset (the one of the Spells menu), each with a button to take it out of the book.
+ * Spells the ruleset does not know, or all of them when it cannot be read, are listed below by
+ * index, so that they can still be removed.
+ */
 @Component({
   selector: 'dg-spellbook-detail-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LoadError, Parchment, Spinner, Button, RouterLink, SpellBookForm],
+  imports: [LoadError, Parchment, Loading, Icon, IconButton, RouterLink, SpellBookForm, EntryTable],
   styles: `
+    // The way back at the start, the name in the middle, the actions at the end of the line.
     .head {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: var(--dg-space-3);
+      margin-bottom: var(--dg-space-4);
+    }
+
+    .head__name {
       text-align: center;
+    }
+
+    .back {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--dg-space-1);
+      justify-self: start;
+      padding: var(--dg-space-1) var(--dg-space-3) var(--dg-space-1) var(--dg-space-2);
+      font-family: var(--dg-font-title);
+      font-size: var(--dg-text-sm);
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+      color: var(--dg-ink);
+      text-decoration: none;
+      border: 1px solid color-mix(in srgb, currentColor 40%, transparent);
+      border-radius: var(--dg-radius);
+      transition:
+        background var(--dg-transition),
+        border-color var(--dg-transition);
+
+      &:hover {
+        background: color-mix(in srgb, var(--dg-parchment-border) 20%, transparent);
+        border-color: currentColor;
+      }
     }
 
     h1 {
@@ -95,16 +124,43 @@ function levelLabel(level: number | null): string {
       color: var(--dg-ink-muted);
     }
 
-    .description {
-      white-space: pre-line;
-    }
-
     .actions {
       display: flex;
       flex-wrap: wrap;
-      justify-content: center;
-      gap: var(--dg-space-3);
-      margin: var(--dg-space-4) 0;
+      justify-content: flex-end;
+      gap: var(--dg-space-2);
+    }
+
+    @media (max-width: 767.98px) {
+      .head {
+        grid-template-columns: 1fr;
+      }
+
+      .actions {
+        justify-content: center;
+      }
+    }
+
+    // The description reads as a quotation of the book: set apart by a rule, in italics.
+    .description {
+      margin: 0 0 var(--dg-space-5);
+      padding: var(--dg-space-2) var(--dg-space-4);
+      font-style: italic;
+      white-space: pre-line;
+      background: color-mix(in srgb, var(--dg-parchment-border) 10%, transparent);
+      border-left: 3px solid var(--dg-parchment-border);
+      border-radius: 0 var(--dg-radius-sm) var(--dg-radius-sm) 0;
+    }
+
+    .description__caption {
+      display: block;
+      margin-bottom: var(--dg-space-1);
+      font-family: var(--dg-font-title);
+      font-size: var(--dg-text-sm);
+      font-style: normal;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--dg-gold-ink);
     }
 
     .note {
@@ -114,43 +170,32 @@ function levelLabel(level: number | null): string {
       font-style: italic;
     }
 
-    .spells {
-      margin: 0;
+    .unknown__title {
+      margin: var(--dg-space-5) 0 var(--dg-space-2);
+      font-family: var(--dg-font-title);
+      font-size: var(--dg-text-md);
+      letter-spacing: 0.12em;
+      color: var(--dg-title-color);
+    }
+
+    .unknown {
+      margin: var(--dg-space-3) 0 0;
       padding: 0;
       list-style: none;
     }
 
     .spell {
       display: flex;
-      flex-wrap: wrap;
       align-items: center;
+      justify-content: space-between;
       gap: var(--dg-space-3);
       padding: var(--dg-space-2) 0;
       border-bottom: 1px solid var(--dg-parchment-shadow);
     }
 
-    .spell__name {
-      flex: 1 1 12rem;
-      font-weight: 600;
-    }
-
     .spell__name--unknown {
       font-style: italic;
       color: var(--dg-blood);
-    }
-
-    .spell__meta {
-      font-size: var(--dg-text-sm);
-      color: var(--dg-ink-muted);
-    }
-
-    .sr-only {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-      white-space: nowrap;
     }
 
     .state {
@@ -182,48 +227,68 @@ function levelLabel(level: number | null): string {
             />
           }
           <header class="head">
-            <h1>{{ shown.name }}</h1>
-            <p class="ruleset">{{ rulesetLabel() }}</p>
+            <a class="back" routerLink="/library/grimoires">
+              <dg-icon name="chevron-left" />
+              Retour à mes grimoires
+            </a>
+            <div class="head__name">
+              <h1>{{ shown.name }}</h1>
+              <p class="ruleset">{{ rulesetLabel() }}</p>
+            </div>
+            <div class="actions">
+              <dg-icon-button icon="edit" label="Modifier" (click)="editing.set(true)" />
+              <dg-icon-button
+                icon="download"
+                label="Exporter"
+                [loading]="exporting()"
+                (click)="export()"
+              />
+              <dg-icon-button icon="trash" label="Supprimer" variant="danger" (click)="remove()" />
+            </div>
           </header>
-          <p class="description">{{ shown.description }}</p>
-          <div class="actions">
-            <dg-button variant="ghost" (click)="editing.set(true)">Modifier</dg-button>
-            <dg-button variant="ghost" [loading]="exporting()" (click)="export()">
-              Exporter
-            </dg-button>
-            <dg-button variant="danger" (click)="remove()">Supprimer</dg-button>
-          </div>
+          @if (shown.description) {
+            <p class="description">
+              <span class="description__caption">Description</span>{{ shown.description }}
+            </p>
+          }
 
           @if (catalog().note; as note) {
             <p class="note" role="status">{{ note }}</p>
           }
-          @if (rows().length > 0) {
-            <ul class="spells">
-              @for (row of rows(); track row.index) {
-                <li class="spell">
-                  @if (row.link) {
-                    <a class="spell__name" [routerLink]="row.link">{{ row.label }}</a>
-                  } @else {
-                    <span class="spell__name" [class.spell__name--unknown]="row.unknown">{{
-                      row.label
-                    }}</span>
-                  }
-                  @if (row.level !== null) {
-                    <span class="spell__meta">{{ levelText(row.level) }}</span>
-                  }
-                  @if (row.school) {
-                    <span class="spell__meta">{{ row.school }}</span>
-                  }
-                  <dg-button variant="ghost" (click)="removeSpell(row.index)">
-                    Retirer<span class="sr-only"> {{ row.index }}</span>
-                  </dg-button>
-                </li>
-              }
-            </ul>
+          @if ((shown.spellList ?? []).length === 0) {
+            <p>Ce grimoire ne contient aucun sort. Ajoute-en depuis la liste des sorts.</p>
           } @else {
-            <p>Ce grimoire ne contient aucun sort. Ajoute-en depuis la fiche d’un sort.</p>
+            @if (catalog().ruleset && catalog().section && known().length > 0) {
+              <dg-entry-table
+                [ruleset]="catalog().ruleset!"
+                [section]="catalog().section!"
+                [entries]="known()"
+                [rowActions]="removeAction"
+                actionsLabel="Retirer"
+              />
+            }
+            @if (unknown().length > 0) {
+              @if (catalog().entries) {
+                <h2 class="unknown__title">Sorts introuvables</h2>
+              }
+              <ul class="unknown">
+                @for (index of unknown(); track index) {
+                  <li class="spell">
+                    <span [class.spell__name--unknown]="catalog().entries">{{
+                      catalog().entries ? 'Sort introuvable (' + index + ')' : index
+                    }}</span>
+                    <dg-icon-button
+                      icon="trash"
+                      variant="danger"
+                      label="Retirer"
+                      [ariaLabel]="'Retirer ' + index + ' du grimoire'"
+                      (click)="removeSpell(index)"
+                    />
+                  </li>
+                }
+              </ul>
+            }
           }
-          <p><a routerLink="/library/grimoires">Retour à mes grimoires</a></p>
         </article>
       } @else if (notFound()) {
         <div class="state">
@@ -239,9 +304,21 @@ function levelLabel(level: number | null): string {
           />
         </div>
       } @else {
-        <div class="state"><dg-spinner label="Chargement du grimoire" /></div>
+        <div class="state">
+          <dg-loading label="Chargement du grimoire" message="Le grimoire s’entrouvre…" />
+        </div>
       }
     </dg-parchment>
+
+    <ng-template #removeAction let-entry>
+      <dg-icon-button
+        icon="trash"
+        variant="danger"
+        label="Retirer"
+        [ariaLabel]="'Retirer ' + entry.name + ' du grimoire'"
+        (click)="removeSpell(entry.index)"
+      />
+    </ng-template>
   `,
 })
 export class SpellBookDetailPage {
@@ -282,40 +359,19 @@ export class SpellBookDetailPage {
     ruleset: this.book()?.ruleset ?? '',
   }));
 
-  /** Known spells by level then name, then the unknown ones by index. */
-  protected readonly rows = computed<SpellRow[]>(() => {
-    const { entries, path } = this.catalog();
-    const rows = (this.book()?.spellList ?? []).map((index): SpellRow => {
-      if (entries === null) {
-        return { index, label: index, level: null, school: '', link: null, unknown: false };
-      }
-      const entry = entries.get(index);
-      if (entry === undefined || path === null) {
-        return {
-          index,
-          label: `Sort introuvable (${index})`,
-          level: null,
-          school: '',
-          link: null,
-          unknown: true,
-        };
-      }
-      const level = Number(entry.fields['level']);
-      return {
-        index,
-        label: entry.name,
-        level: Number.isFinite(level) ? level : null,
-        school: String(entry.fields['school'] ?? ''),
-        link: [...path, index],
-        unknown: false,
-      };
-    });
-    return rows.sort(
-      (a, b) =>
-        Number(a.unknown) - Number(b.unknown) ||
-        (a.level ?? 0) - (b.level ?? 0) ||
-        a.label.localeCompare(b.label),
-    );
+  /** The spells of the book the ruleset knows, for the table. */
+  protected readonly known = computed<EntrySummary[]>(() => {
+    const { entries } = this.catalog();
+    return entries === null
+      ? []
+      : (this.book()?.spellList ?? []).flatMap((index) => entries.get(index) ?? []);
+  });
+  /** The others (all of them when the ruleset cannot be read), by index. */
+  protected readonly unknown = computed<string[]>(() => {
+    const { entries } = this.catalog();
+    return (this.book()?.spellList ?? [])
+      .filter((index) => entries === null || !entries.has(index))
+      .sort();
   });
 
   constructor() {
@@ -335,10 +391,6 @@ export class SpellBookDetailPage {
       });
   }
 
-  protected levelText(level: number): string {
-    return levelLabel(level);
-  }
-
   protected reload(): void {
     this.editing.set(false);
     this.retries.next();
@@ -355,14 +407,15 @@ export class SpellBookDetailPage {
   /** Reads the spells of the ruleset the book is bound to (not the one the reader browses). */
   private catalogOf(book: SpellBookDto): Observable<Catalog> {
     const ruleset = this.registry.get(book.ruleset ?? '');
-    const sectionId = ruleset?.spellSectionId ?? null;
-    if (ruleset === undefined || sectionId === null) {
+    const section = ruleset?.sections.find((s) => s.id === ruleset.spellSectionId);
+    if (ruleset === undefined || section === undefined) {
       return of(NO_RULESET);
     }
-    return ruleset.list(sectionId).pipe(
+    return ruleset.list(section.id).pipe(
       map((entries) => ({
         entries: new Map(entries.map((entry) => [entry.index, entry])),
-        path: ['/library', ruleset.id, sectionId],
+        ruleset,
+        section,
         note: null,
       })),
       catchError(() => of(NO_DETAILS)),

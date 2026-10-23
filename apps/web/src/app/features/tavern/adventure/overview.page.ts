@@ -329,7 +329,7 @@ export class OverviewPage {
           'Quitter l’aventure',
           () => {
             this.notifier.success('Tu as quitté l’aventure.');
-            void this.router.navigate(['/tavern/mine/ongoing']);
+            void this.router.navigate(['/tavern/mine']);
           },
         ),
       );
@@ -359,7 +359,7 @@ export class OverviewPage {
           'Suppression de l’aventure',
           () => {
             this.notifier.success('Aventure supprimée.');
-            void this.router.navigate(['/tavern/mine/ongoing']);
+            void this.router.navigate(['/tavern/mine']);
           },
         ),
       );

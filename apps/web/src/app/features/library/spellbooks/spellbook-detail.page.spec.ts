@@ -49,7 +49,13 @@ describe('SpellBookDetailPage', () => {
   const main = () => library.root.querySelector('main')!;
   const button = (label: string) =>
     [...main().querySelectorAll('button')].find((b) => b.textContent?.trim() === label)!;
-  const rows = () => [...main().querySelectorAll('.spell')].map((r) => r.textContent!);
+  /** The rows of the table of known spells, as their cells' texts. */
+  const rows = () =>
+    [...main().querySelectorAll('tbody tr')].map((row) =>
+      [...row.querySelectorAll('td')].map((cell) => cell.textContent!.trim()),
+    );
+  const unknown = () =>
+    [...main().querySelectorAll('.unknown .spell > span')].map((name) => name.textContent!.trim());
 
   afterEach(() => {
     backend.verify();
@@ -57,19 +63,39 @@ describe('SpellBookDetailPage', () => {
     vi.unstubAllGlobals();
   });
 
-  it('shows the spells sorted by level then name, with level and school', async () => {
+  it('shows its actions on the line of its name, as icons, and sets its description apart', async () => {
     await open();
-    const shown = rows();
-    expect(shown.length).toBe(5);
-    expect(shown[0]).toContain('Light');
-    expect(shown[0]).toContain('Tour de magie');
-    expect(shown[1]).toContain('Shield');
-    expect(shown[1]).toContain('Niveau 1');
-    expect(shown[1]).toContain('Abjuration');
-    expect(shown[2]).toContain('Éclair');
-    expect(shown[3]).toContain('Fireball');
-    expect(shown[4]).toContain('Sort introuvable (ghost)');
+    const head = main().querySelector('.head')!;
+    expect(head.querySelector('h1')?.textContent).toContain('Arcane');
+    // The way back opens the line, before the name and the actions.
+    const back = head.firstElementChild as HTMLAnchorElement;
+    expect(back.getAttribute('href')).toBe('/library/grimoires');
+    expect(back.textContent?.trim()).toBe('Retour à mes grimoires');
+    expect(main().querySelectorAll('dg-parchment a[href="/library/grimoires"]').length).toBe(1);
+    expect(
+      [...head.querySelectorAll('.actions button')].map((b) => b.getAttribute('aria-label')),
+    ).toEqual(['Modifier', 'Exporter', 'Supprimer']);
+    expect(head.querySelector('.actions dg-icon-button:last-child button')?.classList).toContain(
+      'icon-button--danger',
+    );
+    const description = main().querySelector('.description')!;
+    expect(description.querySelector('.description__caption')?.textContent).toBe('Description');
+    expect(description.textContent).toContain('Mes sorts');
+  });
+
+  it('shows the known spells in the table of the spells, by level then name', async () => {
+    await open();
+    expect(rows().map((cells) => cells.slice(0, 3))).toEqual([
+      ['Light', '0', 'Evocation'],
+      ['Shield', '1', 'Abjuration'],
+      ['Éclair', '3', 'Evocation'],
+      ['Fireball', '3', 'Evocation'],
+    ]);
     expect(main().querySelector('a[href="/library/dnd5e-2014/spells/fireball"]')).not.toBeNull();
+    // The same table as the spell list, filters included.
+    expect(main().querySelector('dg-entry-table .table__filters-toggle')).not.toBeNull();
+    expect(main().querySelector('.unknown__title')?.textContent).toBe('Sorts introuvables');
+    expect(unknown()).toEqual(['Sort introuvable (ghost)']);
     expect(main().textContent).toContain('DnD 5e — SRD 2014');
   });
 
@@ -93,8 +119,7 @@ describe('SpellBookDetailPage', () => {
     await setup([first, second]);
     await library.go('/library/dnd5e-2014');
     await load({ ...BOOK, ruleset: 'dnd5e-2024', spellList: ['only-2024'] });
-    expect(rows()[0]).toContain('Nouveau sort');
-    expect(rows()[0]).toContain('Niveau 2');
+    expect(rows()[0].slice(0, 3)).toEqual(['Nouveau sort', '2', 'Illusion']);
     expect(main().querySelector('a[href="/library/dnd5e-2024/spells/only-2024"]')).not.toBeNull();
     expect(listFirst).not.toHaveBeenCalled();
   });
@@ -102,24 +127,44 @@ describe('SpellBookDetailPage', () => {
   it('shows spells by index when the ruleset is not registered', async () => {
     await open({ ...BOOK, ruleset: 'gone', spellList: ['b', 'a'] });
     expect(main().textContent).toContain('Jeu de règles indisponible');
-    const shown = rows();
-    expect(shown[0]).toContain('a');
-    expect(shown[1]).toContain('b');
+    expect(main().querySelector('table')).toBeNull();
+    expect(main().querySelector('.unknown__title')).toBeNull();
+    expect(unknown()).toEqual(['a', 'b']);
     expect(main().querySelector('.spell a')).toBeNull();
+  });
+
+  it('takes a spell of the table out of the book with its trash button', async () => {
+    await open();
+    const trash = main().querySelector<HTMLButtonElement>(
+      'tbody .table__actions button[aria-label="Retirer Shield du grimoire"]',
+    )!;
+    expect(trash.classList).toContain('icon-button--danger');
+    trash.click();
+    backend
+      .expectOne((r) => r.method === 'DELETE' && /spellbooks\/b1\/spells\/shield$/.test(r.url))
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await library.render();
+    expect(rows().map((cells) => cells[0])).toEqual(['Light', 'Éclair', 'Fireball']);
   });
 
   it('shows unknown spells and lets them be removed', async () => {
     await open();
-    const row = [...main().querySelectorAll('.spell')].find((r) =>
-      r.textContent!.includes('Sort introuvable (ghost)'),
-    )!;
-    (row.querySelector('button') as HTMLButtonElement).click();
+    main()
+      .querySelector<HTMLButtonElement>('.unknown button[aria-label="Retirer ghost du grimoire"]')!
+      .click();
     backend
       .expectOne((r) => r.method === 'DELETE' && /spellbooks\/b1\/spells\/ghost$/.test(r.url))
       .flush(null, { status: 204, statusText: 'No Content' });
     await library.render();
     expect(rows().length).toBe(4);
+    expect(unknown()).toEqual([]);
     expect(main().textContent).not.toContain('ghost');
+  });
+
+  it('says so when the book holds no spell', async () => {
+    await open({ ...BOOK, spellList: [] });
+    expect(main().querySelector('table')).toBeNull();
+    expect(main().textContent).toContain('Ce grimoire ne contient aucun sort');
   });
 
   it('keeps the rest of the book when the spell list cannot be read', async () => {
@@ -128,7 +173,7 @@ describe('SpellBookDetailPage', () => {
     await open({ ...BOOK, spellList: ['shield'] }, [ruleset]);
     expect(main().textContent).toContain('Arcane');
     expect(main().textContent).toContain('Détails des sorts indisponibles');
-    expect(rows().length).toBe(1);
+    expect(unknown()).toEqual(['shield']);
   });
 
   it('shows a not-found state for an unknown book', async () => {

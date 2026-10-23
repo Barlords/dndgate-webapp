@@ -52,12 +52,10 @@ public class GameCharacterCreatorService implements GameCharacterCreatorApi {
     public GameCharacter create(UUID accountId, UUID adventureId, GameCharacter gameCharacter, InputStream pictureInputStream) {
         Account account = currentAccountService.getAccountById(accountId);
 
-        Adventure adventure = adventureAccessVerifierApi.verifyParticipant(accountId, adventureId);
+        Adventure adventure = adventureId == null ? null : adventureAccessVerifierApi.verifyParticipant(accountId, adventureId);
 
         // Checked before the picture is read and stored: a refused character must not leave a file behind
-        if (spi.countByOwnerIdAndAdventureId(account.getId(), adventureId) >= limits.charactersPerPlayerAndAdventure()) {
-            throw QuantityLimitExceededException.characters(limits.charactersPerPlayerAndAdventure());
-        }
+        verifyLimit(account.getId(), adventureId);
 
         // The format is recognised by the content of the file: what the client declares is not trusted
         byte[] picture = readPicture(pictureInputStream);
@@ -80,6 +78,16 @@ public class GameCharacterCreatorService implements GameCharacterCreatorApi {
         } catch (RuntimeException e) {
             removeOrphanPicture(picturePath);
             throw e;
+        }
+    }
+
+    private void verifyLimit(UUID ownerId, UUID adventureId) {
+        if (adventureId == null) {
+            if (spi.countByOwnerIdWithoutAdventure(ownerId) >= limits.charactersWithoutAdventurePerAccount()) {
+                throw QuantityLimitExceededException.charactersWithoutAdventure(limits.charactersWithoutAdventurePerAccount());
+            }
+        } else if (spi.countByOwnerIdAndAdventureId(ownerId, adventureId) >= limits.charactersPerPlayerAndAdventure()) {
+            throw QuantityLimitExceededException.characters(limits.charactersPerPlayerAndAdventure());
         }
     }
 

@@ -26,6 +26,16 @@ export function ordinal(n: number): string {
   return `${n}${({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'}`;
 }
 
+/** Lower case, accents dropped, anything but letters and digits made a single dash. */
+export function slug(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
 export function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }

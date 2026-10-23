@@ -17,7 +17,8 @@ public interface GameCharacterDtoMapper {
                 domain.getPersonality(),
                 domain.getBackground(),
                 "/game-characters/" + domain.getId() + "/picture",
-                domain.getOwner().getId()
+                domain.getOwner().getId(),
+                domain.hasAdventure() ? domain.getAdventure().getId() : null
         );
     }
 

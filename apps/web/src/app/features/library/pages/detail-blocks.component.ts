@@ -1,17 +1,27 @@
-import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { DOCUMENT, NgTemplateOutlet } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { DetailBlock } from '../rulesets/ruleset.model';
+import { DetailBlock, TableCell } from '../rulesets/ruleset.model';
 import { MarkdownBlock, parseMarkdown } from './light-markdown';
 
+interface ViewBase {
+  title?: string;
+  anchor?: string;
+  nested?: boolean;
+}
+
 type ViewBlock =
-  | { kind: 'text'; title?: string; markdown: MarkdownBlock[] }
+  | (ViewBase & { kind: 'text'; markdown: MarkdownBlock[] })
   | Extract<DetailBlock, { kind: 'stats' | 'table' }>
-  | {
+  | (ViewBase & {
       kind: 'entries';
-      title?: string;
-      items: { name: string; markdown: MarkdownBlock[]; link: string[] | null }[];
-    };
+      items: {
+        name: string;
+        markdown: MarkdownBlock[];
+        link: string[] | null;
+        anchor: string | null;
+      }[];
+    });
 
 /**
  * The body of an entry page: the ruleset's blocks (text, stats, table, entries), in order. Texts
@@ -23,16 +33,25 @@ type ViewBlock =
   imports: [NgTemplateOutlet, RouterLink],
   template: `
     @for (block of view(); track $index) {
-      <section class="block" [class]="'block--' + block.kind">
+      <section
+        class="block"
+        [class]="'block--' + block.kind"
+        [class.block--nested]="block.nested"
+        [attr.id]="block.anchor ?? null"
+      >
         @if (block.title) {
-          <h2 class="block__title">{{ block.title }}</h2>
+          @if (block.nested) {
+            <h3 class="block__title block__title--nested">{{ block.title }}</h3>
+          } @else {
+            <h2 class="block__title">{{ block.title }}</h2>
+          }
         }
         @switch (block.kind) {
           @case ('text') {
             <ng-container *ngTemplateOutlet="markdown; context: { $implicit: block.markdown }" />
           }
           @case ('stats') {
-            <dl class="block__stats">
+            <dl class="block__stats" [class.block__stats--rows]="block.layout === 'rows'">
               @for (item of block.items; track $index) {
                 <div class="block__stat">
                   <dt>{{ item.label }}</dt>
@@ -55,7 +74,28 @@ type ViewBlock =
                   @for (row of block.rows; track $index) {
                     <tr>
                       @for (cell of row; track $index) {
-                        <td>{{ cell }}</td>
+                        <td>
+                          @if (isText(cell)) {
+                            {{ cell }}
+                          } @else {
+                            @for (part of cell; track $index; let last = $last) {
+                              @if (part.anchor) {
+                                <a
+                                  class="block__anchor-link"
+                                  [routerLink]="[]"
+                                  [fragment]="part.anchor"
+                                  (click)="scrollTo(part.anchor)"
+                                  >{{ part.text }}</a
+                                >
+                              } @else {
+                                <span>{{ part.text }}</span>
+                              }
+                              @if (!last) {
+                                <span>, </span>
+                              }
+                            }
+                          }
+                        </td>
                       }
                     </tr>
                   }
@@ -65,7 +105,7 @@ type ViewBlock =
           }
           @case ('entries') {
             @for (item of block.items; track $index) {
-              <div class="block__entry">
+              <div class="block__entry" [attr.id]="item.anchor">
                 <h3 class="block__entry-name">
                   @if (item.link; as link) {
                     <a [routerLink]="link">{{ item.name }}</a>
@@ -162,6 +202,23 @@ type ViewBlock =
       margin-top: var(--dg-space-5);
     }
 
+    // What an in-page link leads to stops a little below the top of the window.
+    [id] {
+      scroll-margin-top: var(--dg-space-4);
+    }
+
+    .block__title.block__title--nested {
+      margin: 0 0 var(--dg-space-2);
+      font-size: var(--dg-text-md);
+      letter-spacing: 0.12em;
+      border-bottom-style: dotted;
+    }
+
+    .block__anchor-link {
+      color: var(--dg-blood);
+      text-decoration-color: color-mix(in srgb, var(--dg-blood) 45%, transparent);
+    }
+
     .block__title {
       margin: 0 0 var(--dg-space-3);
       padding-bottom: var(--dg-space-1);
@@ -213,6 +270,21 @@ type ViewBlock =
     .block__stat {
       padding: var(--dg-space-2) var(--dg-space-3);
       border-left: 2px solid var(--dg-parchment-border);
+    }
+
+    // One stat per line: the label in a column of its own, the value beside it.
+    .block__stats--rows {
+      grid-template-columns: 1fr;
+      gap: 0;
+
+      .block__stat {
+        display: grid;
+        grid-template-columns: minmax(8rem, 14rem) 1fr;
+        align-items: baseline;
+        gap: var(--dg-space-3);
+        border-left: 0;
+        border-bottom: 1px solid color-mix(in srgb, var(--dg-parchment-border) 50%, transparent);
+      }
     }
 
     dt {
@@ -274,6 +346,7 @@ export class DetailBlocks {
   readonly blocks = input.required<DetailBlock[]>();
   /** The ruleset the links of `entries` blocks point into. */
   readonly rulesetId = input.required<string>();
+  private readonly document = inject(DOCUMENT);
 
   protected readonly view = computed<ViewBlock[]>(() =>
     this.blocks().map((block): ViewBlock => {
@@ -282,14 +355,19 @@ export class DetailBlocks {
           return {
             kind: 'text',
             title: block.title,
+            anchor: block.anchor,
+            nested: block.nested,
             markdown: block.paragraphs.flatMap((paragraph) => parseMarkdown(paragraph)),
           };
         case 'entries':
           return {
             kind: 'entries',
             title: block.title,
+            anchor: block.anchor,
+            nested: block.nested,
             items: block.items.map((item) => ({
               name: item.name,
+              anchor: item.anchor ?? null,
               markdown: parseMarkdown(item.text),
               link: item.link
                 ? ['/library', this.rulesetId(), item.link.section, item.link.index]
@@ -301,4 +379,13 @@ export class DetailBlocks {
       }
     }),
   );
+
+  protected isText(cell: TableCell): cell is string {
+    return typeof cell === 'string';
+  }
+
+  /** The router changes the fragment; this also scrolls when the link is followed twice. */
+  protected scrollTo(anchor: string): void {
+    this.document.getElementById(anchor)?.scrollIntoView?.({ behavior: 'smooth' });
+  }
 }

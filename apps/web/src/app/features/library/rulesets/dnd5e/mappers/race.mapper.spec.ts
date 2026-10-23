@@ -13,6 +13,7 @@ describe('race mapper', () => {
     expect(detail.name).toBe('Dwarf');
     expect(detail.blocks[0]).toEqual({
       kind: 'stats',
+      layout: 'rows',
       items: [
         { label: 'Ability score increase', value: 'CON +2' },
         { label: 'Size', value: 'Medium' },

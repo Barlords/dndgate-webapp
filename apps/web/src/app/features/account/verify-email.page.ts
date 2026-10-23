@@ -16,7 +16,7 @@ import { toApiProblem } from '../../core/errors/api-problem';
 import { NotifierService } from '../../core/errors/notifier.service';
 import { Button } from '../../shared/ui/button/button';
 import { FormField } from '../../shared/ui/form-field/form-field';
-import { Spinner } from '../../shared/ui/spinner/spinner';
+import { Loading } from '../../shared/ui/loading/loading';
 import { AccountLayout } from './account-layout';
 
 type State = 'checking' | 'done' | 'invalid' | 'taken' | 'failed';
@@ -24,12 +24,14 @@ type State = 'checking' | 'done' | 'invalid' | 'taken' | 'failed';
 @Component({
   selector: 'dg-verify-email-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, AccountLayout, FormField, Button, Spinner],
+  imports: [ReactiveFormsModule, RouterLink, AccountLayout, FormField, Button, Loading],
   template: `
     <dg-account-layout heading="Validation du compte">
       @switch (state()) {
         @case ('checking') {
-          <div class="dg-account__actions"><dg-spinner label="Validation en cours" /></div>
+          <div class="dg-account__actions">
+            <dg-loading label="Validation en cours" message="Le scribe vérifie le sceau…" />
+          </div>
         }
         @case ('done') {
           <p role="status">Ton compte est validé.</p>

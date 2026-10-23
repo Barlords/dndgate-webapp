@@ -34,7 +34,7 @@ import { StompService } from '../../../core/realtime/stomp.service';
 import { Button } from '../../../shared/ui/button/button';
 import { LoadError } from '../../../shared/ui/load-error/load-error';
 import { FormField } from '../../../shared/ui/form-field/form-field';
-import { Spinner } from '../../../shared/ui/spinner/spinner';
+import { Loading } from '../../../shared/ui/loading/loading';
 import { AdventureContext } from './adventure-context.service';
 
 export const MESSAGES_PAGE_SIZE = 20;
@@ -76,7 +76,7 @@ function byDate(a: MessageDto, b: MessageDto): number {
 @Component({
   selector: 'dg-messages-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LoadError, ReactiveFormsModule, Button, FormField, Spinner],
+  imports: [LoadError, ReactiveFormsModule, Button, FormField, Loading],
   styleUrl: '../tavern-page.scss',
   styles: `
     .connection {
@@ -262,7 +262,9 @@ function byDate(a: MessageDto, b: MessageDto): number {
         </div>
       }
       @default {
-        <div class="state"><dg-spinner label="Chargement des messages" /></div>
+        <div class="state">
+          <dg-loading label="Chargement des messages" message="Le corbeau messager approche…" />
+        </div>
       }
     }
   `,

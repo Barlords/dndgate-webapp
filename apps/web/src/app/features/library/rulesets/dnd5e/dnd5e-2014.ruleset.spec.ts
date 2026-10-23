@@ -15,6 +15,7 @@ import acolyte from './__fixtures__/2014/backgrounds-acolyte.json';
 import alignment from './__fixtures__/2014/alignments-lawful-good.json';
 import wizard from './__fixtures__/2014/classes-wizard.json';
 import wizardLevels from './__fixtures__/2014/classes-wizard-levels.json';
+import wizardFeatures from './__fixtures__/2014/gql-classes-wizard-features.json';
 import language from './__fixtures__/2014/languages-common.json';
 import goblin from './__fixtures__/2014/monsters-goblin.json';
 import dwarf from './__fixtures__/2014/races-dwarf.json';
@@ -67,31 +68,69 @@ describe('Dnd5e2014Ruleset', () => {
     ]);
   });
 
-  it('never uses the reserved URL keys for a filter, and every filter has options', () => {
+  it('gives every section its own loading flavour', () => {
+    const messages = ruleset.sections.map((s) => s.loadingMessage);
+    expect(messages.every((message) => message !== undefined && message.endsWith('…'))).toBe(true);
+    expect(ruleset.sections.find((s) => s.id === 'spells')?.loadingMessage).toBe(
+      'Demande en cours à Mystra…',
+    );
+    expect(ruleset.sections.find((s) => s.id === 'monsters')?.loadingMessage).toBe(
+      'En attente du retour des explorateurs…',
+    );
+  });
+
+  it('never uses the reserved URL keys for a filter or tabs, and none has an empty list', () => {
     const reserved = ['q', 'sort', 'dir', 'page', 'size'];
-    for (const filter of ruleset.sections.flatMap((s) => s.filters)) {
+    for (const filter of ruleset.sections.flatMap((s) => [
+      ...s.filters,
+      ...(s.tabs ? [s.tabs] : []),
+    ])) {
       expect(reserved).not.toContain(filter.key);
-      expect(filter.options.length).toBeGreaterThan(0);
+      // Without options, a filter offers the values the entries have.
+      expect(filter.options === undefined || filter.options.length > 0).toBe(true);
     }
   });
 
-  it('lists spells with level, school and classes filters', () => {
+  it('lists spells with a filter for each of their columns but the name', () => {
     const spells = ruleset.sections.find((s) => s.id === 'spells')!;
     expect(spells.filters.map((f) => [f.key, f.label])).toEqual([
       ['level', 'Niveau'],
       ['school', 'École'],
       ['classes', 'Classe'],
+      ['castingTime', "Temps d'incantation"],
+      ['components', 'Composantes'],
+      ['ritual', 'Rituel'],
+      ['concentration', 'Concentration'],
     ]);
-    expect(spells.filters[0].options[0]).toEqual({ value: '0', label: 'Tour de magie' });
-    expect(spells.filters[0].options[3]).toEqual({ value: '3', label: 'Niveau 3' });
-    expect(spells.columns.map((c) => c.key)).toEqual(['name', 'level', 'school', 'classes']);
+    // The casting times differ between versions: their filter offers those the spells have.
+    expect(spells.filters.find((f) => f.key === 'castingTime')!.options).toBeUndefined();
+    expect(spells.filters[0].options![0]).toEqual({ value: '0', label: 'Tour de magie' });
+    expect(spells.filters[0].options![3]).toEqual({ value: '3', label: 'Niveau 3' });
+    expect(spells.columns.map((c) => c.key)).toEqual([
+      'name',
+      'level',
+      'school',
+      'classes',
+      'castingTime',
+      'components',
+      'ritual',
+      'concentration',
+    ]);
+    expect(spells.defaultSort).toBe('level');
 
     const entries = listGraphql('spells', gqlSpells);
     expect(entries.map((e) => e.index)).toEqual(['acid-splash', 'fireball', 'detect-magic']);
-    expect(entries[1].fields).toMatchObject({ level: 3, school: 'Evocation' });
-    // Every spell's level, school and class is one of the filter options.
-    for (const filter of spells.filters) {
-      const values = filter.options.map((o) => o.value);
+    expect(entries[1].fields).toMatchObject({
+      level: 3,
+      school: 'Evocation',
+      castingTime: '1 action',
+      components: ['V', 'S', 'M'],
+      ritual: false,
+      concentration: false,
+    });
+    // Every spell's value is one of the options of the filters that list theirs.
+    for (const filter of spells.filters.filter((f) => f.options !== undefined)) {
+      const values = filter.options!.map((o) => o.value);
       for (const entry of entries) {
         const field = entry.fields[filter.key];
         for (const one of Array.isArray(field) ? field : [String(field)]) {
@@ -116,7 +155,7 @@ describe('Dnd5e2014Ruleset', () => {
       ['type', 'Type'],
       ['cr', 'FP'],
     ]);
-    expect(monsters.filters[1].options.slice(0, 5)).toEqual([
+    expect(monsters.filters[1].options!.slice(0, 5)).toEqual([
       { value: '0', label: '0' },
       { value: '0.125', label: '1/8' },
       { value: '0.25', label: '1/4' },
@@ -125,11 +164,11 @@ describe('Dnd5e2014Ruleset', () => {
     ]);
     const entries = listGraphql('monsters', gqlMonsters);
     expect(entries.map((e) => e.fields['cr'])).toEqual([0.25, 17, 0.25]);
-    const cr = monsters.filters[1].options.map((o) => o.value);
+    const cr = monsters.filters[1].options!.map((o) => o.value);
     for (const entry of entries) {
       expect(cr).toContain(String(entry.fields['cr']));
     }
-    expect(monsters.filters[0].options.map((o) => o.value)).toContain('dragon');
+    expect(monsters.filters[0].options!.map((o) => o.value)).toContain('dragon');
   });
 
   it('formats the challenge rating column as fractions, leaving the raw value to sort on', () => {
@@ -147,7 +186,7 @@ describe('Dnd5e2014Ruleset', () => {
 
   it('offers only the classes that have spells and the challenge ratings the SRD has', () => {
     const filters = ruleset.sections.flatMap((s) => s.filters);
-    const classes = filters.find((f) => f.key === 'classes')!.options.map((o) => o.value);
+    const classes = filters.find((f) => f.key === 'classes')!.options!.map((o) => o.value);
     expect(classes).toEqual([
       'Bard',
       'Cleric',
@@ -158,7 +197,7 @@ describe('Dnd5e2014Ruleset', () => {
       'Warlock',
       'Wizard',
     ]);
-    const cr = filters.find((f) => f.key === 'cr')!.options.map((o) => o.value);
+    const cr = filters.find((f) => f.key === 'cr')!.options!.map((o) => o.value);
     expect(cr).not.toContain('18');
     expect(cr).toContain('30');
     expect(cr).toHaveLength(28);
@@ -195,6 +234,13 @@ describe('Dnd5e2014Ruleset', () => {
       'Language',
     ]);
     expect(entries[0].index).toBe(`alignment.${alignmentsList.results[0].index}`);
+    // One tab per kind, so alignments and languages are never mixed in the list.
+    const tabs = ruleset.sections.find((s) => s.id === 'personality')!.tabs!;
+    expect(tabs.key).toBe('kind');
+    expect(tabs.options.map((o) => [o.value, o.label])).toEqual([
+      ['Alignment', 'Alignements'],
+      ['Language', 'Langues'],
+    ]);
   });
 
   it('lists nothing for an unknown section', () => {
@@ -220,11 +266,21 @@ describe('Dnd5e2014Ruleset', () => {
       expect(result()?.name).toBe('Goblin');
     });
 
-    it('reads a class with its levels', () => {
+    it('reads a class with its levels, its features and its subclasses', () => {
       const result = detailOf('classes', 'wizard');
       http.expectOne(`${API}/classes/wizard`).flush(wizard);
       http.expectOne(`${API}/classes/wizard/levels`).flush(wizardLevels);
+      const features = http.expectOne(GRAPHQL);
+      expect(features.request.body.variables).toEqual({ class: 'wizard' });
+      features.flush(wizardFeatures);
       expect(result()?.blocks.some((b) => b.kind === 'table')).toBe(true);
+      expect(result()?.blocks.map((b) => b.title)).toEqual(
+        expect.arrayContaining([
+          'Class features',
+          'Arcane Tradition: Evocation',
+          'Evocation features',
+        ]),
+      );
     });
 
     it('reads a race with its traits, leaving out one that is gone', () => {

@@ -12,6 +12,7 @@ describe('species mapper (2024)', () => {
     expect(detail.subtitle).toBe('Medium humanoid');
     expect(detail.blocks[0]).toEqual({
       kind: 'stats',
+      layout: 'rows',
       items: [
         { label: 'Size', value: 'Medium' },
         { label: 'Speed', value: '30 ft.' },

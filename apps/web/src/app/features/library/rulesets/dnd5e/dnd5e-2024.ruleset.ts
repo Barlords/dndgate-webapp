@@ -11,7 +11,7 @@ import { Dnd5eClient } from './dnd5e-client';
 import { fetchTraits, listPersonality, listRefs, personalityDetail } from './dnd5e-resources';
 import {
   MONSTERS_SECTION,
-  NAME_COLUMN,
+  PERSONALITY_SECTION,
   plain,
   SPELLS_QUERY,
   SPELLS_SECTION,
@@ -22,7 +22,13 @@ import { ApiMagicItem, mapMagicItem } from './mappers/2024/magic-item.mapper';
 import { mapAlignment, mapLanguage } from './mappers/2024/personality.mapper';
 import { ApiSpecies, ApiSpeciesTrait, mapSpecies } from './mappers/2024/species.mapper';
 import { ApiWeaponMastery, mapWeaponMastery } from './mappers/2024/weapon-mastery.mapper';
-import { ApiClass, ApiClassLevel, mapClass } from './mappers/class.mapper';
+import {
+  ApiClass,
+  ApiClassLevel,
+  CLASS_FEATURES_QUERIES,
+  GqlClassFeatures,
+  mapClass,
+} from './mappers/class.mapper';
 import { ApiRef } from './mappers/common';
 import { ApiMonster, GqlMonster, mapMonster, mapMonsterSummary } from './mappers/monster.mapper';
 import { ApiSpell, GqlSpell, mapSpell, mapSpellSummary } from './mappers/spell.mapper';
@@ -43,18 +49,21 @@ const REST_LISTS = [
 ];
 
 const SECTIONS: readonly RulesetSection[] = [
-  plain('classes', 'Classes', 'players', 'sword'),
-  plain('species', 'Espèces', 'players', 'users'),
-  plain('backgrounds', 'Historiques', 'players', 'book'),
-  plain('feats', 'Dons', 'players', 'star'),
-  {
-    ...plain('personality', 'Personnalité', 'players', 'user'),
-    columns: [NAME_COLUMN, { key: 'kind', label: 'Type', sortable: true }],
-  },
+  plain('classes', 'Classes', 'players', 'sword', 'Les maîtres de guilde ouvrent leurs registres…'),
+  plain('species', 'Espèces', 'players', 'users', 'Recensement des peuples du royaume…'),
+  plain('backgrounds', 'Historiques', 'players', 'book', 'Le barde rassemble ses souvenirs…'),
+  plain('feats', 'Dons', 'players', 'star', 'Les vétérans racontent leurs exploits…'),
+  PERSONALITY_SECTION,
   SPELLS_SECTION,
-  plain('weapon-mastery-properties', "Maîtrises d'armes", 'players', 'sword'),
+  plain(
+    'weapon-mastery-properties',
+    "Maîtrises d'armes",
+    'players',
+    'sword',
+    "Le maître d'armes aiguise ses lames…",
+  ),
   MONSTERS_SECTION,
-  plain('magic-items', 'Objets magiques', 'master', 'crown'),
+  plain('magic-items', 'Objets magiques', 'master', 'crown', 'Inventaire du trésor du dragon…'),
 ];
 
 /** "DnD 5e — SRD 2024", read from dnd5eapi.co. It has no rules section. */
@@ -99,7 +108,10 @@ export class Dnd5e2024Ruleset implements Ruleset {
         return forkJoin([
           this.client.rest<ApiClass>(VERSION, `classes/${index}`),
           this.client.rest<ApiClassLevel[]>(VERSION, `classes/${index}/levels`),
-        ]).pipe(map(([cls, levels]) => mapClass(cls, levels)));
+          this.client.graphql<GqlClassFeatures>(VERSION, CLASS_FEATURES_QUERIES[VERSION], {
+            class: index,
+          }),
+        ]).pipe(map(([cls, levels, features]) => mapClass(cls, levels, features)));
       case 'species':
         return this.client
           .rest<ApiSpecies>(VERSION, `species/${index}`)

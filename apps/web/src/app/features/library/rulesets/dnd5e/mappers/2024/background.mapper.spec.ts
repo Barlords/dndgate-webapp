@@ -7,6 +7,7 @@ describe('background mapper (2024)', () => {
     expect(detail.name).toBe('Acolyte');
     expect(detail.blocks[0]).toEqual({
       kind: 'stats',
+      layout: 'rows',
       items: [
         { label: 'Ability scores', value: 'INT, WIS, CHA' },
         { label: 'Origin feat', value: 'Magic Initiate (Cleric)' },

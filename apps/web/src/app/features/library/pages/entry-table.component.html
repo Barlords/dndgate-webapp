@@ -1,0 +1,101 @@
+<div class="table__toolbar">
+  <label class="table__search">
+    <span class="dg-visually-hidden">Rechercher</span>
+    <input
+      #searchField
+      type="search"
+      placeholder="Rechercher un nom…"
+      [value]="search()"
+      (input)="searchFor(searchField.value)"
+    />
+  </label>
+  <dg-icon-button
+    #panelToggle
+    class="table__filters-toggle"
+    icon="filter"
+    label="Filtres"
+    [badge]="tickedCount() || null"
+    [expanded]="panelOpen()"
+    [controls]="panelId"
+    (click)="togglePanel()"
+  />
+</div>
+
+@if (shown().length === 0) {
+  <p class="table__empty">Aucune entrée ne correspond.</p>
+} @else {
+  <p class="table__count">{{ shown().length }} {{ shown().length > 1 ? 'entrées' : 'entrée' }}</p>
+  <div class="table__scroll">
+    <table class="table">
+      <thead>
+        <tr>
+          @for (column of columns(); track column.key) {
+            <th scope="col" [attr.aria-sort]="ariaSort(column)">
+              @if (column.sortable) {
+                <button type="button" class="table__sort" (click)="sortBy(column)">
+                  {{ column.label }}
+                  <span class="table__arrow" aria-hidden="true">
+                    @switch (ariaSort(column)) {
+                      @case ('ascending') {
+                        ▲
+                      }
+                      @case ('descending') {
+                        ▼
+                      }
+                    }
+                  </span>
+                </button>
+              } @else {
+                {{ column.label }}
+              }
+            </th>
+          }
+          @if (rowActions()) {
+            <th scope="col" class="table__actions">
+              <span class="dg-visually-hidden">{{ actionsLabel() }}</span>
+            </th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (entry of rows(); track entry.index) {
+          <tr>
+            @for (column of columns(); track column.key; let first = $first) {
+              <td>
+                @if (first) {
+                  <a class="table__link" [routerLink]="link(entry)">{{ cell(entry, column) }}</a>
+                } @else {
+                  {{ cell(entry, column) }}
+                }
+              </td>
+            }
+            @if (rowActions(); as actions) {
+              <td class="table__actions">
+                <div class="table__actions-inner">
+                  <ng-container *ngTemplateOutlet="actions; context: { $implicit: entry }" />
+                </div>
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <dg-paginator [page]="page()" [totalPages]="totalPages()" (pageChange)="goTo($event)" />
+}
+
+<dg-filter-panel
+  [panelId]="panelId"
+  [open]="panelOpen()"
+  [filters]="section().filters"
+  [options]="filterOptions()"
+  [ticked]="ticked()"
+  [columns]="section().columns"
+  [hidden]="hidden()"
+  [pageSize]="pageSize()"
+  (closed)="closePanel()"
+  (ticks)="tick($event.key, $event.option, $event.on)"
+  (cleared)="clearFilters()"
+  (columnShown)="showColumn($event.column, $event.on)"
+  (resized)="resize($event)"
+/>

@@ -1,7 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { Location } from '@angular/common';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { Navigation, provideRouter, Router } from '@angular/router';
 import { of } from 'rxjs';
 import { provideApi } from '../../core/api/api.providers';
 import { AuthService } from '../../core/auth/auth.service';
@@ -39,6 +41,11 @@ describe('ProfilePage', () => {
     return root.querySelectorAll('form')[index];
   }
 
+  const backButton = (root: HTMLElement) =>
+    [...root.querySelectorAll<HTMLButtonElement>('dg-button button')].find(
+      (button) => button.textContent?.trim() === 'Retour',
+    )!;
+
   const patch = () => backend.expectOne((r) => r.method === 'PATCH' && /accounts$/.test(r.url));
 
   afterEach(() => backend.verify());
@@ -55,11 +62,36 @@ describe('ProfilePage', () => {
     );
   });
 
+  /** The password the reader types in the dialog asked on saving the identity; null: cancelled. */
+  function answerPassword(password: string | null) {
+    return vi.spyOn(TestBed.inject(ConfirmService), 'typeToConfirm').mockReturnValue(of(password));
+  }
+
+  it('lays out identity and danger zone on the left, password and sessions on the right', async () => {
+    const { root } = await setup();
+    const columns = [...root.querySelectorAll('.profile > .profile__column')];
+    const titles = (column: Element) =>
+      [...column.querySelectorAll('h2')].map((title) => title.textContent?.trim());
+    expect(columns.map(titles)).toEqual([
+      ['Identité', 'Zone dangereuse'],
+      ['Mot de passe', 'Sessions'],
+    ]);
+    // The password form asks for the current password first.
+    expect(
+      [...root.querySelectorAll('#password-form input')].map((input) =>
+        input.getAttribute('formControlName'),
+      ),
+    ).toEqual(['currentPassword', 'newPassword', 'confirmation']);
+    // The identity form has no password field: it is asked on saving.
+    expect(root.querySelector('#identity-form input[type="password"]')).toBeNull();
+    expect(root.querySelector('.dg-account__card--wide')).not.toBeNull();
+  });
+
   it('profile shows the pending e-mail returned by the change', async () => {
     const { fixture, root } = await setup();
+    answerPassword('secret-pass');
     expect(root.querySelector('.pending')).toBeNull();
     type(root, '#identity-form input[formControlName="email"]', 'new@x.fr');
-    type(root, '#identity-form input[formControlName="currentPassword"]', 'secret-pass');
     form(root, 0).dispatchEvent(new Event('submit'));
     patch().flush({ id: '1', pseudo: 'Gandalf', email: 'g@x.fr', pendingEmail: 'new@x.fr' });
     backend.expectOne((r) => r.method === 'GET' && /accounts\/me$/.test(r.url)).flush({});
@@ -69,9 +101,13 @@ describe('ProfilePage', () => {
 
   it('profile sends currentPassword with every change', async () => {
     const { root } = await setup();
+    const ask = answerPassword('secret-pass');
     type(root, '#identity-form input[formControlName="pseudo"]', ' Mithrandir ');
-    type(root, '#identity-form input[formControlName="currentPassword"]', 'secret-pass');
     form(root, 0).dispatchEvent(new Event('submit'));
+    expect(ask.mock.calls[0][0]).toMatchObject({
+      inputType: 'password',
+      confirmLabel: 'Enregistrer',
+    });
     const identity = patch();
     expect(identity.request.body).toEqual({
       currentPassword: 'secret-pass',
@@ -92,42 +128,86 @@ describe('ProfilePage', () => {
     password.flush({ id: '1', pseudo: 'Mithrandir', email: 'g@x.fr' });
   });
 
-  it('profile refuses a change without the current password', async () => {
-    const { fixture, root } = await setup();
+  it('sends nothing when the password dialog is cancelled', async () => {
+    const { root } = await setup();
+    answerPassword(null);
     type(root, '#identity-form input[formControlName="pseudo"]', 'Mithrandir');
     form(root, 0).dispatchEvent(new Event('submit'));
-    fixture.detectChanges();
     backend.expectNone(() => true);
-    expect(root.textContent).toContain('Ce champ est obligatoire.');
   });
 
-  it('profile has nothing to send when nothing changed', async () => {
+  it('profile has nothing to send when nothing changed, without asking the password', async () => {
     const { root } = await setup();
-    type(root, '#identity-form input[formControlName="currentPassword"]', 'secret-pass');
+    const ask = answerPassword('secret-pass');
     form(root, 0).dispatchEvent(new Event('submit'));
     backend.expectNone(() => true);
+    expect(ask).not.toHaveBeenCalled();
     expect(TestBed.inject(NotifierService).toasts()[0].message).toBe('Rien à modifier.');
   });
 
-  it('a wrong password on a change is shown on the field and keeps the session', async () => {
+  it('a wrong password on a change is shown in the section and keeps the session', async () => {
     const { fixture, root } = await setup();
+    answerPassword('nope-nope');
     type(root, '#identity-form input[formControlName="pseudo"]', 'Mithrandir');
-    type(root, '#identity-form input[formControlName="currentPassword"]', 'nope-nope');
     form(root, 0).dispatchEvent(new Event('submit'));
     patch().flush({}, { status: 403, statusText: 'Forbidden' });
     fixture.detectChanges();
-    expect(root.textContent).toContain('Mot de passe incorrect.');
+    expect(root.querySelector('.profile__identity [role="alert"]')?.textContent).toBe(
+      'Mot de passe incorrect.',
+    );
     expect(auth.isAuthenticated()).toBe(true);
+
+    // Saving again starts afresh.
+    answerPassword('secret-pass');
+    form(root, 0).dispatchEvent(new Event('submit'));
+    fixture.detectChanges();
+    expect(root.querySelector('.profile__identity [role="alert"]')).toBeNull();
+    patch().flush({ id: '1', pseudo: 'Mithrandir', email: 'g@x.fr' });
+    backend.expectOne((r) => r.method === 'GET' && /accounts\/me$/.test(r.url)).flush({});
   });
 
   it('a pseudo already taken is shown on the pseudo field', async () => {
     const { fixture, root } = await setup();
+    answerPassword('secret-pass');
     type(root, '#identity-form input[formControlName="pseudo"]', 'Saruman');
-    type(root, '#identity-form input[formControlName="currentPassword"]', 'secret-pass');
     form(root, 0).dispatchEvent(new Event('submit'));
     patch().flush({}, { status: 409, statusText: 'Conflict' });
     fixture.detectChanges();
     expect(root.textContent).toContain('Ce pseudo est déjà pris.');
+  });
+
+  it('a wrong current password on the password change is shown on its field', async () => {
+    const { fixture, root } = await setup();
+    type(root, '#password-form input[formControlName="newPassword"]', 'new-password');
+    type(root, '#password-form input[formControlName="confirmation"]', 'new-password');
+    type(root, '#password-form input[formControlName="currentPassword"]', 'nope-nope');
+    form(root, 1).dispatchEvent(new Event('submit'));
+    patch().flush({}, { status: 403, statusText: 'Forbidden' });
+    fixture.detectChanges();
+    expect(root.querySelector('#password-form')?.textContent).toContain('Mot de passe incorrect.');
+    expect(root.querySelector('.profile__identity [role="alert"]')).toBeNull();
+  });
+
+  it('goes back to the page the reader came from', async () => {
+    const { root } = await setup();
+    const router = TestBed.inject(Router);
+    // The reader came here from another page of the app.
+    Object.defineProperty(router, 'lastSuccessfulNavigation', {
+      get: () => signal({ previousNavigation: {} } as Navigation),
+    });
+    const back = vi.spyOn(TestBed.inject(Location), 'back').mockImplementation(() => undefined);
+    backButton(root).click();
+    expect(back).toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('goes home when the page was opened directly', async () => {
+    const { root } = await setup();
+    const back = vi.spyOn(TestBed.inject(Location), 'back');
+    expect(root.textContent).not.toContain('Retour à la taverne');
+    backButton(root).click();
+    expect(back).not.toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledWith('/');
   });
 
   it('changing the password ends the session', async () => {

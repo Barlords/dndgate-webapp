@@ -10,6 +10,8 @@ export interface GqlSpell {
   classes: ApiRef[];
   ritual: boolean;
   concentration: boolean;
+  components: string[];
+  casting_time: string;
 }
 
 export interface ApiSpell {
@@ -41,10 +43,20 @@ export function mapSpellSummary(spell: GqlSpell): EntrySummary {
       level: spell.level,
       school: spell.school.name,
       classes: names(spell.classes),
+      castingTime: shortCastingTime(spell.casting_time),
+      components: spell.components,
       ritual: spell.ritual,
       concentration: spell.concentration,
     },
   };
+}
+
+/**
+ * The casting time without its trigger: SRD 2024 writes "Reaction, which you take when you are
+ * hit…", too long for a column and a filter, where "Reaction" says enough.
+ */
+export function shortCastingTime(castingTime: string): string {
+  return castingTime.split(', which')[0];
 }
 
 export function mapSpell(spell: ApiSpell): EntryDetail {

@@ -2,50 +2,74 @@
   <div class="sidebar__veil" (click)="linkFollowed()" aria-hidden="true"></div>
 }
 <aside class="sidebar" [class.sidebar--collapsed]="collapsed()" [class.sidebar--drawer]="drawer()">
-  <button
-    type="button"
-    class="sidebar__toggle"
-    [attr.aria-expanded]="!collapsed()"
-    [attr.aria-controls]="panelId"
-    [attr.aria-label]="collapsed() ? 'Ouvrir le sommaire' : 'Réduire le sommaire'"
-    (click)="toggle()"
-  >
-    <dg-icon [name]="collapsed() ? 'chevron-right' : 'chevron-left'" />
-  </button>
+  <!-- The logo, back to the home page; folded, the emblem alone in the middle of the rail. -->
+  <div class="sidebar__head">
+    <a
+      class="sidebar__brand"
+      routerLink="/"
+      [attr.aria-label]="homeLabel"
+      [attr.title]="collapsed() ? homeLabel : null"
+      (click)="linkFollowed()"
+    >
+      @if (collapsed()) {
+        <dg-emblem />
+      } @else {
+        <dg-brand />
+      }
+    </a>
+  </div>
 
-  <div class="sidebar__panel" [id]="panelId">
+  <!-- Same height in both states, so that the links below never move. -->
+  <div class="sidebar__heading">
     @if (!collapsed()) {
       <h2 class="sidebar__title">{{ heading() }}</h2>
-      <div class="sidebar__header">
-        <ng-content select="[sidebarHeader]" />
-      </div>
     }
+  </div>
+
+  <div class="sidebar__panel" [id]="panelId">
+    <!-- Shown in both states (the ruleset select folds into an icon): the links below never move. -->
+    <div class="sidebar__header">
+      <ng-content select="[sidebarHeader]" />
+    </div>
 
     <nav [attr.aria-label]="heading()">
       @for (group of groups(); track group.label) {
         <div class="sidebar__section">
-          @if (!collapsed()) {
-            <h3 class="sidebar__group">{{ group.label }}</h3>
-          }
+          <!-- Folded, the heading keeps its height and becomes a rule. -->
+          <h3 class="sidebar__group">
+            <span class="sidebar__group-text">{{ group.label }}</span>
+          </h3>
           @for (item of group.items; track item.link) {
             <a
               class="sidebar__link"
               [routerLink]="item.link"
               routerLinkActive="on"
+              ariaCurrentWhenActive="page"
               [routerLinkActiveOptions]="{ exact: !!item.exact }"
               [attr.title]="collapsed() ? item.label : null"
               [attr.aria-label]="collapsed() ? item.label : null"
               (click)="linkFollowed()"
             >
               <dg-icon [name]="item.icon" />
-              @if (!collapsed()) {
-                <span>{{ item.label }}</span>
-              }
+              <span class="sidebar__label">{{ item.label }}</span>
             </a>
           }
         </div>
       }
     </nav>
+
+    <!-- At the bottom, across the whole sidebar, just above the account. -->
+    <button
+      type="button"
+      class="sidebar__toggle"
+      [attr.aria-expanded]="!collapsed()"
+      [attr.aria-controls]="panelId"
+      [attr.aria-label]="collapsed() ? 'Ouvrir le sommaire' : 'Réduire le sommaire'"
+      [attr.title]="collapsed() ? 'Ouvrir le sommaire' : 'Réduire le sommaire'"
+      (click)="toggle()"
+    >
+      <dg-icon name="sidebar" />
+    </button>
 
     <div class="sidebar__footer">
       @if (account(); as me) {
@@ -57,9 +81,7 @@
           (click)="linkFollowed()"
         >
           <span class="sidebar__avatar" aria-hidden="true">{{ initial() }}</span>
-          @if (!collapsed()) {
-            <span class="sidebar__pseudo">{{ me.pseudo }}</span>
-          }
+          <span class="sidebar__label sidebar__pseudo">{{ me.pseudo }}</span>
         </a>
       } @else {
         <a
@@ -71,9 +93,7 @@
           (click)="linkFollowed()"
         >
           <dg-icon name="user" />
-          @if (!collapsed()) {
-            <span>Se connecter</span>
-          }
+          <span class="sidebar__label">Se connecter</span>
         </a>
       }
     </div>

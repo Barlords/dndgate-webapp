@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { AuthService } from '../../core/auth/auth.service';
-import { Emblem } from '../../shared/ui/emblem/emblem';
+import { Brand } from '../../shared/ui/brand/brand';
 import { HomeHalfComponent, HomeSide } from './home-half.component';
 
 /**
@@ -10,10 +10,10 @@ import { HomeHalfComponent, HomeSide } from './home-half.component';
 @Component({
   selector: 'dg-home-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Emblem, HomeHalfComponent],
+  imports: [Brand, HomeHalfComponent],
   template: `
     <h1 class="dg-visually-hidden">DnDGate</h1>
-    <dg-emblem class="home__emblem" />
+    <dg-brand class="home__brand" />
     <dg-home-half
       side="library"
       link="/library"

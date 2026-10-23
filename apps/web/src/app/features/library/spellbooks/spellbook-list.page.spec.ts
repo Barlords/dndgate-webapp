@@ -34,6 +34,9 @@ describe('SpellBookListPage', () => {
   const button = (label: string) =>
     [...main().querySelectorAll('button')].find((b) => b.textContent?.trim() === label)!;
 
+  const create = () =>
+    main().querySelector<HTMLButtonElement>('[aria-label="Créer un grimoire"]')!.click();
+
   function type(selector: string, value: string): void {
     const input = main().querySelector<HTMLInputElement | HTMLTextAreaElement>(selector)!;
     input.value = value;
@@ -63,9 +66,21 @@ describe('SpellBookListPage', () => {
     expect(cards[1].textContent).not.toContain('0 sorts');
   });
 
+  it('lists the books as a table once chosen', async () => {
+    await open([
+      { id: 'a', name: 'Arcane', description: 'd', ruleset: 'dnd5e-2024', spellList: ['x', 'y'] },
+    ]);
+    main().querySelector<HTMLButtonElement>('[aria-label="Afficher en tableau"]')!.click();
+    await library.render();
+    expect(main().querySelector('.book')).toBeNull();
+    const cells = [...main().querySelectorAll('tbody td')].map((td) => td.textContent?.trim());
+    expect(cells).toEqual(['Arcane', 'DnD 5e — SRD 2024', '2 sorts']);
+    expect(main().querySelector('tbody a')?.getAttribute('href')).toBe('/library/grimoires/a');
+  });
+
   it('creates a spell book with the selected ruleset', async () => {
     await open();
-    button('Nouveau grimoire').click();
+    create();
     await library.render();
     const options = [...main().querySelectorAll('select option')].map((o) => o.textContent?.trim());
     expect(options).toEqual(['DnD 5e — SRD 2014', 'DnD 5e — SRD 2024']);
@@ -95,7 +110,7 @@ describe('SpellBookListPage', () => {
 
   it('defaults the ruleset to the selected one', async () => {
     await open();
-    button('Nouveau grimoire').click();
+    create();
     await library.render();
     expect(main().querySelector<HTMLSelectElement>('select')!.value).toBe('dnd5e-2014');
   });
@@ -107,7 +122,7 @@ describe('SpellBookListPage', () => {
 
   it('refuses an empty name without calling the API', async () => {
     await open();
-    button('Nouveau grimoire').click();
+    create();
     await library.render();
     main().querySelector('form')!.dispatchEvent(new Event('submit'));
     await library.render();
@@ -116,7 +131,7 @@ describe('SpellBookListPage', () => {
 
   it('create explains the limit of 100 books on a 409', async () => {
     await open();
-    button('Nouveau grimoire').click();
+    create();
     await library.render();
     type('input[formControlName="name"]', 'A');
     type('textarea[formControlName="description"]', 'B');

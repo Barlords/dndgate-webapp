@@ -30,7 +30,7 @@ import { NotifierService } from '../../../core/errors/notifier.service';
 import { Button } from '../../../shared/ui/button/button';
 import { LoadError } from '../../../shared/ui/load-error/load-error';
 import { ConfirmService } from '../../../shared/ui/confirm-dialog/confirm.service';
-import { Spinner } from '../../../shared/ui/spinner/spinner';
+import { Loading } from '../../../shared/ui/loading/loading';
 import { isClosed, Status } from '../adventure-status';
 import { AdventureContext } from './adventure-context.service';
 
@@ -46,7 +46,7 @@ type ClaimState = 'idle' | 'loading' | 'ready' | 'failed';
 @Component({
   selector: 'dg-master-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LoadError, Button, Spinner],
+  imports: [LoadError, Button, Loading],
   styleUrl: '../tavern-page.scss',
   styles: `
     h2 {
@@ -200,7 +200,9 @@ type ClaimState = 'idle' | 'loading' | 'ready' | 'failed';
               </div>
             }
             @default {
-              <div class="state"><dg-spinner label="Chargement du vote" /></div>
+              <div class="state">
+                <dg-loading label="Chargement du vote" message="Dépouillement des votes…" />
+              </div>
             }
           }
         } @else {
@@ -208,7 +210,9 @@ type ClaimState = 'idle' | 'loading' | 'ready' | 'failed';
         }
       }
       @case ('loading') {
-        <div class="state"><dg-spinner label="Chargement de l’aventure" /></div>
+        <div class="state">
+          <dg-loading label="Chargement de l’aventure" message="Le conteur rassemble ses notes…" />
+        </div>
       }
     }
   `,

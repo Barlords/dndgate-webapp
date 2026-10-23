@@ -563,6 +563,31 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /magic-items:
+    post:
+      tags:
+      - Magic items
+      summary: Create magic item
+      operationId: createMagicItem
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MagicItemCreationRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MagicItemDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /historical-notes:
     get:
       tags:
@@ -1354,6 +1379,87 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /magic-items/{id}:
+    get:
+      tags:
+      - Magic items
+      summary: Get magic item by id
+      operationId: getMagicItemById
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MagicItemDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      tags:
+      - Magic items
+      summary: Delete magic item by id
+      operationId: deleteMagicItemById
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeletionConfirmationRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    patch:
+      tags:
+      - Magic items
+      summary: Patch magic item
+      operationId: patchMagicItem
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MagicItemPatchRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MagicItemDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /historical-notes/{id}:
     get:
       tags:
@@ -1826,6 +1932,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PlanningDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /magic-items/mine:
+    get:
+      tags:
+      - Magic items
+      summary: Get my magic items
+      operationId: getMyMagicItems
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MagicItemDto"
         default:
           description: "The error, in the same shape whatever produced it (RFC 9457)."
           content:
@@ -2436,6 +2563,79 @@ components:
       - id
       - sendDate
       - senderId
+    MagicItemCreationRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          minLength: 1
+        type:
+          type: string
+          enum:
+          - ARMOR
+          - POTION
+          - RING
+          - ROD
+          - SCROLL
+          - STAFF
+          - WAND
+          - WEAPON
+          - WONDROUS_ITEM
+        rarity:
+          type: string
+          enum:
+          - COMMON
+          - UNCOMMON
+          - RARE
+          - VERY_RARE
+          - LEGENDARY
+          - ARTIFACT
+        requiresAttunement:
+          type: boolean
+        description:
+          type: string
+          maxLength: 5000
+          minLength: 1
+      required:
+      - description
+      - name
+      - rarity
+      - requiresAttunement
+      - type
+    MagicItemDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+          enum:
+          - ARMOR
+          - POTION
+          - RING
+          - ROD
+          - SCROLL
+          - STAFF
+          - WAND
+          - WEAPON
+          - WONDROUS_ITEM
+        rarity:
+          type: string
+          enum:
+          - COMMON
+          - UNCOMMON
+          - RARE
+          - VERY_RARE
+          - LEGENDARY
+          - ARTIFACT
+        requiresAttunement:
+          type: boolean
+        description:
+          type: string
     HistoricalNoteCreationRequest:
       type: object
       properties:
@@ -2495,7 +2695,6 @@ components:
           maxLength: 80000
           minLength: 1
       required:
-      - adventureId
       - background
       - martialClass
       - name
@@ -2520,6 +2719,9 @@ components:
         pictureUrl:
           type: string
         ownerId:
+          type: string
+          format: uuid
+        adventureId:
           type: string
           format: uuid
     AdventureCreationRequest:
@@ -2734,6 +2936,42 @@ components:
           maxLength: 255
           minLength: 0
           pattern: (?s).*\S.*
+        description:
+          type: string
+          maxLength: 5000
+          minLength: 0
+          pattern: (?s).*\S.*
+    MagicItemPatchRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          minLength: 0
+          pattern: (?s).*\S.*
+        type:
+          type: string
+          enum:
+          - ARMOR
+          - POTION
+          - RING
+          - ROD
+          - SCROLL
+          - STAFF
+          - WAND
+          - WEAPON
+          - WONDROUS_ITEM
+        rarity:
+          type: string
+          enum:
+          - COMMON
+          - UNCOMMON
+          - RARE
+          - VERY_RARE
+          - LEGENDARY
+          - ARTIFACT
+        requiresAttunement:
+          type: boolean
         description:
           type: string
           maxLength: 5000

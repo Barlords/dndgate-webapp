@@ -62,6 +62,30 @@ describe('LibraryShell', () => {
     expect(library.router.url).toBe('/library/other-game');
   });
 
+  it('keeps the ruleset choice in the folded sidebar, as an icon opening a menu', async () => {
+    const library = await setupLibrary({ rulesets: [classic(), other()] });
+    await library.go('/library/dnd5e-2014/monsters');
+    library.root.querySelector<HTMLButtonElement>('.sidebar__toggle')!.click();
+    await library.render();
+
+    expect(select(library.root)).toBeNull();
+    const icon = library.root.querySelector<HTMLButtonElement>('.ruleset-select__icon')!;
+    expect(icon.getAttribute('aria-label')).toBe('Jeu de règles : Jeu classique');
+    icon.click();
+    await library.render();
+    const items = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')];
+    expect(items.map((item) => item.textContent?.replace('✓', '').trim())).toEqual([
+      'Jeu classique',
+      'Autre jeu',
+    ]);
+    expect(items[0].getAttribute('aria-checked')).toBe('true');
+
+    items[1].click();
+    await library.harness.fixture.whenStable();
+    await library.render();
+    expect(library.router.url).toBe('/library/other-game/monsters');
+  });
+
   it('redirects the library root to the remembered ruleset, else to dnd5e-2014', async () => {
     const library = await setupLibrary({ rulesets: [other(), classic()] });
     await library.go('/library');

@@ -53,8 +53,9 @@
   --dg-space-5: 1.5rem;
   --dg-space-6: 2rem;
 
-  --dg-radius: 6px;
-  --dg-radius-sm: 3px;
+  // Softly rounded corners: the grimoire is worn, not cut square.
+  --dg-radius: 9px;
+  --dg-radius-sm: 5px;
 
   // Focus ring colour: bright gold on leather; parchment switches it to antique gold.
   --dg-focus-color: var(--dg-gold);

@@ -2,7 +2,10 @@ import { ChangeDetectionStrategy, Component, input, ViewEncapsulation } from '@a
 import { Emblem } from '../../shared/ui/emblem/emblem';
 import { Parchment } from '../../shared/ui/parchment/parchment';
 
-/** Page shell of the signed-out account screens: leather background, emblem, parchment card. */
+/**
+ * Page shell of the account screens: leather background, emblem, parchment card. `wide` widens the
+ * card for a page laid out in columns (the reader's own account).
+ */
 @Component({
   selector: 'dg-account-layout',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -12,7 +15,7 @@ import { Parchment } from '../../shared/ui/parchment/parchment';
   template: `
     <main class="dg-account">
       <dg-emblem class="dg-account__emblem" />
-      <dg-parchment class="dg-account__card">
+      <dg-parchment class="dg-account__card" [class.dg-account__card--wide]="wide()">
         <h1 class="dg-account__title">{{ heading() }}</h1>
         <ng-content />
       </dg-parchment>
@@ -48,6 +51,10 @@ import { Parchment } from '../../shared/ui/parchment/parchment';
       color: var(--dg-title-color);
     }
 
+    .dg-account__card--wide {
+      width: min(64rem, 100%);
+    }
+
     .dg-account__card form {
       display: flex;
       flex-direction: column;
@@ -79,4 +86,5 @@ import { Parchment } from '../../shared/ui/parchment/parchment';
 })
 export class AccountLayout {
   readonly heading = input.required<string>();
+  readonly wide = input(false);
 }

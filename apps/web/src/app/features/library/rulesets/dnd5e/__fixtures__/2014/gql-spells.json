@@ -19,7 +19,9 @@
           }
         ],
         "ritual": false,
-        "concentration": false
+        "concentration": false,
+        "components": ["V", "S"],
+        "casting_time": "1 action"
       },
       {
         "index": "fireball",
@@ -39,7 +41,9 @@
           }
         ],
         "ritual": false,
-        "concentration": false
+        "concentration": false,
+        "components": ["V", "S", "M"],
+        "casting_time": "1 action"
       },
       {
         "index": "detect-magic",
@@ -79,7 +83,9 @@
           }
         ],
         "ritual": true,
-        "concentration": true
+        "concentration": true,
+        "components": ["V", "S"],
+        "casting_time": "1 action"
       }
     ]
   }

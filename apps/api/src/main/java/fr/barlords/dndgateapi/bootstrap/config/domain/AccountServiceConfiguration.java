@@ -21,6 +21,9 @@ import fr.barlords.dndgateapi.domain.port.out.OpaqueTokenSpi;
 import fr.barlords.dndgateapi.domain.port.out.PendingSignupPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.SignupNoticeLogSpi;
 import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.MagicItemPersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
 import fr.barlords.dndgateapi.domain.port.out.SessionPersistenceSpi;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -91,6 +94,9 @@ public class AccountServiceConfiguration {
             AdventurePersistenceSpi adventures,
             MasterClaimPersistenceSpi masterClaims,
             SpellBookPersistenceSpi spellBooks,
+            MagicItemPersistenceSpi magicItems,
+            GameCharacterPersistenceSpi gameCharacters,
+            MinioSpi minioSpi,
             PasswordHasherSpi passwordHasher,
             OpaqueTokenSpi opaqueTokenSpi,
             AccountPasswordVerifierService accountPasswordVerifierService,
@@ -102,7 +108,7 @@ public class AccountServiceConfiguration {
             PlatformTransactionManager transactionManager
     ) {
         return new TransactionalAccountAnonymizer(new AccountAnonymizerService(
-                accounts, adventures, masterClaims, spellBooks, passwordHasher, opaqueTokenSpi,
+                accounts, adventures, masterClaims, spellBooks, magicItems, gameCharacters, minioSpi, passwordHasher, opaqueTokenSpi,
                 accountPasswordVerifierService,
                 accountSessionRevokerApi, masterTransferNotifier, clock, audit, loginFailures), transactionManager);
     }

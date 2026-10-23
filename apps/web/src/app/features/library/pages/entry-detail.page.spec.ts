@@ -59,8 +59,11 @@ describe('EntryDetailPage', () => {
   it('drops a response that arrives after leaving the page', async () => {
     const late = new Subject<EntryDetail>();
     vi.spyOn(ruleset, 'detail').mockReturnValue(late);
+    ruleset.sections[0].loadingMessage = 'Demande en cours à Mystra…';
     await open('/library/dnd5e-2014/spells/fireball');
-    expect(library.root.querySelector('main dg-spinner')).not.toBeNull();
+    expect(library.root.querySelector('main dg-loading')?.textContent).toContain(
+      'Demande en cours à Mystra…',
+    );
 
     await library.go('/library/dnd5e-2014/spells');
     expect(late.observed).toBe(false);

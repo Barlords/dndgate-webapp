@@ -179,7 +179,13 @@
 <a name='L114'></a><a href='#L114'>114</a>
 <a name='L115'></a><a href='#L115'>115</a>
 <a name='L116'></a><a href='#L116'>116</a>
-<a name='L117'></a><a href='#L117'>117</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L117'></a><a href='#L117'>117</a>
+<a name='L118'></a><a href='#L118'>118</a>
+<a name='L119'></a><a href='#L119'>119</a>
+<a name='L120'></a><a href='#L120'>120</a>
+<a name='L121'></a><a href='#L121'>121</a>
+<a name='L122'></a><a href='#L122'>122</a>
+<a name='L123'></a><a href='#L123'>123</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -206,17 +212,17 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -225,13 +231,16 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">21x</span>
-<span class="cline-any cline-yes">21x</span>
-<span class="cline-any cline-yes">21x</span>
-<span class="cline-any cline-yes">21x</span>
-<span class="cline-any cline-yes">21x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">21x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">22x</span>
+<span class="cline-any cline-yes">22x</span>
+<span class="cline-any cline-yes">22x</span>
+<span class="cline-any cline-yes">22x</span>
+<span class="cline-any cline-yes">22x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">22x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">10x</span>
@@ -265,6 +274,9 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
@@ -308,13 +320,19 @@ import { Dnd5eClient } from './dnd5e-client';
 import { fetchTraits, listPersonality, listRefs, personalityDetail } from './dnd5e-resources';
 import {
   MONSTERS_SECTION,
-  NAME_COLUMN,
+  PERSONALITY_SECTION,
   plain,
   SPELLS_QUERY,
   SPELLS_SECTION,
 } from './dnd5e-sections';
 import { mapBackground, ApiBackground } from './mappers/background.mapper';
-import { ApiClass, ApiClassLevel, mapClass } from './mappers/class.mapper';
+import {
+  ApiClass,
+  ApiClassLevel,
+  CLASS_FEATURES_QUERIES,
+  GqlClassFeatures,
+  mapClass,
+} from './mappers/class.mapper';
 import { ApiRef } from './mappers/common';
 import { ApiMonster, GqlMonster, mapMonster, mapMonsterSummary } from './mappers/monster.mapper';
 import { mapAlignment, mapLanguage } from './mappers/personality.mapper';
@@ -327,16 +345,13 @@ const VERSION = '2014';
 const MONSTERS_QUERY = `{ monsters(limit: 1000) { index name type size challenge_rating } }`;
 &nbsp;
 const SECTIONS: readonly RulesetSection[] = [
-  plain('classes', 'Classes', 'players', 'sword'),
-  plain('races', 'Races', 'players', 'users'),
-  plain('backgrounds', 'Historiques', 'players', 'book'),
-  {
-    ...plain('personality', 'Personnalité', 'players', 'user'),
-    columns: [NAME_COLUMN, { key: 'kind', label: 'Type', sortable: true }],
-  },
+  plain('classes', 'Classes', 'players', 'sword', 'Les maîtres de guilde ouvrent leurs registres…'),
+  plain('races', 'Races', 'players', 'users', 'Recensement des peuples du royaume…'),
+  plain('backgrounds', 'Historiques', 'players', 'book', 'Le barde rassemble ses souvenirs…'),
+  PERSONALITY_SECTION,
   SPELLS_SECTION,
   MONSTERS_SECTION,
-  plain('rules', 'Règles', 'rules', 'scroll'),
+  plain('rules', 'Règles', 'rules', 'scroll', 'Le MJ relit ses règles…'),
 ];
 &nbsp;
 /** "DnD 5e — SRD 2014", read from dnd5eapi.co. */
@@ -383,7 +398,10 @@ export class Dnd5e2014Ruleset implements Ruleset {
         return forkJoin([
           this.client.rest&lt;ApiClass&gt;(VERSION, `classes/${index}`),
           this.client.rest&lt;ApiClassLevel[]&gt;(VERSION, `classes/${index}/levels`),
-        ]).pipe(map(([cls, levels]) =&gt; mapClass(cls, levels)));
+          this.client.graphql&lt;GqlClassFeatures&gt;(VERSION, CLASS_FEATURES_QUERIES[VERSION], {
+            class: index,
+          }),
+        ]).pipe(map(([cls, levels, features]) =&gt; mapClass(cls, levels, features)));
       case 'races':
         return this.client
           .rest&lt;ApiRace&gt;(VERSION, `races/${index}`)
@@ -418,7 +436,7 @@ export class Dnd5e2014Ruleset implements Ruleset {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-10-23T04:32:08.726Z
+                at 2026-10-23T17:10:15.500Z
             </div>
         <script src="../../../../../prettify.js"></script>
         <script>

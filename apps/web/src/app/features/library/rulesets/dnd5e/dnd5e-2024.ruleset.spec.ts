@@ -18,6 +18,7 @@ import alert from './__fixtures__/2024/feats-alert.json';
 import cleave from './__fixtures__/2024/weapon-mastery-cleave.json';
 import wizard from './__fixtures__/2024/classes-wizard.json';
 import wizardLevels from './__fixtures__/2024/classes-wizard-levels.json';
+import wizardFeatures from './__fixtures__/2024/gql-classes-wizard-features.json';
 import goblin from './__fixtures__/2024/monsters-goblin-warrior.json';
 import bag from './__fixtures__/2024/magic-items-bag-of-holding.json';
 import elf from './__fixtures__/2024/species-elf.json';
@@ -72,11 +73,26 @@ describe('Dnd5e2024Ruleset', () => {
     expect(ruleset.sections.some((s) => s.group === 'rules')).toBe(false);
   });
 
-  it('never uses the reserved URL keys for a filter, and every filter has options', () => {
+  it('gives every section its own loading flavour', () => {
+    const messages = ruleset.sections.map((s) => s.loadingMessage);
+    expect(messages.every((message) => message !== undefined && message.endsWith('…'))).toBe(true);
+    expect(ruleset.sections.find((s) => s.id === 'spells')?.loadingMessage).toBe(
+      'Demande en cours à Mystra…',
+    );
+    expect(ruleset.sections.find((s) => s.id === 'monsters')?.loadingMessage).toBe(
+      'En attente du retour des explorateurs…',
+    );
+  });
+
+  it('never uses the reserved URL keys for a filter or tabs, and none has an empty list', () => {
     const reserved = ['q', 'sort', 'dir', 'page', 'size'];
-    for (const filter of ruleset.sections.flatMap((s) => s.filters)) {
+    for (const filter of ruleset.sections.flatMap((s) => [
+      ...s.filters,
+      ...(s.tabs ? [s.tabs] : []),
+    ])) {
       expect(reserved).not.toContain(filter.key);
-      expect(filter.options.length).toBeGreaterThan(0);
+      // Without options, a filter offers the values the entries have.
+      expect(filter.options === undefined || filter.options.length > 0).toBe(true);
     }
   });
 
@@ -85,8 +101,8 @@ describe('Dnd5e2024Ruleset', () => {
     const entries = listGraphql('spells', gqlSpells);
     expect(entries.map((e) => e.index)).toEqual(['acid-splash', 'fireball', 'detect-magic']);
     expect(entries[1].fields).toMatchObject({ level: 3, school: 'Evocation' });
-    for (const filter of spells.filters) {
-      const values = filter.options.map((o) => o.value);
+    for (const filter of spells.filters.filter((f) => f.options !== undefined)) {
+      const values = filter.options!.map((o) => o.value);
       for (const entry of entries) {
         const field = entry.fields[filter.key];
         for (const one of Array.isArray(field) ? field : [String(field)]) {
@@ -111,8 +127,8 @@ describe('Dnd5e2024Ruleset', () => {
       // "swarm of tiny beasts" is the "swarm" type filter.
       expect(entries.map((e) => e.fields['type'])).toEqual(['fey', 'aberration', 'swarm']);
       expect(entries.map((e) => e.fields['cr'])).toEqual([0.25, 10, 0.25]);
-      const types = monsters.filters[0].options.map((o) => o.value);
-      const cr = monsters.filters[1].options.map((o) => o.value);
+      const types = monsters.filters[0].options!.map((o) => o.value);
+      const cr = monsters.filters[1].options!.map((o) => o.value);
       for (const entry of entries) {
         expect(types).toContain(entry.fields['type']);
         expect(cr).toContain(String(entry.fields['cr']));
@@ -136,7 +152,7 @@ describe('Dnd5e2024Ruleset', () => {
 
   it('offers only values the 2024 data has', () => {
     const filters = ruleset.sections.flatMap((s) => s.filters);
-    const classes = filters.find((f) => f.key === 'classes')!.options.map((o) => o.value);
+    const classes = filters.find((f) => f.key === 'classes')!.options!.map((o) => o.value);
     expect(classes).toEqual([
       'Bard',
       'Cleric',
@@ -147,7 +163,7 @@ describe('Dnd5e2024Ruleset', () => {
       'Warlock',
       'Wizard',
     ]);
-    const cr = filters.find((f) => f.key === 'cr')!.options.map((o) => o.value);
+    const cr = filters.find((f) => f.key === 'cr')!.options!.map((o) => o.value);
     expect(cr).not.toContain('18');
     expect(cr).toHaveLength(28);
   });
@@ -210,7 +226,13 @@ describe('Dnd5e2024Ruleset', () => {
       const cls = detailOf('classes', 'wizard');
       http.expectOne(`${API}/classes/wizard`).flush(wizard);
       http.expectOne(`${API}/classes/wizard/levels`).flush(wizardLevels);
+      const features = http.expectOne(GRAPHQL);
+      expect(features.request.body.variables).toEqual({ class: 'wizard' });
+      features.flush(wizardFeatures);
       expect(cls()?.blocks.some((b) => b.kind === 'table')).toBe(true);
+      expect(cls()?.blocks.map((b) => b.title)).toEqual(
+        expect.arrayContaining(['Class features', 'Subclass: Evoker', 'Evoker features']),
+      );
 
       const background = detailOf('backgrounds', 'acolyte');
       http.expectOne(`${API}/backgrounds/acolyte`).flush(acolyte);

@@ -29,7 +29,7 @@ import { Button } from '../../../shared/ui/button/button';
 import { LoadError } from '../../../shared/ui/load-error/load-error';
 import { DatePicker } from '../../../shared/ui/date-picker/date-picker';
 import { compareIso, formatDate } from '../../../shared/ui/date-picker/iso-date';
-import { Spinner } from '../../../shared/ui/spinner/spinner';
+import { Loading } from '../../../shared/ui/loading/loading';
 import { AdventureContext } from './adventure-context.service';
 
 type PlanningState = 'loading' | 'none' | 'ready' | 'failed';
@@ -41,7 +41,7 @@ type PlanningState = 'loading' | 'none' | 'ready' | 'failed';
 @Component({
   selector: 'dg-planning-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LoadError, Button, Spinner, DatePicker, NgTemplateOutlet],
+  imports: [LoadError, Button, Loading, DatePicker, NgTemplateOutlet],
   styleUrl: '../tavern-page.scss',
   styles: `
     h2 {
@@ -279,7 +279,12 @@ type PlanningState = 'loading' | 'none' | 'ready' | 'failed';
               />
             </div>
           } @else {
-            <div class="state"><dg-spinner label="Chargement des disponibilités" /></div>
+            <div class="state">
+              <dg-loading
+                label="Chargement des disponibilités"
+                message="Les compagnons consultent leurs agendas…"
+              />
+            </div>
           }
         }
       }
@@ -305,7 +310,12 @@ type PlanningState = 'loading' | 'none' | 'ready' | 'failed';
         </div>
       }
       @default {
-        <div class="state"><dg-spinner label="Chargement du planning" /></div>
+        <div class="state">
+          <dg-loading
+            label="Chargement du planning"
+            message="Le calendrier du royaume se déplie…"
+          />
+        </div>
       }
     }
   `,

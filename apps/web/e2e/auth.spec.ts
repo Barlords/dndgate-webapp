@@ -41,8 +41,8 @@ test('signing in leads to the Tavern', async ({ page }) => {
 
   await signIn(page);
 
-  await expect(page).toHaveURL('/tavern/quests');
-  await expect(page.getByRole('heading', { name: 'Tableau des quêtes' })).toBeVisible();
+  await expect(page).toHaveURL('/tavern/adventures');
+  await expect(page.getByRole('heading', { name: 'Aventures' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Gandalf' })).toBeVisible();
 });
 
@@ -61,9 +61,9 @@ test('two simultaneous 401 trigger a single refresh', async ({ page }) => {
     });
   }
   await signIn(page);
-  await expect(page).toHaveURL('/tavern/quests');
+  await expect(page).toHaveURL('/tavern/adventures');
 
-  await page.getByRole('link', { name: 'En cours' }).click();
+  await page.getByRole('link', { name: 'Mes aventures' }).click();
 
   await expect.poll(() => retried.sort()).toEqual(['as-master', 'as-player']);
   expect(calls.refreshes).toBe(1);
@@ -72,7 +72,7 @@ test('two simultaneous 401 trigger a single refresh', async ({ page }) => {
 test('signing out returns to the home page and closes the Tavern', async ({ page }) => {
   const calls = await mockAccountApi(page);
   await signIn(page);
-  await expect(page).toHaveURL('/tavern/quests');
+  await expect(page).toHaveURL('/tavern/adventures');
 
   await page.getByRole('link', { name: 'Gandalf' }).click();
   await page.getByRole('button', { name: 'Se déconnecter', exact: true }).click();
@@ -80,5 +80,5 @@ test('signing out returns to the home page and closes the Tavern', async ({ page
   await expect(page).toHaveURL('/');
   expect(calls.logouts).toBe(1);
   await page.goto('/tavern');
-  await expect(page).toHaveURL('/login?returnUrl=%2Ftavern%2Fquests');
+  await expect(page).toHaveURL('/login?returnUrl=%2Ftavern%2Fadventures');
 });

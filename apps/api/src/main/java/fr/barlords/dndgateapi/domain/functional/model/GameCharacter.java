@@ -19,6 +19,7 @@ public class GameCharacter {
     @With
     Account owner;
 
+    /** Null for a character kept outside any adventure of the application. */
     @With
     Adventure adventure;
 
@@ -46,6 +47,10 @@ public class GameCharacter {
 
     public boolean isMyOwner(Account account) {
         return account.getId().equals(this.owner.getId());
+    }
+
+    public boolean hasAdventure() {
+        return adventure != null;
     }
 
 }

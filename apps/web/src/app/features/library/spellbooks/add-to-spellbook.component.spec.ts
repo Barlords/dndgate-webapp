@@ -110,6 +110,20 @@ describe('AddToSpellbook', () => {
     expect(items()[1].getAttribute('aria-checked')).toBe('false');
   });
 
+  it('sits right after the name of the spell, as « + » and a book, its words folded', async () => {
+    await open();
+    const heading = library.root.querySelector('.entry__heading')!;
+    expect(heading.querySelector('h1')?.nextElementSibling?.tagName).toBe('DG-ADD-TO-SPELLBOOK');
+    expect(trigger()!.getAttribute('aria-label')).toBe('Ajouter au grimoire');
+    expect(trigger()!.hasAttribute('title')).toBe(false);
+    expect(
+      [...trigger()!.querySelectorAll('dg-icon')].map((icon) => icon.getAttribute('name')),
+    ).toEqual(['plus', 'book']);
+    const label = trigger()!.querySelector('.add-to-book__label')!;
+    expect(label.textContent).toBe('Ajouter au grimoire');
+    expect(label.getAttribute('aria-hidden')).toBe('true');
+  });
+
   it('is hidden when logged out', async () => {
     await open(false);
     expect(trigger()).toBeNull();

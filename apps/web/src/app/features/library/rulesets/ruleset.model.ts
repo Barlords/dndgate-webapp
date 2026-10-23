@@ -23,9 +23,20 @@ export interface ColumnDef {
   format?: (value: FieldValue) => string;
 }
 
-/** A select over `fields[key]`; an entry matches when its value equals (or, for a list, holds) the option. */
+/**
+ * A list of boxes over `fields[key]`, any number of them ticked: an entry matches when its value
+ * equals (or, for a list, holds) one of the ticked options.
+ */
 export interface FilterDef {
   /** Not `q`, `sort`, `dir`, `page` or `size`: the list's URL state already uses those. */
+  key: string;
+  label: string;
+  /** Absent: the values the entries have, in alphabetical order. */
+  options?: { value: string; label: string }[];
+}
+
+/** Tabs over `fields[key]`: one per option, the first one shown by default. */
+export interface TabsDef {
   key: string;
   label: string;
   options: { value: string; label: string }[];
@@ -38,6 +49,15 @@ export interface RulesetSection {
   icon: IconName;
   columns: ColumnDef[];
   filters: FilterDef[];
+  /**
+   * The sortable column the list is sorted by until the reader picks one; by name when absent.
+   * Entries that tie are always put in alphabetical order.
+   */
+  defaultSort?: string;
+  /** Splits the list into tabs. Same key rules as a filter. */
+  tabs?: TabsDef;
+  /** The flavour line under the loader of this section's pages; a generic one when absent. */
+  loadingMessage?: string;
 }
 
 export type FieldValue = string | number | boolean | string[];
@@ -48,16 +68,44 @@ export interface EntrySummary {
   fields: Record<string, FieldValue>;
 }
 
-export type DetailBlock =
-  // Light markdown: **bold**, *italic*, lists, ## headings and pipe tables.
-  | { kind: 'text'; title?: string; paragraphs: string[] }
-  | { kind: 'stats'; title?: string; items: { label: string; value: string }[] }
-  | { kind: 'table'; title?: string; columns: string[]; rows: string[][] }
-  | {
-      kind: 'entries';
-      title?: string;
-      items: { name: string; text: string; link?: { section: string; index: string } }[];
-    };
+/** A part of a table cell; with an `anchor`, a link to the block or entry of that anchor. */
+export interface CellPart {
+  text: string;
+  anchor?: string;
+}
+
+/** Plain text, or parts shown one after the other, separated by commas. */
+export type TableCell = string | CellPart[];
+
+/**
+ * What every block may have: a `title`; an `anchor`, the id that in-page links point at; and
+ * `nested`, for a block that belongs to the block before it (its title is a sub-heading).
+ */
+interface BlockBase {
+  title?: string;
+  anchor?: string;
+  nested?: boolean;
+}
+
+/**
+ * A block of an entry page. Texts are light markdown: **bold**, *italic*, lists, ## headings and
+ * pipe tables. Stats in `rows` take one line each, for values too long to share one (proficiencies).
+ */
+export type DetailBlock = BlockBase &
+  (
+    | { kind: 'text'; paragraphs: string[] }
+    | { kind: 'stats'; layout?: 'grid' | 'rows'; items: { label: string; value: string }[] }
+    | { kind: 'table'; columns: string[]; rows: TableCell[][] }
+    | {
+        kind: 'entries';
+        items: {
+          name: string;
+          text: string;
+          link?: { section: string; index: string };
+          anchor?: string;
+        }[];
+      }
+  );
 
 export interface EntryDetail {
   index: string;

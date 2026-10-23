@@ -45,6 +45,10 @@ describe('Icon', () => {
     expect(Object.keys(ICON_PATHS).sort()).toEqual(
       [
         'book',
+        'list',
+        'filter',
+        'widget',
+        'close',
         'scroll',
         'sword',
         'skull',
@@ -54,6 +58,7 @@ describe('Icon', () => {
         'calendar',
         'chat',
         'crown',
+        'gem',
         'plus',
         'key',
         'user',
@@ -61,6 +66,7 @@ describe('Icon', () => {
         'chevron-left',
         'chevron-right',
         'menu',
+        'sidebar',
         'logout',
         'upload',
         'download',

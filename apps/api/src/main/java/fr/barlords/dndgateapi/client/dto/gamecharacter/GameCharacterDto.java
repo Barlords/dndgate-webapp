@@ -14,6 +14,8 @@ public record GameCharacterDto(
         String background,
         /** Where to read the picture (needs the same authentication as the rest of the API). */
         String pictureUrl,
-        UUID ownerId
+        UUID ownerId,
+        /** Null for a character kept outside any adventure of the application. */
+        UUID adventureId
 ) {
 }

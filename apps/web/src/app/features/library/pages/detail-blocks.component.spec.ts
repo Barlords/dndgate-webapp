@@ -67,6 +67,57 @@ describe('DetailBlocks', () => {
     );
   });
 
+  it('gives anchors to blocks and entries, and makes a nested title a sub-heading', async () => {
+    const root = await render([
+      { kind: 'text', title: 'Subclasses', anchor: 'subclasses', paragraphs: [] },
+      { kind: 'text', title: 'Arcane Tradition: Evocation', nested: true, paragraphs: ['Booms.'] },
+      {
+        kind: 'entries',
+        title: 'Class features',
+        items: [{ name: 'Arcane Recovery', text: 'Rest.', anchor: 'feature-arcane-recovery' }],
+      },
+    ]);
+    expect(root.querySelector('section#subclasses h2')?.textContent).toBe('Subclasses');
+    expect(texts(root, 'h3.block__title--nested')).toEqual(['Arcane Tradition: Evocation']);
+    expect(
+      root.querySelector('#feature-arcane-recovery .block__entry-name')?.textContent,
+    ).toContain('Arcane Recovery');
+  });
+
+  it('links the parts of a table cell to their anchor on the page', async () => {
+    const root = await render([
+      {
+        kind: 'table',
+        columns: ['Level', 'Features'],
+        rows: [
+          ['1', [{ text: 'Rage', anchor: 'feature-rage' }, { text: 'Unknown' }]],
+          ['2', '—'],
+        ],
+      },
+      { kind: 'entries', items: [{ name: 'Rage', text: 'Grr.', anchor: 'feature-rage' }] },
+    ]);
+    const target = root.querySelector<HTMLElement>('#feature-rage')!;
+    const scroll = vi.fn();
+    target.scrollIntoView = scroll;
+    expect(texts(root, 'tbody tr:first-child td:last-child')).toEqual(['Rage, Unknown']);
+    const link = root.querySelector<HTMLAnchorElement>('td a')!;
+    expect(link.textContent).toBe('Rage');
+    expect(link.getAttribute('href')).toBe('/#feature-rage');
+    expect(root.querySelectorAll('td a').length).toBe(1);
+    link.click();
+    expect(scroll).toHaveBeenCalledWith({ behavior: 'smooth' });
+  });
+
+  it('puts each stat on a line of its own in the rows layout', async () => {
+    const root = await render([
+      { kind: 'stats', layout: 'rows', items: [{ label: 'Hit die', value: 'd6' }] },
+      { kind: 'stats', items: [{ label: 'Range', value: '150 feet' }] },
+    ]);
+    const lists = [...root.querySelectorAll('dl')];
+    expect(lists[0].classList).toContain('block__stats--rows');
+    expect(lists[1].classList).not.toContain('block__stats--rows');
+  });
+
   it('renders bold and italic text', async () => {
     const root = await render(text(['A **bold** and *italic* and ***both*** word.']));
     expect(root.querySelector('p')?.textContent).toBe('A bold and italic and both word.');

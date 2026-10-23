@@ -18,7 +18,7 @@ import { GameCharacterDto } from '../../../../core/api/generated/models/game-cha
 import { Button } from '../../../../shared/ui/button/button';
 import { ApiProblem, toApiProblem } from '../../../../core/errors/api-problem';
 import { LoadError } from '../../../../shared/ui/load-error/load-error';
-import { Spinner } from '../../../../shared/ui/spinner/spinner';
+import { Loading } from '../../../../shared/ui/loading/loading';
 import { AdventureContext } from '../adventure-context.service';
 import { CharacterPortrait } from './character-portrait';
 
@@ -28,7 +28,7 @@ type ListState = 'loading' | 'ready' | 'failed';
 @Component({
   selector: 'dg-character-list-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LoadError, RouterLink, Button, Spinner, CharacterPortrait],
+  imports: [LoadError, RouterLink, Button, Loading, CharacterPortrait],
   styleUrl: '../../tavern-page.scss',
   styles: `
     .head {
@@ -148,7 +148,9 @@ type ListState = 'loading' | 'ready' | 'failed';
         </div>
       }
       @default {
-        <div class="state"><dg-spinner label="Chargement des personnages" /></div>
+        <div class="state">
+          <dg-loading label="Chargement des personnages" message="Les héros se rassemblent…" />
+        </div>
       }
     }
   `,

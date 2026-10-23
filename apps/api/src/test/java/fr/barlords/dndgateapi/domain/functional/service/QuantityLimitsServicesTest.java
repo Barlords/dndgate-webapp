@@ -10,11 +10,13 @@ import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.note.AdventureNote;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.note.HistoricalNote;
+import fr.barlords.dndgateapi.domain.functional.model.magicitem.MagicItem;
 import fr.barlords.dndgateapi.domain.functional.service.adventure.AdventureCreatorService;
 import fr.barlords.dndgateapi.domain.functional.service.adventure.AdventureOwnerVerifierService;
 import fr.barlords.dndgateapi.domain.functional.service.adventurenote.AdventureNoteCreatorService;
 import fr.barlords.dndgateapi.domain.functional.service.gamecharacter.GameCharacterCreatorService;
 import fr.barlords.dndgateapi.domain.functional.service.historicnote.HistoricalNoteCreatorService;
+import fr.barlords.dndgateapi.domain.functional.service.magicitem.MagicItemCreatorService;
 import fr.barlords.dndgateapi.domain.functional.service.message.MessageCreatorService;
 import fr.barlords.dndgateapi.domain.functional.service.spellbook.SpellBookCreatorService;
 import fr.barlords.dndgateapi.domain.functional.service.spellbook.SpellBookImporterService;
@@ -25,6 +27,7 @@ import fr.barlords.dndgateapi.domain.port.out.AdventureNotePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.HistoricalNotePersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.MagicItemPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MessagePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
 import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
@@ -60,7 +63,7 @@ class QuantityLimitsServicesTest {
 
     private static final byte[] PNG = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3};
 
-    private static final QuantityLimits LIMITS = new QuantityLimits(2, 3, 4, 5, 6, 7, 8, WINDOW);
+    private static final QuantityLimits LIMITS = new QuantityLimits(2, 3, 4, 5, 6, 7, 9, 10, 8, WINDOW);
 
     private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
 
@@ -74,6 +77,9 @@ class QuantityLimitsServicesTest {
 
     @Mock
     private SpellBookPersistenceSpi spellBookSpi;
+
+    @Mock
+    private MagicItemPersistenceSpi magicItemSpi;
 
     @Mock
     private AdventureNotePersistenceSpi adventureNoteSpi;
@@ -130,6 +136,61 @@ class QuantityLimitsServicesTest {
 
         verify(characterSpi, never()).save(any());
         verify(minioSpi, never()).uploadFile(any(), any(), any());
+    }
+
+    // ---- characters outside any adventure: per account ----
+
+    private GameCharacter createCharacterWithoutAdventure() {
+        when(currentAccountService.getAccountById(account.getId())).thenReturn(account);
+        return new GameCharacterCreatorService(characterSpi, accessVerifier, currentAccountService, minioSpi, LIMITS)
+                .create(account.getId(), null, GameCharacter.builder().name("Gandalf").build(), new ByteArrayInputStream(PNG));
+    }
+
+    @Test
+    void an_account_below_the_limit_of_characters_outside_any_adventure_creates_one() {
+        when(characterSpi.countByOwnerIdWithoutAdventure(account.getId())).thenReturn(8L);
+        when(characterSpi.save(any(GameCharacter.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        Assertions.assertNotNull(createCharacterWithoutAdventure());
+        verify(characterSpi, never()).countByOwnerIdAndAdventureId(any(), any());
+    }
+
+    @Test
+    void an_account_at_the_limit_of_characters_outside_any_adventure_creates_none_and_nothing_is_uploaded() throws Exception {
+        when(characterSpi.countByOwnerIdWithoutAdventure(account.getId())).thenReturn(9L);
+
+        QuantityLimitExceededException refused =
+                Assertions.assertThrows(QuantityLimitExceededException.class, this::createCharacterWithoutAdventure);
+
+        Assertions.assertEquals("An account can have at most 9 characters outside any adventure", refused.getMessage());
+        verify(characterSpi, never()).save(any());
+        verify(minioSpi, never()).uploadFile(any(), any(), any());
+    }
+
+    // ---- magic items per account ----
+
+    private MagicItem createMagicItem() {
+        when(currentAccountService.getAccountById(account.getId())).thenReturn(account);
+        return new MagicItemCreatorService(magicItemSpi, currentAccountService, LIMITS)
+                .create(account.getId(), MagicItem.builder().name("Ring").build());
+    }
+
+    @Test
+    void an_account_below_the_magic_item_limit_creates_one() {
+        when(magicItemSpi.countByOwnerId(account.getId())).thenReturn(9L);
+        when(magicItemSpi.save(any(MagicItem.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        Assertions.assertEquals(account, createMagicItem().getOwner());
+    }
+
+    @Test
+    void an_account_at_the_magic_item_limit_creates_none() {
+        when(magicItemSpi.countByOwnerId(account.getId())).thenReturn(10L);
+
+        QuantityLimitExceededException refused = Assertions.assertThrows(QuantityLimitExceededException.class, this::createMagicItem);
+
+        Assertions.assertEquals("An account can have at most 10 magic items", refused.getMessage());
+        verify(magicItemSpi, never()).save(any());
     }
 
     // ---- active adventures per master ----
@@ -317,8 +378,10 @@ class QuantityLimitsServicesTest {
 
     @Test
     void the_limits_must_be_positive() {
-        Assertions.assertThrows(IllegalArgumentException.class, () -> new QuantityLimits(0, 1, 1, 1, 1, 1, 1, WINDOW));
-        Assertions.assertThrows(IllegalArgumentException.class, () -> new QuantityLimits(1, 1, 1, 1, 1, 1, 1, Duration.ZERO));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new QuantityLimits(0, 1, 1, 1, 1, 1, 1, 1, 1, WINDOW));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new QuantityLimits(1, 1, 1, 1, 1, 1, 0, 1, 1, WINDOW));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new QuantityLimits(1, 1, 1, 1, 1, 1, 1, 0, 1, WINDOW));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new QuantityLimits(1, 1, 1, 1, 1, 1, 1, 1, 1, Duration.ZERO));
         Assertions.assertEquals(30, QuantityLimits.defaults().messagesPerWindow());
     }
 }

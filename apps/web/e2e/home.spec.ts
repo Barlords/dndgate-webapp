@@ -28,6 +28,6 @@ test('the Tavern sends a signed-out visitor to the login page first', async ({ p
 
   await page.locator('dg-home-half.home-half--tavern').getByRole('link').click();
 
-  await expect(page).toHaveURL('/login?returnUrl=%2Ftavern%2Fquests');
+  await expect(page).toHaveURL('/login?returnUrl=%2Ftavern%2Fadventures');
   await expect(page.getByRole('heading', { name: 'Connexion' })).toBeVisible();
 });

@@ -84,6 +84,18 @@ class GameCharacterCreatorServiceTest {
     }
 
     @Test
+    void a_character_without_adventure_belongs_to_the_caller_alone_and_asks_for_no_participation() {
+        when(spi.save(any(GameCharacter.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        GameCharacter created = service.create(player.getId(), null, draft, new ByteArrayInputStream(PNG));
+
+        Assertions.assertEquals(player, created.getOwner());
+        Assertions.assertNull(created.getAdventure());
+        Assertions.assertFalse(created.hasAdventure());
+        verify(adventureAccessVerifierApi, never()).verifyParticipant(any(), any());
+    }
+
+    @Test
     void the_picture_is_stored_where_the_character_says_with_its_real_content_type() throws Exception {
         playerIsParticipant();
         when(spi.save(any(GameCharacter.class))).thenAnswer(i -> i.getArguments()[0]);

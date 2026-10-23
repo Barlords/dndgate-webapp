@@ -54,7 +54,7 @@ export function mapBackground(background: ApiBackground): EntryDetail {
     name: background.name,
     tags: [],
     blocks: [
-      { kind: 'stats', items: stats },
+      { kind: 'stats', layout: 'rows', items: stats },
       {
         kind: 'entries',
         title: 'Feature',

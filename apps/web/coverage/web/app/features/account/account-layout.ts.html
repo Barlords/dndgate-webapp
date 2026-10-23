@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>13/13</span>
+                <span class='fraction'>15/15</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>8/8</span>
+                <span class='fraction'>9/9</span>
             </div>
         
             
@@ -145,7 +145,15 @@
 <a name='L80'></a><a href='#L80'>80</a>
 <a name='L81'></a><a href='#L81'>81</a>
 <a name='L82'></a><a href='#L82'>82</a>
-<a name='L83'></a><a href='#L83'>83</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -157,15 +165,15 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">53x</span>
-<span class="cline-any cline-yes">53x</span>
-<span class="cline-any cline-yes">53x</span>
-<span class="cline-any cline-yes">58x</span>
-<span class="cline-any cline-yes">53x</span>
-<span class="cline-any cline-yes">53x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">57x</span>
+<span class="cline-any cline-yes">57x</span>
+<span class="cline-any cline-yes">62x</span>
+<span class="cline-any cline-yes">62x</span>
+<span class="cline-any cline-yes">57x</span>
+<span class="cline-any cline-yes">57x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -224,14 +232,25 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">111x</span>
-<span class="cline-any cline-yes">53x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">119x</span>
+<span class="cline-any cline-yes">57x</span>
+<span class="cline-any cline-yes">57x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { ChangeDetectionStrategy, Component, input, ViewEncapsulation } from '@angular/core';
 import { Emblem } from '../../shared/ui/emblem/emblem';
 import { Parchment } from '../../shared/ui/parchment/parchment';
 &nbsp;
-/** Page shell of the signed-out account screens: leather background, emblem, parchment card. */
+/**
+ * Page shell of the account screens: leather background, emblem, parchment card. `wide` widens the
+ * card for a page laid out in columns (the reader's own account).
+ */
 @Component({
   selector: 'dg-account-layout',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -241,7 +260,7 @@ import { Parchment } from '../../shared/ui/parchment/parchment';
   template: `
     &lt;main class="dg-account"&gt;
       &lt;dg-emblem class="dg-account__emblem" /&gt;
-      &lt;dg-parchment class="dg-account__card"&gt;
+      &lt;dg-parchment class="dg-account__card" [class.dg-account__card--wide]="wide()"&gt;
         &lt;h1 class="dg-account__title"&gt;{{ heading() }}&lt;/h1&gt;
         &lt;ng-content /&gt;
       &lt;/dg-parchment&gt;
@@ -277,6 +296,10 @@ import { Parchment } from '../../shared/ui/parchment/parchment';
       color: var(--dg-title-color);
     }
 &nbsp;
+    .dg-account__card--wide {
+      width: min(64rem, 100%);
+    }
+&nbsp;
     .dg-account__card form {
       display: flex;
       flex-direction: column;
@@ -308,6 +331,7 @@ import { Parchment } from '../../shared/ui/parchment/parchment';
 })
 export class AccountLayout {
   readonly heading = input.required&lt;string&gt;();
+  readonly wide = input(false);
 }
 &nbsp;</pre></td></tr></table></pre>
 
@@ -316,7 +340,7 @@ export class AccountLayout {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-10-23T04:32:08.726Z
+                at 2026-10-23T17:10:15.500Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

@@ -14,7 +14,7 @@ import { confirmEmailChange } from '../../core/api/generated/functions';
 import { AuthService } from '../../core/auth/auth.service';
 import { toApiProblem } from '../../core/errors/api-problem';
 import { NotifierService } from '../../core/errors/notifier.service';
-import { Spinner } from '../../shared/ui/spinner/spinner';
+import { Loading } from '../../shared/ui/loading/loading';
 import { AccountLayout } from './account-layout';
 
 type State = 'checking' | 'done' | 'invalid' | 'taken' | 'failed';
@@ -22,12 +22,14 @@ type State = 'checking' | 'done' | 'invalid' | 'taken' | 'failed';
 @Component({
   selector: 'dg-confirm-email-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, AccountLayout, Spinner],
+  imports: [RouterLink, AccountLayout, Loading],
   template: `
     <dg-account-layout heading="Changement d'adresse">
       @switch (state()) {
         @case ('checking') {
-          <div class="dg-account__actions"><dg-spinner label="Confirmation en cours" /></div>
+          <div class="dg-account__actions">
+            <dg-loading label="Confirmation en cours" message="Le scribe met à jour le registre…" />
+          </div>
         }
         @case ('done') {
           <p role="status">Ta nouvelle adresse est confirmée.</p>

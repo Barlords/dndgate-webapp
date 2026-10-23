@@ -25,11 +25,12 @@ import { ApiProblem, toApiProblem } from '../../../../core/errors/api-problem';
 import { NotifierService } from '../../../../core/errors/notifier.service';
 import { BreadcrumbService } from '../../../../layout/breadcrumb.service';
 import { LoadError } from '../../../../shared/ui/load-error/load-error';
-import { Spinner } from '../../../../shared/ui/spinner/spinner';
+import { Loading } from '../../../../shared/ui/loading/loading';
 import { AdventureContext } from '../adventure-context.service';
 import { CharacterForm, CharacterSubmission, CharacterValue } from './character-form';
 
 const LIMIT_REACHED = 'Tu as déjà 10 personnages dans cette aventure.';
+const LIMIT_REACHED_WITHOUT_ADVENTURE = 'Tu as déjà 50 personnages hors aventure.';
 
 function toValue(character: GameCharacterDto): CharacterValue {
   return {
@@ -43,11 +44,14 @@ function toValue(character: GameCharacterDto): CharacterValue {
 
 type LoadState = 'loading' | 'ready' | 'missing' | 'failed';
 
-/** Creation of a character (`characters/new`) and edition of one of the reader's (`…/edit`). */
+/**
+ * Creation of a character (`characters/new`) and edition of one of the reader's (`…/edit`), in an
+ * adventure or, under « Mes personnages », outside any (a character played at a real table).
+ */
 @Component({
   selector: 'dg-character-form-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LoadError, CharacterForm, RouterLink, Spinner],
+  imports: [LoadError, CharacterForm, RouterLink, Loading],
   styleUrl: '../../tavern-page.scss',
   template: `
     <h1>{{ characterId ? 'Modifier le personnage' : 'Nouveau personnage' }}</h1>
@@ -85,7 +89,9 @@ type LoadState = 'loading' | 'ready' | 'missing' | 'failed';
         </div>
       }
       @default {
-        <div class="state"><dg-spinner label="Chargement du personnage" /></div>
+        <div class="state">
+          <dg-loading label="Chargement du personnage" message="Le héros ajuste son équipement…" />
+        </div>
       }
     }
   `,
@@ -93,7 +99,8 @@ type LoadState = 'loading' | 'ready' | 'missing' | 'failed';
 export class CharacterFormPage {
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
-  private readonly context = inject(AdventureContext);
+  /** Null under « Mes personnages »: the character is then created outside any adventure. */
+  private readonly context = inject(AdventureContext, { optional: true });
   private readonly auth = inject(AuthService);
   private readonly notifier = inject(NotifierService);
   private readonly breadcrumb = inject(BreadcrumbService);
@@ -122,17 +129,22 @@ export class CharacterFormPage {
 
   protected readonly isOwner = computed(() => this.loaded()?.ownerId === this.auth.account()?.id);
 
-  protected readonly listLink = computed(() => [
-    '/tavern/adventures',
-    this.context.adventure()?.id,
-    'characters',
-  ]);
+  protected readonly listLink = computed(() =>
+    this.context === null
+      ? ['/tavern/characters']
+      : ['/tavern/adventures', this.context.adventure()?.id, 'characters'],
+  );
   protected readonly backLink = computed(() => [...this.listLink(), this.characterId]);
 
   constructor() {
+    const context = this.context;
+    if (context === null) {
+      this.load();
+      return;
+    }
     effect(() => {
       // No request before the reader is known to be a participant: a visitor is redirected away.
-      if (this.context.state() === 'ready' && this.context.isParticipant()) {
+      if (context.state() === 'ready' && context.isParticipant()) {
         untracked(() => {
           if (this.characterId !== null && this.loaded() === null) {
             this.load();
@@ -159,10 +171,7 @@ export class CharacterFormPage {
           this.loaded.set(body);
           this.initial.set(toValue(body));
           this.state.set('ready');
-          this.breadcrumb.setLabelAt(
-            `/tavern/adventures/${this.context.adventure()!.id}/characters/${id}`,
-            body.name ?? '',
-          );
+          this.breadcrumb.setLabelAt([...this.listLink(), id].join('/'), body.name ?? '');
           done(body);
         },
         error: (error: unknown) => {
@@ -181,19 +190,19 @@ export class CharacterFormPage {
   protected save(submission: CharacterSubmission): void {
     this.problem.set(null);
     this.saving.set(true);
-    const adventureId = this.context.adventure()!.id!;
     if (this.characterId === null) {
-      this.create(adventureId, submission);
+      this.create(this.context?.adventure()?.id, submission);
     } else {
-      this.update(adventureId, this.characterId, submission.value);
+      this.update(this.characterId, submission.value);
     }
   }
 
-  private create(adventureId: string, { value, picture }: CharacterSubmission): void {
+  private create(adventureId: string | undefined, { value, picture }: CharacterSubmission): void {
     createGameCharacter(this.http, this.rootUrl, {
       body: {
         picturePresentation: picture!,
-        createGameCharacterRequest: { ...value, adventureId },
+        // Without an adventure, the character is kept outside any.
+        createGameCharacterRequest: adventureId === undefined ? value : { ...value, adventureId },
       },
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -201,13 +210,15 @@ export class CharacterFormPage {
         next: ({ body }) => {
           this.saving.set(false);
           this.notifier.success('Personnage créé.');
-          void this.router.navigate(['/tavern/adventures', adventureId, 'characters', body.id]);
+          void this.router.navigate([...this.listLink(), body.id]);
         },
         error: (error: unknown) => {
           this.saving.set(false);
           const failure = toApiProblem(error);
           if (failure.status === 409) {
-            this.problem.set(LIMIT_REACHED);
+            this.problem.set(
+              adventureId === undefined ? LIMIT_REACHED_WITHOUT_ADVENTURE : LIMIT_REACHED,
+            );
           } else {
             this.onRefused(failure, 'Création du personnage');
           }
@@ -215,14 +226,14 @@ export class CharacterFormPage {
       });
   }
 
-  private update(adventureId: string, id: string, body: CharacterValue): void {
+  private update(id: string, body: CharacterValue): void {
     patchGameCharacter(this.http, this.rootUrl, { id, body })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
           this.saving.set(false);
           this.notifier.success('Personnage enregistré.');
-          void this.router.navigate(['/tavern/adventures', adventureId, 'characters', id]);
+          void this.router.navigate([...this.listLink(), id]);
         },
         error: (error: unknown) => {
           this.saving.set(false);
