@@ -7,6 +7,8 @@ import { PublicAccountDto } from '../api/generated/models/public-account-dto';
 
 export const PSEUDO_LOADING = '…';
 export const PSEUDO_DELETED = 'Compte supprimé';
+/** A failed lookup is not retried sooner than this: templates read `pseudo()` on every render. */
+export const RETRY_COOLDOWN_MS = 30_000;
 export const PSEUDO_UNKNOWN = 'Compte inconnu';
 
 /** Display name of an account: its pseudo, or « Compte supprimé » once anonymized. */
@@ -16,7 +18,8 @@ export function displayName(account: PublicAccountDto): string {
 
 interface PseudoEntry {
   name: WritableSignal<string>;
-  failed: boolean;
+  /** When the last lookup failed, or null while loading or loaded. */
+  failedAt: number | null;
 }
 
 /**
@@ -47,26 +50,27 @@ export class AccountDirectory {
   /**
    * « … » while loading, « Compte supprimé » once anonymized; the same signal for the same id.
    * Safe to call from a template: no `toSignal`, which refuses to run in a reactive context.
-   * A failed lookup shows « Compte inconnu » and is retried by the next call, on the same signal.
+   * A failed lookup shows « Compte inconnu » and is retried by a call made 30 s or more later,
+   * on the same signal.
    */
   pseudo(id: string): Signal<string> {
     let entry = this.pseudos.get(id);
     if (entry === undefined) {
-      entry = { name: signal(PSEUDO_LOADING), failed: false };
+      entry = { name: signal(PSEUDO_LOADING), failedAt: null };
       this.pseudos.set(id, entry);
       this.load(id, entry);
-    } else if (entry.failed) {
+    } else if (entry.failedAt !== null && Date.now() - entry.failedAt >= RETRY_COOLDOWN_MS) {
       this.load(id, entry);
     }
     return entry.name.asReadonly();
   }
 
   private load(id: string, entry: PseudoEntry): void {
-    entry.failed = false;
+    entry.failedAt = null;
     this.get(id).subscribe({
       next: (account) => entry.name.set(displayName(account)),
       error: () => {
-        entry.failed = true;
+        entry.failedAt = Date.now();
         entry.name.set(PSEUDO_UNKNOWN);
       },
     });

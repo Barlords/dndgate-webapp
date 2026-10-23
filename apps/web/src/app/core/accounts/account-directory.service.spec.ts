@@ -62,18 +62,34 @@ describe('AccountDirectory', () => {
     expect((await retry).pseudo).toBe('Back');
   });
 
-  it('directory retries a failed pseudo on the next call, on the same signal', () => {
-    const pseudo = directory.pseudo('5');
-    backend
-      .expectOne((r) => r.url.endsWith('/accounts/id/5'))
-      .flush({}, { status: 500, statusText: 'Server Error' });
-    expect(pseudo()).toBe('Compte inconnu');
+  describe('after a failed lookup', () => {
+    beforeEach(() => vi.useFakeTimers({ toFake: ['Date'] }));
+    afterEach(() => vi.useRealTimers());
 
-    expect(directory.pseudo('5')).toBe(pseudo);
-    backend.expectOne((r) => r.url.endsWith('/accounts/id/5')).flush({ id: '5', pseudo: 'Back' });
-    expect(pseudo()).toBe('Back');
+    const accountRequest = () => backend.expectOne((r) => r.url.endsWith('/accounts/id/5'));
 
-    directory.pseudo('5');
-    backend.expectNone(() => true);
+    it('directory reads within the cooldown do not call the API again', () => {
+      const pseudo = directory.pseudo('5');
+      accountRequest().flush({}, { status: 500, statusText: 'Server Error' });
+      vi.advanceTimersByTime(29_000);
+      directory.pseudo('5');
+      directory.pseudo('5');
+      backend.expectNone(() => true);
+      expect(pseudo()).toBe('Compte inconnu');
+    });
+
+    it('directory retries once after the cooldown, on the same signal', () => {
+      const pseudo = directory.pseudo('5');
+      accountRequest().flush({}, { status: 500, statusText: 'Server Error' });
+      vi.advanceTimersByTime(30_000);
+
+      expect(directory.pseudo('5')).toBe(pseudo);
+      directory.pseudo('5'); // in flight: no second request
+      accountRequest().flush({ id: '5', pseudo: 'Back' });
+      expect(pseudo()).toBe('Back');
+
+      directory.pseudo('5');
+      backend.expectNone(() => true);
+    });
   });
 });
