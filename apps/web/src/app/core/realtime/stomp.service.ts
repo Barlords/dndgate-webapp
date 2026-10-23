@@ -1,17 +1,17 @@
 import { DOCUMENT } from '@angular/common';
 import { DestroyRef, inject, Injectable, InjectionToken, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { RxStomp, RxStompState, Versions } from '@stomp/rx-stomp';
-import { defer, firstValueFrom, map, Observable } from 'rxjs';
+import { ReconnectionTimeMode, RxStomp, RxStompState, Versions } from '@stomp/rx-stomp';
+import { defer, filter, finalize, firstValueFrom, map, Observable } from 'rxjs';
 import { ApiConfiguration } from '../api/generated/api-configuration';
 import { MessageDto } from '../api/generated/models/message-dto';
 import { AuthService } from '../auth/auth.service';
 import { TokenStore } from '../auth/token-store';
 
 /**
- * `idle`: nothing watched yet; `lost`: the connection dropped and is retried every 5 s;
- * `stopped`: no more retries (session revoked, refused by the server, or no token to present)
- * until something is watched again or `reconnect()` is called.
+ * `idle`: nothing watched; `lost`: the connection dropped and is retried, waiting longer each
+ * time; `stopped`: no more retries (session revoked, refused by the server, or no token to
+ * present) until something is watched again or `reconnect()` is called.
  */
 export type ChatConnection = 'idle' | 'connecting' | 'open' | 'lost' | 'stopped';
 
@@ -21,7 +21,9 @@ export const RX_STOMP_FACTORY = new InjectionToken<() => RxStomp>('RX_STOMP_FACT
   factory: () => () => new RxStomp(),
 });
 
+/** First wait before reconnecting; it doubles after each failed attempt, up to the maximum. */
 const RECONNECT_DELAY_MS = 5000;
+const MAX_RECONNECT_DELAY_MS = 60_000;
 /** The close code the API uses when it revokes the session of an open connection. */
 const POLICY_VIOLATION = 1008;
 /** An access token this close to its expiry is refreshed before it is presented at CONNECT. */
@@ -38,9 +40,21 @@ function expiresSoon(token: string): boolean {
   }
 }
 
+/** A broadcast message, or null for a frame that is not one (it is skipped, not fatal). */
+function readMessage(body: string): MessageDto | null {
+  try {
+    const value: unknown = JSON.parse(body);
+    const id = typeof value === 'object' && value !== null ? (value as { id?: unknown }).id : null;
+    return typeof id === 'string' ? (value as MessageDto) : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * The single STOMP connection to the API, opened on the first watch. The token goes in the
- * `Authorization` header of CONNECT; the client never publishes, it only subscribes.
+ * The single STOMP connection to the API, opened by the first watch and closed when nothing is
+ * watched any more. The token goes in the `Authorization` header of CONNECT; the client never
+ * publishes, it only subscribes.
  */
 @Injectable({ providedIn: 'root' })
 export class StompService {
@@ -53,17 +67,20 @@ export class StompService {
   readonly connection = this.state.asReadonly();
 
   private halted = false;
+  private watchers = 0;
   private lastSubscriptionId = 0;
 
   constructor() {
     this.client.configure({
       webSocketFactory: () => this.openSocket(),
       reconnectDelay: RECONNECT_DELAY_MS,
+      reconnectTimeMode: ReconnectionTimeMode.EXPONENTIAL,
+      maxReconnectDelay: MAX_RECONNECT_DELAY_MS,
       beforeConnect: () => this.authenticate(),
     });
     this.client.connectionState$.pipe(takeUntilDestroyed()).subscribe((state) => this.track(state));
     // An ERROR frame means the server refused us (bad token, refused subscription): retrying the
-    // same thing every 5 s would not help.
+    // same thing again would not help.
     this.client.stompErrors$.pipe(takeUntilDestroyed()).subscribe(() => this.halt());
     this.auth.sessionEnded.pipe(takeUntilDestroyed()).subscribe(() => this.halt());
     inject(DestroyRef).onDestroy(() => void this.client.deactivate());
@@ -76,17 +93,30 @@ export class StompService {
   watchChat(adventureId: string): Observable<MessageDto> {
     const destination = `/topic/adventure/chat/${adventureId.toLowerCase()}`;
     return defer(() => {
+      this.watchers++;
       this.reconnect();
       return this.client.watch({
         destination,
         subHeaders: () => ({ id: `chat-${++this.lastSubscriptionId}` }),
       });
-    }).pipe(map((message) => JSON.parse(message.body) as MessageDto));
+    }).pipe(
+      map((frame) => readMessage(frame.body)),
+      filter((message): message is MessageDto => message !== null),
+      finalize(() => {
+        if (--this.watchers === 0) {
+          this.halted = false;
+          void this.client.deactivate();
+        }
+      }),
+    );
   }
 
-  /** Starts the connection again if it was stopped; does nothing while it runs or retries. */
+  /**
+   * Starts the connection again if it was stopped and something is watched; does nothing while
+   * it runs or retries.
+   */
   reconnect(): void {
-    if (!this.client.active) {
+    if (this.watchers > 0 && !this.client.active) {
       this.halted = false;
       this.state.set('connecting');
       this.client.activate();
@@ -98,10 +128,12 @@ export class StompService {
       this.state.set('open');
     } else if (state === RxStompState.CONNECTING) {
       this.state.update((current) => (current === 'lost' ? 'lost' : 'connecting'));
+    } else if (this.watchers === 0) {
+      this.state.set('idle');
     } else if (this.halted) {
       this.state.set('stopped');
     } else {
-      this.state.update((current) => (current === 'idle' ? 'idle' : 'lost'));
+      this.state.set('lost');
     }
   }
 

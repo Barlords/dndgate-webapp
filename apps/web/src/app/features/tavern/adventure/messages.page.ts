@@ -26,6 +26,7 @@ import { AccountDirectory } from '../../../core/accounts/account-directory.servi
 import { ApiConfiguration } from '../../../core/api/generated/api-configuration';
 import { getMessageByAdventureId, sendMessage } from '../../../core/api/generated/functions';
 import { MessageDto } from '../../../core/api/generated/models/message-dto';
+import { PageDtoMessageDto } from '../../../core/api/generated/models/page-dto-message-dto';
 import { AuthService } from '../../../core/auth/auth.service';
 import { toApiProblem } from '../../../core/errors/api-problem';
 import { NotifierService } from '../../../core/errors/notifier.service';
@@ -37,6 +38,8 @@ import { AdventureContext } from './adventure-context.service';
 
 export const MESSAGES_PAGE_SIZE = 20;
 export const MESSAGE_MAX = 5000;
+/** After an outage, at most this many pages are fetched to join up with the messages shown. */
+export const MAX_CATCH_UP_PAGES = 5;
 /** Closer than this to the bottom of the log, the reader follows the conversation. */
 const NEAR_BOTTOM_PX = 48;
 
@@ -52,6 +55,12 @@ type Scroll = 'bottom' | 'follow' | 'keep';
 
 function notBlank(control: AbstractControl<string>) {
   return control.value.trim() === '' ? { required: true } : null;
+}
+
+/** How many messages are older than the last one of page `page`, as the API counted them. */
+function olderThan(body: PageDtoMessageDto, page: number): number {
+  const seen = page * MESSAGES_PAGE_SIZE + (body.content?.length ?? 0);
+  return Math.max(0, (body.totalElements ?? 0) - seen);
 }
 
 function byDate(a: MessageDto, b: MessageDto): number {
@@ -271,12 +280,14 @@ export class MessagesPage {
   protected readonly me = computed(() => this.auth.account()?.id);
 
   protected readonly state = signal<'loading' | 'ready' | 'failed'>('loading');
-  /** Oldest first, once per id. */
+  /**
+   * Oldest first, once per id. Always an unbroken run of the newest messages: the next older
+   * ones start at offset `messages().length` of the API's newest-first list.
+   */
   protected readonly messages = signal<MessageDto[]>([]);
-  /** The oldest page of the history loaded so far. */
-  private readonly page = signal(0);
-  private readonly totalPages = signal(1);
-  protected readonly hasOlder = computed(() => this.page() + 1 < this.totalPages());
+  /** How many messages are older than the oldest one shown, as of the last page read. */
+  private readonly olderCount = signal(0);
+  protected readonly hasOlder = computed(() => this.olderCount() > 0);
   protected readonly loadingOlder = signal(false);
 
   protected readonly form = new FormGroup({
@@ -348,8 +359,7 @@ export class MessagesPage {
     this.state.set('loading');
     this.fetch(0).subscribe({
       next: ({ body }) => {
-        this.page.set(0);
-        this.totalPages.set(body.totalPages ?? 1);
+        this.olderCount.set(olderThan(body, 0));
         this.state.set('ready');
         this.show(body.content ?? [], 'bottom');
       },
@@ -357,14 +367,17 @@ export class MessagesPage {
     });
   }
 
+  /**
+   * Messages that arrived since the history was read have shifted the pages: the page holding the
+   * next older message is found from how many are shown. It may repeat a few, kept once by id.
+   */
   protected loadOlder(): void {
-    const page = this.page() + 1;
+    const page = Math.floor(this.messages().length / MESSAGES_PAGE_SIZE);
     this.loadingOlder.set(true);
     this.fetch(page).subscribe({
       next: ({ body }) => {
         this.loadingOlder.set(false);
-        this.page.set(page);
-        this.totalPages.set(body.totalPages ?? page + 1);
+        this.olderCount.set(olderThan(body, page));
         this.show(body.content ?? [], 'keep');
       },
       error: (error: unknown) => {
@@ -374,9 +387,31 @@ export class MessagesPage {
     });
   }
 
-  private catchUp(): void {
-    this.fetch(0).subscribe({
-      next: ({ body }) => this.show(body.content ?? [], 'follow'),
+  /**
+   * Fetches the newest pages until one reaches a message already shown (or the first message
+   * ever), so that what was said during the outage leaves no hole. Past the last page allowed,
+   * the list restarts from the pages fetched and the reader loads the rest as older messages.
+   */
+  private catchUp(page = 0, fetched: MessageDto[] = []): void {
+    this.fetch(page).subscribe({
+      next: ({ body }) => {
+        const content = body.content ?? [];
+        const shown = new Set(this.messages().map((message) => message.id));
+        const all = [...fetched, ...content];
+        const older = olderThan(body, page);
+        if (content.some((message) => shown.has(message.id)) || older === 0) {
+          if (older === 0) {
+            this.olderCount.set(0);
+          }
+          this.show(all, 'follow');
+        } else if (page + 1 < MAX_CATCH_UP_PAGES) {
+          this.catchUp(page + 1, all);
+        } else {
+          this.messages.set([]);
+          this.olderCount.set(older);
+          this.show(all, 'bottom');
+        }
+      },
       // The reader can still load the history again; nothing to interrupt them for.
       error: () => undefined,
     });

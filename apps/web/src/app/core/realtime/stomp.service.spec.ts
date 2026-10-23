@@ -116,7 +116,11 @@ class FakeRxStomp {
   }
 
   deliver(destination: string, body: object): void {
-    this.frames.next({ destination, body: JSON.stringify(body) });
+    this.deliverRaw(destination, JSON.stringify(body));
+  }
+
+  deliverRaw(destination: string, body: string): void {
+    this.frames.next({ destination, body });
   }
 
   watch(params: IWatchParams): Observable<IMessage> {
@@ -160,6 +164,7 @@ describe('StompService', () => {
   }
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     FakeSocket.instances = [];
   });
@@ -199,7 +204,32 @@ describe('StompService', () => {
     expect(received).toEqual([message]);
 
     watching.unsubscribe();
-    expect(socket.sent.at(-1)).toContain(`UNSUBSCRIBE\nid:${id}\n`);
+    expect(socket.sent).toContainEqual(expect.stringContaining(`UNSUBSCRIBE\nid:${id}\n`));
+    // Nothing watched any more: the connection is closed.
+    expect(socket.sent.at(-1)).toMatch(/^DISCONNECT\n/);
+  });
+
+  it('waits longer after each failed attempt, up to a minute', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('WebSocket', FakeSocket);
+    const stomp = setup();
+    tokens.save({ token: jwt(3600) });
+    stomp.watchChat(ADVENTURE).subscribe();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(FakeSocket.instances.length).toBe(1);
+
+    const waits: number[] = [];
+    for (let attempt = 1; attempt <= 6; attempt++) {
+      FakeSocket.instances.at(-1)!.closeWith(1006);
+      let waited = 0;
+      while (FakeSocket.instances.length === attempt && waited < 120_000) {
+        await vi.advanceTimersByTimeAsync(1000);
+        waited += 1000;
+      }
+      waits.push(waited);
+    }
+
+    expect(waits).toEqual([5000, 10_000, 20_000, 40_000, 60_000, 60_000]);
   });
 
   it('uses a fresh subscription id on resubscribe', async () => {
@@ -213,6 +243,7 @@ describe('StompService', () => {
     await client.connect();
     first.unsubscribe();
     stomp.watchChat(ADVENTURE).subscribe();
+    await client.connect();
 
     expect(client.subscribes.map((s) => s.destination)).toEqual([TOPIC, TOPIC, TOPIC]);
     const ids = client.subscribes.map((s) => s.id);
@@ -220,11 +251,10 @@ describe('StompService', () => {
     expect(client.unsubscribes).toEqual([ids[1]]);
   });
 
-  it('connects lazily and once, retrying every 5 seconds', async () => {
+  it('connects lazily and once', async () => {
     const client = new FakeRxStomp();
     const stomp = setup(client);
     expect(client.activations).not.toHaveBeenCalled();
-    expect(client.config.reconnectDelay).toBe(5000);
 
     stomp.watchChat('a').subscribe();
     stomp.watchChat('b').subscribe();
@@ -242,6 +272,42 @@ describe('StompService', () => {
     client.deliver(TOPIC, { id: 'm1', content: 'Salut' });
 
     expect(await next).toEqual({ id: 'm1', content: 'Salut' });
+  });
+
+  it('skips a frame it cannot read and keeps listening', async () => {
+    const client = new FakeRxStomp();
+    const stomp = setup(client);
+    tokens.save({ token: jwt(600) });
+    const received: MessageDto[] = [];
+    const failed = vi.fn();
+    stomp.watchChat(ADVENTURE).subscribe({ next: (m) => received.push(m), error: failed });
+    await client.connect();
+
+    client.deliverRaw(TOPIC, 'not json');
+    client.deliverRaw(TOPIC, 'null');
+    client.deliverRaw(TOPIC, '{"content":"no id"}');
+    client.deliver(TOPIC, { id: 'm1', content: 'Salut' });
+
+    expect(received).toEqual([{ id: 'm1', content: 'Salut' }]);
+    expect(failed).not.toHaveBeenCalled();
+  });
+
+  it('closes the connection once nothing is watched any more', async () => {
+    const client = new FakeRxStomp();
+    const stomp = setup(client);
+    tokens.save({ token: jwt(600) });
+    const first = stomp.watchChat('a').subscribe();
+    const second = stomp.watchChat('b').subscribe();
+    await client.connect();
+
+    first.unsubscribe();
+    expect(client.active).toBe(true);
+    second.unsubscribe();
+    expect(client.active).toBe(false);
+    expect(stomp.connection()).toBe('idle');
+
+    stomp.reconnect();
+    expect(client.activations).toHaveBeenCalledTimes(1);
   });
 
   it.each([
