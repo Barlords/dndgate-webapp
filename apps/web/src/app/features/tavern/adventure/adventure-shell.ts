@@ -17,7 +17,7 @@ import {
   RouterOutlet,
 } from '@angular/router';
 import { BreadcrumbService } from '../../../layout/breadcrumb.service';
-import { Button } from '../../../shared/ui/button/button';
+import { LoadError } from '../../../shared/ui/load-error/load-error';
 import { Parchment } from '../../../shared/ui/parchment/parchment';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 import { AdventureContext } from './adventure-context.service';
@@ -44,7 +44,7 @@ export const ADVENTURE_TABS: Tab[] = [
 @Component({
   selector: 'dg-adventure-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Parchment, Spinner, Button],
+  imports: [LoadError, RouterOutlet, RouterLink, RouterLinkActive, Parchment, Spinner],
   providers: [AdventureContext],
   styleUrl: '../tavern-page.scss',
   styles: `
@@ -97,8 +97,11 @@ export const ADVENTURE_TABS: Tab[] = [
         }
         @case ('failed') {
           <div class="state">
-            <p role="alert">Impossible de charger l’aventure.</p>
-            <dg-button variant="ghost" (click)="retry()">Réessayer</dg-button>
+            <dg-load-error
+              message="Impossible de charger l’aventure."
+              [problem]="context.problem()"
+              (retry)="retry()"
+            />
           </div>
         }
         @default {

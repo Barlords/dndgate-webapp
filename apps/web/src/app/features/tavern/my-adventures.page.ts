@@ -7,7 +7,8 @@ import { ApiConfiguration } from '../../core/api/generated/api-configuration';
 import { getAdventuresAsMaster, getAdventuresAsPlayer } from '../../core/api/generated/functions';
 import { AdventureDto } from '../../core/api/generated/models/adventure-dto';
 import { fetchAllPages, PAGE_SIZE } from '../../core/api/fetch-all-pages';
-import { Button } from '../../shared/ui/button/button';
+import { ApiProblem, toApiProblem } from '../../core/errors/api-problem';
+import { LoadError } from '../../shared/ui/load-error/load-error';
 import { Parchment } from '../../shared/ui/parchment/parchment';
 import { Spinner } from '../../shared/ui/spinner/spinner';
 import { AdventureCard } from './adventure-card';
@@ -18,13 +19,14 @@ interface Mine {
   role: 'MJ' | 'Joueur';
 }
 
-type Loaded = { state: 'loading' } | { state: 'failed' } | { state: 'ready'; all: Mine[] };
+type Loaded =
+  { state: 'loading' } | { state: 'failed'; problem: ApiProblem } | { state: 'ready'; all: Mine[] };
 
 /** The adventures the reader plays or runs, on the « En cours » or the « Terminées » tab. */
 @Component({
   selector: 'dg-my-adventures-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Parchment, AdventureCard, Button, Spinner],
+  imports: [LoadError, Parchment, AdventureCard, Spinner],
   styleUrl: './tavern-page.scss',
   template: `
     <dg-parchment>
@@ -42,8 +44,11 @@ type Loaded = { state: 'loading' } | { state: 'failed' } | { state: 'ready'; all
         }
       } @else if (current.state === 'failed') {
         <div class="state">
-          <p role="alert">Impossible de charger tes aventures.</p>
-          <dg-button variant="ghost" (click)="retries.next()">Réessayer</dg-button>
+          <dg-load-error
+            message="Impossible de charger tes aventures."
+            [problem]="current.problem"
+            (retry)="retries.next()"
+          />
         </div>
       } @else {
         <div class="state"><dg-spinner label="Chargement des aventures" /></div>
@@ -85,7 +90,9 @@ export class MyAdventuresPage {
             ),
           }).pipe(
             map(({ player, master }): Loaded => ({ state: 'ready', all: merge(player, master) })),
-            catchError(() => of<Loaded>({ state: 'failed' })),
+            catchError((error: unknown) =>
+              of<Loaded>({ state: 'failed', problem: toApiProblem(error) }),
+            ),
             startWith<Loaded>({ state: 'loading' }),
           ),
         ),

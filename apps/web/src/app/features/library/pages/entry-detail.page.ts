@@ -3,7 +3,8 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { map, Subject, switchMap } from 'rxjs';
 import { BreadcrumbService } from '../../../layout/breadcrumb.service';
-import { Button } from '../../../shared/ui/button/button';
+import { toApiProblem } from '../../../core/errors/api-problem';
+import { LoadError } from '../../../shared/ui/load-error/load-error';
 import { Parchment } from '../../../shared/ui/parchment/parchment';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 import { AddToSpellbook } from '../spellbooks/add-to-spellbook.component';
@@ -16,7 +17,7 @@ import { LOADING, LoadState, loadWithRetry } from './load-state';
 @Component({
   selector: 'dg-entry-detail-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Parchment, Spinner, Button, DetailBlocks, RouterLink, AddToSpellbook],
+  imports: [LoadError, Parchment, Spinner, DetailBlocks, RouterLink, AddToSpellbook],
   template: `
     <dg-parchment>
       @if (entry(); as shown) {
@@ -46,8 +47,11 @@ import { LOADING, LoadState, loadWithRetry } from './load-state';
         </div>
       } @else if (failed()) {
         <div class="entry__state">
-          <p role="alert">Impossible de charger cette entrée.</p>
-          <dg-button variant="ghost" (click)="retry()">Réessayer</dg-button>
+          <dg-load-error
+            message="Impossible de charger cette entrée."
+            [problem]="loadProblem()"
+            (retry)="retry()"
+          />
         </div>
       } @else {
         <div class="entry__state"><dg-spinner label="Chargement de l'entrée" /></div>
@@ -118,6 +122,7 @@ export class EntryDetailPage {
   private readonly loaded = signal<LoadState<EntryDetail>>(LOADING);
   protected readonly entry = computed(() => this.loaded().value);
   protected readonly failed = computed(() => this.loaded().failed);
+  protected readonly loadProblem = computed(() => toApiProblem(this.loaded().error));
   protected readonly notFound = computed(
     () => this.loaded().error instanceof RulesetEntryNotFoundError,
   );

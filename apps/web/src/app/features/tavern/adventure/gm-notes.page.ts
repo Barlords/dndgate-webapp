@@ -9,6 +9,7 @@ import {
   patchAdventureNote,
 } from '../../../core/api/generated/functions';
 import { Button } from '../../../shared/ui/button/button';
+import { LoadError } from '../../../shared/ui/load-error/load-error';
 import { Paginator } from '../../../shared/ui/paginator/paginator';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 import { NoteEditor, NoteValue } from './note-editor';
@@ -22,7 +23,7 @@ import { NOTES_PAGE_SIZE, NotesPage } from './notes-page';
 @Component({
   selector: 'dg-gm-notes-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Button, Spinner, Paginator, NoteEditor, NoteTimeline],
+  imports: [LoadError, Button, Spinner, Paginator, NoteEditor, NoteTimeline],
   styleUrl: '../tavern-page.scss',
   styles: `
     .head {
@@ -78,8 +79,11 @@ import { NOTES_PAGE_SIZE, NotesPage } from './notes-page';
       }
       @case ('failed') {
         <div class="state">
-          <p role="alert">Impossible de charger les notes du MJ.</p>
-          <dg-button variant="ghost" (click)="load(0, false)">Réessayer</dg-button>
+          <dg-load-error
+            message="Impossible de charger les notes du MJ."
+            [problem]="loadProblem()"
+            (retry)="load(0, false)"
+          />
         </div>
       }
       @default {

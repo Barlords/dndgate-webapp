@@ -23,9 +23,10 @@ import {
 import { AvailabilityDto } from '../../../core/api/generated/models/availability-dto';
 import { PlanningDto } from '../../../core/api/generated/models/planning-dto';
 import { AuthService } from '../../../core/auth/auth.service';
-import { toApiProblem } from '../../../core/errors/api-problem';
+import { ApiProblem, toApiProblem } from '../../../core/errors/api-problem';
 import { NotifierService } from '../../../core/errors/notifier.service';
 import { Button } from '../../../shared/ui/button/button';
+import { LoadError } from '../../../shared/ui/load-error/load-error';
 import { DatePicker } from '../../../shared/ui/date-picker/date-picker';
 import { compareIso, formatDate } from '../../../shared/ui/date-picker/iso-date';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
@@ -40,7 +41,7 @@ type PlanningState = 'loading' | 'none' | 'ready' | 'failed';
 @Component({
   selector: 'dg-planning-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Button, Spinner, DatePicker, NgTemplateOutlet],
+  imports: [LoadError, Button, Spinner, DatePicker, NgTemplateOutlet],
   styleUrl: '../tavern-page.scss',
   styles: `
     h2 {
@@ -271,8 +272,11 @@ type PlanningState = 'loading' | 'none' | 'ready' | 'failed';
             }
           } @else if (votesState() === 'failed') {
             <div class="state">
-              <p role="alert">Impossible de charger les disponibilités.</p>
-              <dg-button variant="ghost" (click)="loadVotes(plan)">Réessayer</dg-button>
+              <dg-load-error
+                message="Impossible de charger les disponibilités."
+                [problem]="votesProblem()"
+                (retry)="loadVotes(plan)"
+              />
             </div>
           } @else {
             <div class="state"><dg-spinner label="Chargement des disponibilités" /></div>
@@ -293,8 +297,11 @@ type PlanningState = 'loading' | 'none' | 'ready' | 'failed';
       }
       @case ('failed') {
         <div class="state">
-          <p role="alert">Impossible de charger le planning.</p>
-          <dg-button variant="ghost" (click)="loadPlanning()">Réessayer</dg-button>
+          <dg-load-error
+            message="Impossible de charger le planning."
+            [problem]="loadProblem()"
+            (retry)="loadPlanning()"
+          />
         </div>
       }
       @default {
@@ -315,6 +322,8 @@ export class PlanningPage {
   protected readonly state = signal<PlanningState>('loading');
   protected readonly planning = signal<PlanningDto | null>(null);
   protected readonly votesState = signal<'loading' | 'ready' | 'failed'>('loading');
+  protected readonly loadProblem = signal<ApiProblem | null>(null);
+  protected readonly votesProblem = signal<ApiProblem | null>(null);
   protected readonly votes = signal<AvailabilityDto[]>([]);
   protected readonly mine = signal<string[]>([]);
 
@@ -381,7 +390,9 @@ export class PlanningPage {
         next: ({ body }) => this.show(body),
         error: (error: unknown) => {
           // 404: nobody has proposed dates yet.
-          this.state.set(toApiProblem(error).status === 404 ? 'none' : 'failed');
+          const problem = toApiProblem(error);
+          this.loadProblem.set(problem);
+          this.state.set(problem.status === 404 ? 'none' : 'failed');
         },
       });
   }
@@ -406,7 +417,10 @@ export class PlanningPage {
           this.mine.set([...(body.find((v) => v.accountId === me)?.availabilityDates ?? [])]);
           this.votesState.set('ready');
         },
-        error: () => this.votesState.set('failed'),
+        error: (error: unknown) => {
+          this.votesProblem.set(toApiProblem(error));
+          this.votesState.set('failed');
+        },
       });
   }
 

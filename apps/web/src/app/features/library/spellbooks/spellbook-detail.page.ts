@@ -25,6 +25,7 @@ import { toApiProblem } from '../../../core/errors/api-problem';
 import { NotifierService } from '../../../core/errors/notifier.service';
 import { BreadcrumbService } from '../../../layout/breadcrumb.service';
 import { Button } from '../../../shared/ui/button/button';
+import { LoadError } from '../../../shared/ui/load-error/load-error';
 import { ConfirmService } from '../../../shared/ui/confirm-dialog/confirm.service';
 import { Parchment } from '../../../shared/ui/parchment/parchment';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
@@ -74,7 +75,7 @@ function levelLabel(level: number | null): string {
 @Component({
   selector: 'dg-spellbook-detail-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Parchment, Spinner, Button, RouterLink, SpellBookForm],
+  imports: [LoadError, Parchment, Spinner, Button, RouterLink, SpellBookForm],
   styles: `
     .head {
       text-align: center;
@@ -231,8 +232,11 @@ function levelLabel(level: number | null): string {
         </div>
       } @else if (loaded().failed) {
         <div class="state">
-          <p role="alert">Impossible de charger ce grimoire.</p>
-          <dg-button variant="ghost" (click)="reload()">Réessayer</dg-button>
+          <dg-load-error
+            message="Impossible de charger ce grimoire."
+            [problem]="loadProblem()"
+            (retry)="reload()"
+          />
         </div>
       } @else {
         <div class="state"><dg-spinner label="Chargement du grimoire" /></div>
@@ -255,6 +259,7 @@ export class SpellBookDetailPage {
   private readonly retries = new Subject<void>();
 
   protected readonly loaded = signal<LoadState<Loaded>>(LOADING);
+  protected readonly loadProblem = computed(() => toApiProblem(this.loaded().error));
   protected readonly book = signal<SpellBookDto | null>(null);
   protected readonly catalog = signal<Catalog>(NO_RULESET);
   protected readonly editing = signal(false);

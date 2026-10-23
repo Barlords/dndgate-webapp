@@ -38,8 +38,11 @@
 
   @if (failed()) {
     <div class="list__state">
-      <p role="alert">Impossible de charger cette rubrique.</p>
-      <dg-button variant="ghost" (click)="retry()">Réessayer</dg-button>
+      <dg-load-error
+        message="Impossible de charger cette rubrique."
+        [problem]="loadProblem()"
+        (retry)="retry()"
+      />
     </div>
   } @else if (entries() === null) {
     <div class="list__state"><dg-spinner label="Chargement de la rubrique" /></div>

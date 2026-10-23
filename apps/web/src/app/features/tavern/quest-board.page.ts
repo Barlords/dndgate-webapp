@@ -13,9 +13,10 @@ import { catchError, map, of, startWith, switchMap } from 'rxjs';
 import { ApiConfiguration } from '../../core/api/generated/api-configuration';
 import { getAvailableAdventures, joinAdventure } from '../../core/api/generated/functions';
 import { PageDtoAdventureDto } from '../../core/api/generated/models/page-dto-adventure-dto';
-import { toApiProblem } from '../../core/errors/api-problem';
+import { ApiProblem, toApiProblem } from '../../core/errors/api-problem';
 import { NotifierService } from '../../core/errors/notifier.service';
 import { Button } from '../../shared/ui/button/button';
+import { LoadError } from '../../shared/ui/load-error/load-error';
 import { Paginator } from '../../shared/ui/paginator/paginator';
 import { Parchment } from '../../shared/ui/parchment/parchment';
 import { Spinner } from '../../shared/ui/spinner/spinner';
@@ -24,13 +25,15 @@ import { AdventureCard } from './adventure-card';
 export const QUESTS_PAGE_SIZE = 20;
 
 type Board =
-  { state: 'loading' } | { state: 'failed' } | { state: 'ready'; page: PageDtoAdventureDto };
+  | { state: 'loading' }
+  | { state: 'failed'; problem: ApiProblem }
+  | { state: 'ready'; page: PageDtoAdventureDto };
 
 /** « Tableau des quêtes »: the public adventures still looking for players, paged by the server. */
 @Component({
   selector: 'dg-quest-board-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Parchment, AdventureCard, Button, Paginator, Spinner],
+  imports: [LoadError, Parchment, AdventureCard, Button, Paginator, Spinner],
   styleUrl: './tavern-page.scss',
   template: `
     <dg-parchment>
@@ -59,8 +62,11 @@ type Board =
         }
       } @else if (current.state === 'failed') {
         <div class="state">
-          <p role="alert">Impossible de charger le tableau des quêtes.</p>
-          <dg-button variant="ghost" (click)="reload()">Réessayer</dg-button>
+          <dg-load-error
+            message="Impossible de charger le tableau des quêtes."
+            [problem]="current.problem"
+            (retry)="reload()"
+          />
         </div>
       } @else {
         <div class="state"><dg-spinner label="Chargement des quêtes" /></div>
@@ -89,7 +95,9 @@ export class QuestBoardPage {
         switchMap(({ page }) =>
           getAvailableAdventures(this.http, this.rootUrl, { page, size: QUESTS_PAGE_SIZE }).pipe(
             map((response): Board => ({ state: 'ready', page: response.body })),
-            catchError(() => of<Board>({ state: 'failed' })),
+            catchError((error: unknown) =>
+              of<Board>({ state: 'failed', problem: toApiProblem(error) }),
+            ),
             startWith<Board>({ state: 'loading' }),
           ),
         ),

@@ -28,10 +28,11 @@ import { getMessageByAdventureId, sendMessage } from '../../../core/api/generate
 import { MessageDto } from '../../../core/api/generated/models/message-dto';
 import { PageDtoMessageDto } from '../../../core/api/generated/models/page-dto-message-dto';
 import { AuthService } from '../../../core/auth/auth.service';
-import { toApiProblem } from '../../../core/errors/api-problem';
+import { ApiProblem, toApiProblem } from '../../../core/errors/api-problem';
 import { NotifierService } from '../../../core/errors/notifier.service';
 import { StompService } from '../../../core/realtime/stomp.service';
 import { Button } from '../../../shared/ui/button/button';
+import { LoadError } from '../../../shared/ui/load-error/load-error';
 import { FormField } from '../../../shared/ui/form-field/form-field';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 import { AdventureContext } from './adventure-context.service';
@@ -75,7 +76,7 @@ function byDate(a: MessageDto, b: MessageDto): number {
 @Component({
   selector: 'dg-messages-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, Button, FormField, Spinner],
+  imports: [LoadError, ReactiveFormsModule, Button, FormField, Spinner],
   styleUrl: '../tavern-page.scss',
   styles: `
     .connection {
@@ -253,8 +254,11 @@ function byDate(a: MessageDto, b: MessageDto): number {
       }
       @case ('failed') {
         <div class="state">
-          <p role="alert">Impossible de charger les messages.</p>
-          <dg-button variant="ghost" (click)="loadHistory()">Réessayer</dg-button>
+          <dg-load-error
+            message="Impossible de charger les messages."
+            [problem]="loadProblem()"
+            (retry)="loadHistory()"
+          />
         </div>
       }
       @default {
@@ -280,6 +284,7 @@ export class MessagesPage {
   protected readonly me = computed(() => this.auth.account()?.id);
 
   protected readonly state = signal<'loading' | 'ready' | 'failed'>('loading');
+  protected readonly loadProblem = signal<ApiProblem | null>(null);
   /**
    * Oldest first, once per id. Always an unbroken run of the newest messages: the next older
    * ones start at offset `messages().length` of the API's newest-first list.
@@ -363,7 +368,10 @@ export class MessagesPage {
         this.state.set('ready');
         this.show(body.content ?? [], 'bottom');
       },
-      error: () => this.state.set('failed'),
+      error: (error: unknown) => {
+        this.loadProblem.set(toApiProblem(error));
+        this.state.set('failed');
+      },
     });
   }
 

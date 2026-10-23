@@ -68,7 +68,9 @@ describe('PlanningPage', () => {
     expect(main().textContent).toContain('Choisis au moins une date.');
     tavern.backend.expectNone((r) => r.method === 'POST');
 
-    const days = [...main().querySelectorAll<HTMLButtonElement>('.day:not([aria-disabled="true"])')];
+    const days = [
+      ...main().querySelectorAll<HTMLButtonElement>('.day:not([aria-disabled="true"])'),
+    ];
     const picked = [days[3].dataset['date']!, days[1].dataset['date']!];
     days[3].click();
     await tavern.render();
@@ -172,6 +174,20 @@ describe('PlanningPage', () => {
     await answerPlanning(null);
     expect(main().textContent).toContain('Aucune date proposée');
     expect(tavern.button('Proposer des dates')).toBeUndefined();
+  });
+
+  it('quotes the correlation id when the planning cannot be loaded', async () => {
+    await open();
+    tavern.backend
+      .expectOne(planningUrl)
+      .flush(
+        { status: 500, correlationId: 'cid-plan' },
+        { status: 500, statusText: 'Server Error' },
+      );
+    await tavern.render();
+    const reference = main().querySelector('.load-error__reference') as HTMLElement;
+    expect(reference.textContent).toContain('Référence :');
+    expect(reference.querySelector('code')?.textContent).toBe('cid-plan');
   });
 
   it('offers a retry when the planning cannot be loaded', async () => {

@@ -16,6 +16,8 @@ import { ApiConfiguration } from '../../../../core/api/generated/api-configurati
 import { getGameCharacters } from '../../../../core/api/generated/functions';
 import { GameCharacterDto } from '../../../../core/api/generated/models/game-character-dto';
 import { Button } from '../../../../shared/ui/button/button';
+import { ApiProblem, toApiProblem } from '../../../../core/errors/api-problem';
+import { LoadError } from '../../../../shared/ui/load-error/load-error';
 import { Spinner } from '../../../../shared/ui/spinner/spinner';
 import { AdventureContext } from '../adventure-context.service';
 import { CharacterPortrait } from './character-portrait';
@@ -26,7 +28,7 @@ type ListState = 'loading' | 'ready' | 'failed';
 @Component({
   selector: 'dg-character-list-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, Button, Spinner, CharacterPortrait],
+  imports: [LoadError, RouterLink, Button, Spinner, CharacterPortrait],
   styleUrl: '../../tavern-page.scss',
   styles: `
     .head {
@@ -138,8 +140,11 @@ type ListState = 'loading' | 'ready' | 'failed';
       }
       @case ('failed') {
         <div class="state">
-          <p role="alert">Impossible de charger les personnages.</p>
-          <dg-button variant="ghost" (click)="load()">Réessayer</dg-button>
+          <dg-load-error
+            message="Impossible de charger les personnages."
+            [problem]="loadProblem()"
+            (retry)="load()"
+          />
         </div>
       }
       @default {
@@ -157,6 +162,7 @@ export class CharacterListPage {
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly state = signal<ListState>('loading');
+  protected readonly loadProblem = signal<ApiProblem | null>(null);
   protected readonly characters = signal<GameCharacterDto[]>([]);
   private request: Subscription | null = null;
   private requested = false;
@@ -196,7 +202,10 @@ export class CharacterListPage {
           this.characters.set(body);
           this.state.set('ready');
         },
-        error: () => this.state.set('failed'),
+        error: (error: unknown) => {
+          this.loadProblem.set(toApiProblem(error));
+          this.state.set('failed');
+        },
       });
   }
 

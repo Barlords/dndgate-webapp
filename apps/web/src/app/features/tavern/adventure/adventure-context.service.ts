@@ -6,7 +6,7 @@ import { ApiConfiguration } from '../../../core/api/generated/api-configuration'
 import { getAdventureById } from '../../../core/api/generated/functions';
 import { AdventureDto } from '../../../core/api/generated/models/adventure-dto';
 import { AuthService } from '../../../core/auth/auth.service';
-import { toApiProblem } from '../../../core/errors/api-problem';
+import { ApiProblem, toApiProblem } from '../../../core/errors/api-problem';
 
 /** `missing`: unknown or private to the reader (404); `failed`: any other error. */
 export type AdventureLoadState = 'loading' | 'ready' | 'missing' | 'failed';
@@ -29,6 +29,9 @@ export class AdventureContext {
 
   readonly adventure = this.current.asReadonly();
   readonly state = this.loadState.asReadonly();
+  private readonly failure = signal<ApiProblem | null>(null);
+  /** Why the adventure failed to load, when it did. */
+  readonly problem = this.failure.asReadonly();
 
   private readonly me = computed(() => this.auth.account()?.id);
 
@@ -78,7 +81,9 @@ export class AdventureContext {
         error: (error: unknown) => {
           // A failed reload keeps what is shown.
           if (this.current() === null) {
-            this.loadState.set(toApiProblem(error).status === 404 ? 'missing' : 'failed');
+            const problem = toApiProblem(error);
+            this.failure.set(problem);
+            this.loadState.set(problem.status === 404 ? 'missing' : 'failed');
           }
         },
       });

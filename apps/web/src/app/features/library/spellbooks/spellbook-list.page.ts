@@ -21,6 +21,7 @@ import { SpellBookDto } from '../../../core/api/generated/models/spell-book-dto'
 import { ApiFieldError, ApiProblem, toApiProblem } from '../../../core/errors/api-problem';
 import { NotifierService } from '../../../core/errors/notifier.service';
 import { Button } from '../../../shared/ui/button/button';
+import { LoadError } from '../../../shared/ui/load-error/load-error';
 import { Parchment } from '../../../shared/ui/parchment/parchment';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 import { LOADING, LoadState, loadWithRetry } from '../pages/load-state';
@@ -38,7 +39,7 @@ const LIMIT_REACHED: ApiProblem = {
 @Component({
   selector: 'dg-spellbook-list-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Parchment, Spinner, Button, RouterLink, SpellBookForm],
+  imports: [LoadError, Parchment, Spinner, Button, RouterLink, SpellBookForm],
   styles: `
     .head {
       display: flex;
@@ -200,8 +201,11 @@ const LIMIT_REACHED: ApiProblem = {
         }
       } @else if (loaded().failed) {
         <div class="state">
-          <p role="alert">Impossible de charger tes grimoires.</p>
-          <dg-button variant="ghost" (click)="retry()">Réessayer</dg-button>
+          <dg-load-error
+            message="Impossible de charger tes grimoires."
+            [problem]="loadProblem()"
+            (retry)="retry()"
+          />
         </div>
       } @else {
         <div class="state"><dg-spinner label="Chargement des grimoires" /></div>
@@ -223,6 +227,7 @@ export class SpellBookListPage {
 
   private readonly retries = new Subject<void>();
   protected readonly loaded = signal<LoadState<SpellBookDto[]>>(LOADING);
+  protected readonly loadProblem = computed(() => toApiProblem(this.loaded().error));
   protected readonly books = signal<SpellBookDto[]>([]);
   protected readonly creating = signal(this.requested !== null);
   protected readonly saving = signal(false);
