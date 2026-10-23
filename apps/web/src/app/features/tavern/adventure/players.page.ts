@@ -1,29 +1,40 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
   computed,
   DestroyRef,
+  effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AccountDirectory } from '../../../core/accounts/account-directory.service';
 import { ApiConfiguration } from '../../../core/api/generated/api-configuration';
-import { invitePlayer } from '../../../core/api/generated/functions';
+import {
+  getMeanRateOfAccount,
+  getRatingBetween,
+  invitePlayer,
+  putRating,
+} from '../../../core/api/generated/functions';
+import { RatingMeanDto } from '../../../core/api/generated/models/rating-mean-dto';
+import { AuthService } from '../../../core/auth/auth.service';
 import { toApiProblem } from '../../../core/errors/api-problem';
 import { NotifierService } from '../../../core/errors/notifier.service';
 import { Button } from '../../../shared/ui/button/button';
 import { FormField } from '../../../shared/ui/form-field/form-field';
+import { StarRating } from '../../../shared/ui/star-rating/star-rating';
 import { AdventureContext } from './adventure-context.service';
 
 /** « Joueurs »: the master, then the players; the master of a new adventure can invite more. */
 @Component({
   selector: 'dg-adventure-players-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, ReactiveFormsModule, Button, FormField],
+  imports: [NgTemplateOutlet, RouterLink, ReactiveFormsModule, Button, FormField, StarRating],
   styleUrl: '../tavern-page.scss',
   styles: `
     .people {
@@ -37,6 +48,18 @@ import { AdventureContext } from './adventure-context.service';
       font-size: var(--dg-text-sm);
       letter-spacing: 0.1em;
       text-transform: uppercase;
+      color: var(--dg-ink-muted);
+    }
+
+    .rating {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--dg-space-3);
+      margin-top: var(--dg-space-1);
+    }
+
+    .mean {
       color: var(--dg-ink-muted);
     }
 
@@ -56,17 +79,31 @@ import { AdventureContext } from './adventure-context.service';
           Aucun MJ pour le moment.
         } @else {
           <a [routerLink]="['/players', a.creatorId]">{{ pseudo(a.creatorId!) }}</a>
+          <ng-container *ngTemplateOutlet="ratingTpl; context: { id: a.creatorId }" />
         }
       </li>
       @for (id of a.players; track id) {
         <li>
           <span class="role">Joueur</span>
           <a [routerLink]="['/players', id]">{{ pseudo(id) }}</a>
+          <ng-container *ngTemplateOutlet="ratingTpl; context: { id }" />
         </li>
       } @empty {
         <li>Aucun joueur pour le moment.</li>
       }
     </ul>
+
+    <ng-template #ratingTpl let-id="id">
+      @if (canRate(id)) {
+        <div class="rating">
+          <span>Ta note</span>
+          <dg-star-rating [value]="mine()[id]" (valueChange)="rate(id, $event)" />
+          @if (means()[id]; as m) {
+            <span class="mean">{{ meanLabel(m) }}</span>
+          }
+        </div>
+      }
+    </ng-template>
 
     @if (canInvite()) {
       <h2>Inviter un joueur</h2>
@@ -88,7 +125,13 @@ export class PlayersPage {
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   private readonly directory = inject(AccountDirectory);
   private readonly notifier = inject(NotifierService);
+  private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
+
+  /** My rate of each rateable participant (null: not rated yet); an id is present once looked up. */
+  protected readonly mine = signal<Record<string, number | null>>({});
+  protected readonly means = signal<Record<string, RatingMeanDto>>({});
+  private readonly looked = new Set<string>();
 
   protected readonly pseudoControl = new FormControl('', {
     nonNullable: true,
@@ -101,6 +144,92 @@ export class PlayersPage {
   protected readonly canInvite = computed(
     () => this.context.isMaster() && this.context.adventure()?.status === 'NOT_STARTED',
   );
+
+  constructor() {
+    effect(() => {
+      const a = this.context.adventure();
+      const me = this.auth.account()?.id;
+      const started = a?.status === 'ONGOING' || a?.status === 'FINISH';
+      if (!a || me === undefined || !started || !this.context.isParticipant()) {
+        return;
+      }
+      const others = [a.masterVacant ? undefined : a.creatorId, ...(a.players ?? [])];
+      untracked(() => {
+        for (const id of others) {
+          if (id !== undefined && id !== me && !this.looked.has(id)) {
+            this.looked.add(id);
+            this.lookUp(id, me);
+          }
+        }
+      });
+    });
+  }
+
+  protected canRate(id: string): boolean {
+    return id in this.mine();
+  }
+
+  protected meanLabel(mean: RatingMeanDto): string {
+    return mean.average === null
+      ? 'Pas encore d’avis'
+      : `Moyenne : ${mean.average.toFixed(1).replace('.', ',')} (${mean.count} avis)`;
+  }
+
+  protected rate(id: string, rate: number): void {
+    putRating(this.http, this.rootUrl, { body: { accountTargetedId: id, rate } })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.mine.update((all) => ({ ...all, [id]: rate }));
+          this.loadMean(id);
+        },
+        error: (error: unknown) => this.notifier.error(toApiProblem(error), 'Évaluation du joueur'),
+      });
+  }
+
+  /** Anonymized accounts cannot be rated: only the others get their rate and mean fetched. */
+  private lookUp(id: string, me: string): void {
+    this.directory
+      .get(id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (account) => {
+          if (account.anonymized) {
+            return;
+          }
+          this.loadMine(id, me);
+          this.loadMean(id);
+        },
+        // The name lookup already shows « Compte inconnu »: just do not offer a rating.
+        error: () => undefined,
+      });
+  }
+
+  private loadMine(id: string, me: string): void {
+    getRatingBetween(this.http, this.rootUrl, { emitterId: me, targetedAccountId: id })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) =>
+          this.mine.update((all) => ({ ...all, [id]: response.body.rate ?? null })),
+        error: (error: unknown) => {
+          const failure = toApiProblem(error);
+          this.mine.update((all) => ({ ...all, [id]: null }));
+          if (failure.status !== 404) {
+            this.notifier.error(failure, 'Chargement de ta note');
+          }
+        },
+      });
+  }
+
+  private loadMean(id: string): void {
+    getMeanRateOfAccount(this.http, this.rootUrl, { accountId: id })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => this.means.update((all) => ({ ...all, [id]: response.body })),
+        // The mean is a bonus: without it the person can still be rated.
+        error: () => undefined,
+      });
+  }
 
   protected pseudo(id: string): string {
     return this.directory.pseudo(id)();
