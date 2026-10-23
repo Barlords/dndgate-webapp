@@ -10,7 +10,14 @@ import { Button } from '../button/button';
   template: `
     <div class="dg-toasts" aria-live="polite">
       @for (toast of notifier.toasts(); track toast.id) {
-        <div class="dg-toast" [class.dg-toast--error]="toast.kind === 'error'">
+        <div
+          class="dg-toast"
+          [class.dg-toast--error]="toast.kind === 'error'"
+          (mouseenter)="notifier.pause(toast.id)"
+          (mouseleave)="notifier.resume(toast.id)"
+          (focusin)="notifier.pause(toast.id)"
+          (focusout)="notifier.resume(toast.id)"
+        >
           <div class="dg-toast__body">
             <p class="dg-toast__message">{{ toast.message }}</p>
             @if (toast.detail) {

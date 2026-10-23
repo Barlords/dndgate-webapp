@@ -52,6 +52,9 @@ function messageFor(problem: ApiProblem): { message: string; detail?: string } {
 export class NotifierService {
   private nextId = 0;
   private readonly list = signal<Toast[]>([]);
+  private readonly timers = new Map<number, ReturnType<typeof setTimeout>>();
+  /** Toasts that only the reader may close. */
+  private readonly sticky = new Set<number>();
   readonly toasts = this.list.asReadonly();
 
   success(message: string): void {
@@ -71,7 +74,8 @@ export class NotifierService {
         detail,
         reference: problem.correlationId,
       },
-      true,
+      // The reference has to stay long enough to be selected and copied.
+      problem.correlationId === undefined,
     );
   }
 
@@ -87,7 +91,21 @@ export class NotifierService {
     );
   }
 
+  /** Hover or focus on a toast: it must not vanish under the reader. */
+  pause(id: number): void {
+    this.clearTimer(id);
+  }
+
+  /** Hover and focus are gone: the 6 s start over. */
+  resume(id: number): void {
+    if (!this.sticky.has(id) && this.list().some((toast) => toast.id === id)) {
+      this.arm(id);
+    }
+  }
+
   dismiss(id: number): void {
+    this.clearTimer(id);
+    this.sticky.delete(id);
     this.list.update((toasts) => toasts.filter((toast) => toast.id !== id));
   }
 
@@ -101,7 +119,22 @@ export class NotifierService {
     const id = this.nextId++;
     this.list.update((toasts) => [...toasts, { ...toast, id }]);
     if (autoClose) {
-      setTimeout(() => this.dismiss(id), AUTO_CLOSE_MS);
+      this.arm(id);
+    } else {
+      this.sticky.add(id);
     }
+  }
+
+  private arm(id: number): void {
+    this.clearTimer(id);
+    this.timers.set(
+      id,
+      setTimeout(() => this.dismiss(id), AUTO_CLOSE_MS),
+    );
+  }
+
+  private clearTimer(id: number): void {
+    clearTimeout(this.timers.get(id));
+    this.timers.delete(id);
   }
 }

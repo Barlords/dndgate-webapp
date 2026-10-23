@@ -94,4 +94,44 @@ describe('NotifierService', () => {
     notifier.dismiss(notifier.toasts()[0].id);
     expect(notifier.toasts().map((t: Toast) => t.message)).toEqual(['B']);
   });
+
+  describe('auto-close', () => {
+    it('keeps an error that carries a reference until it is dismissed', () => {
+      notifier.error(problem({ status: 500, correlationId: 'cid-9' }));
+      vi.advanceTimersByTime(60_000);
+      expect(notifier.toasts()).toHaveLength(1);
+    });
+
+    it('closes other toasts after 6 s', () => {
+      notifier.success('Ok');
+      notifier.error(problem({ status: 500 }));
+      vi.advanceTimersByTime(5999);
+      expect(notifier.toasts()).toHaveLength(2);
+      vi.advanceTimersByTime(2);
+      expect(notifier.toasts()).toHaveLength(0);
+    });
+
+    it('pauses while hovered or focused and restarts the 6 s when released', () => {
+      notifier.success('Ok');
+      const [toast] = notifier.toasts();
+      vi.advanceTimersByTime(5000);
+      notifier.pause(toast.id);
+      vi.advanceTimersByTime(60_000);
+      expect(notifier.toasts()).toHaveLength(1);
+      notifier.resume(toast.id);
+      vi.advanceTimersByTime(5999);
+      expect(notifier.toasts()).toHaveLength(1);
+      vi.advanceTimersByTime(2);
+      expect(notifier.toasts()).toHaveLength(0);
+    });
+
+    it('does not arm a timer for a sticky toast on resume', () => {
+      notifier.error(problem({ status: 500, correlationId: 'cid-9' }));
+      const [toast] = notifier.toasts();
+      notifier.pause(toast.id);
+      notifier.resume(toast.id);
+      vi.advanceTimersByTime(60_000);
+      expect(notifier.toasts()).toHaveLength(1);
+    });
+  });
 });
