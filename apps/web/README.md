@@ -31,7 +31,13 @@ Après un changement de `contracts/openapi.yaml`, relancer cette commande. Aucun
 
 ## Images à remplacer
 
-Les visuels de l'accueil et l'emblème sont des emplacements provisoires, à remplacer par les images définitives (emplacements précisés au fil des tâches dans `src/assets/`).
+Les visuels de l'accueil et l'emblème sont provisoires. Pour les remplacer, déposer les fichiers suivants (même nom, même chemin), sans toucher au code :
+
+- `public/images/home/bibliotheque.webp` : moitié gauche de l'accueil (Bibliothèque) ;
+- `public/images/home/taverne.webp` : moitié droite de l'accueil (Taverne) ;
+- `public/images/emblem.svg` : l'emblème DnDGate (accueil et barre du haut).
+
+Les deux images de l'accueil couvrent chacune sa moitié (`cover`, centrées) : prévoir un format portrait, idéalement au moins 1920 × 2160 px. Tant qu'un fichier manque, un dégradé de remplacement s'affiche à sa place.
 
 ## Docker
 
