@@ -9,9 +9,19 @@ import { TokenStore } from './token-store';
 
 const base = environment.apiBaseUrl;
 
-/** Login and refresh carry no bearer and never trigger a refresh themselves. */
-function isCredentialCall(url: string): boolean {
-  return url.startsWith(base + login.PATH) || url.startsWith(base + refresh.PATH);
+/** Public routes (README, "Règles d'accès"): no bearer, and a 401 there never triggers a refresh. */
+const PUBLIC_POST_PATHS = [
+  '/accounts', // sign-up; PATCH and DELETE on this path are not public
+  login.PATH,
+  refresh.PATH,
+  '/accounts/verify',
+  '/accounts/email/confirm',
+  '/accounts/verification-email',
+].map((path) => base + path);
+
+function isPublicCall(req: HttpRequest<unknown>): boolean {
+  const path = req.url.split(/[?#]/)[0];
+  return req.method === 'POST' && PUBLIC_POST_PATHS.includes(path);
 }
 
 function withBearer(req: HttpRequest<unknown>, token: string | null): HttpRequest<unknown> {
@@ -19,7 +29,7 @@ function withBearer(req: HttpRequest<unknown>, token: string | null): HttpReques
 }
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  if (!req.url.startsWith(base) || isCredentialCall(req.url)) {
+  if (!req.url.startsWith(base) || isPublicCall(req)) {
     return next(req);
   }
   const auth = inject(AuthService);

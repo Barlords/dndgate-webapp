@@ -24,6 +24,10 @@ function describe(key: string, error: unknown): string {
       return `Saisis au moins ${details['requiredLength']} caractères.`;
     case 'maxlength':
       return `${details['requiredLength']} caractères au maximum.`;
+    case 'maxbytes':
+      return `${details['max']} octets au maximum (les accents en comptent plusieurs).`;
+    case 'mismatch':
+      return 'Les deux mots de passe ne correspondent pas.';
     case 'pattern':
       return 'Le format attendu n’est pas respecté.';
     case 'email':
