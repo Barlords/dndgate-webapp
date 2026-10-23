@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable } from 'rxjs';
-import { toApiProblem } from '../../../core/errors/api-problem';
+import { ApiProblem, toApiProblem } from '../../../core/errors/api-problem';
 import { NotifierService } from '../../../core/errors/notifier.service';
 import { ConfirmService } from '../../../shared/ui/confirm-dialog/confirm.service';
 import { AdventureContext } from './adventure-context.service';
@@ -39,6 +39,7 @@ export abstract class NotesPage {
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly state = signal<LoadState>('loading');
+  protected readonly loadProblem = signal<ApiProblem | null>(null);
   protected readonly notes = signal<NoteView[]>([]);
   protected readonly page = signal(0);
   protected readonly totalPages = signal(1);
@@ -98,6 +99,7 @@ export abstract class NotesPage {
           if (quiet) {
             this.notifier.error(toApiProblem(error), 'Chargement des notes');
           } else {
+            this.loadProblem.set(toApiProblem(error));
             this.state.set('failed');
           }
         },

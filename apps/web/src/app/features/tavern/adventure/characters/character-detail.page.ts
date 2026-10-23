@@ -20,10 +20,11 @@ import {
 } from '../../../../core/api/generated/functions';
 import { GameCharacterDto } from '../../../../core/api/generated/models/game-character-dto';
 import { AuthService } from '../../../../core/auth/auth.service';
-import { toApiProblem } from '../../../../core/errors/api-problem';
+import { ApiProblem, toApiProblem } from '../../../../core/errors/api-problem';
 import { NotifierService } from '../../../../core/errors/notifier.service';
 import { BreadcrumbService } from '../../../../layout/breadcrumb.service';
 import { Button } from '../../../../shared/ui/button/button';
+import { LoadError } from '../../../../shared/ui/load-error/load-error';
 import { ConfirmService } from '../../../../shared/ui/confirm-dialog/confirm.service';
 import { Spinner } from '../../../../shared/ui/spinner/spinner';
 import { AdventureContext } from '../adventure-context.service';
@@ -35,7 +36,7 @@ type DetailState = 'loading' | 'ready' | 'missing' | 'failed';
 @Component({
   selector: 'dg-character-detail-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, Button, Spinner, CharacterPortrait],
+  imports: [LoadError, RouterLink, Button, Spinner, CharacterPortrait],
   styleUrl: '../../tavern-page.scss',
   styles: `
     .sheet {
@@ -121,8 +122,11 @@ type DetailState = 'loading' | 'ready' | 'missing' | 'failed';
       }
       @case ('failed') {
         <div class="state">
-          <p role="alert">Impossible de charger le personnage.</p>
-          <dg-button variant="ghost" (click)="load()">Réessayer</dg-button>
+          <dg-load-error
+            message="Impossible de charger le personnage."
+            [problem]="loadProblem()"
+            (retry)="load()"
+          />
         </div>
       }
       @default {
@@ -145,6 +149,7 @@ export class CharacterDetailPage {
   private readonly characterId = inject(ActivatedRoute).snapshot.paramMap.get('characterId')!;
 
   protected readonly state = signal<DetailState>('loading');
+  protected readonly loadProblem = signal<ApiProblem | null>(null);
   protected readonly character = signal<GameCharacterDto | null>(null);
   protected readonly deleting = signal(false);
   private requested = false;
@@ -186,8 +191,11 @@ export class CharacterDetailPage {
           this.state.set('ready');
           this.breadcrumb.setLast(body.name ?? '');
         },
-        error: (error: unknown) =>
-          this.state.set(toApiProblem(error).status === 404 ? 'missing' : 'failed'),
+        error: (error: unknown) => {
+          const problem = toApiProblem(error);
+          this.loadProblem.set(problem);
+          this.state.set(problem.status === 404 ? 'missing' : 'failed');
+        },
       });
   }
 

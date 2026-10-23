@@ -1,7 +1,7 @@
 import { HttpErrorResponse, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { catchError, switchMap, throwError } from 'rxjs';
+import { catchError, EMPTY, switchMap, tap, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { login, refresh } from '../api/generated/functions';
 import { AuthService } from './auth.service';
@@ -28,6 +28,18 @@ function withBearer(req: HttpRequest<unknown>, token: string | null): HttpReques
   return token === null ? req : req.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
 }
 
+/**
+ * Whether a failed refresh means the session is over: the server rejected the token (400/401), it
+ * never answered (status 0, it may have rotated the token) or there is no token to present.
+ * On 403, 429 and 5xx the token is kept, as `AuthService.restore` does.
+ */
+function isDeadSession(refreshError: unknown): boolean {
+  if (!(refreshError instanceof HttpErrorResponse)) {
+    return true;
+  }
+  return refreshError.status === 0 || refreshError.status === 400 || refreshError.status === 401;
+}
+
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   if (!req.url.startsWith(base) || isPublicCall(req)) {
     return next(req);
@@ -48,7 +60,21 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         return next(withBearer(req, current));
       }
       return auth.refreshAccessToken().pipe(
-        catchError(() => {
+        // A transient failure at startup can leave a live session without its account: load it
+        // now, once, and let the caller's request go on whatever happens.
+        tap((token) => {
+          if (token !== '' && auth.account() === null) {
+            auth
+              .reloadAccount()
+              .pipe(catchError(() => EMPTY))
+              .subscribe();
+          }
+        }),
+        catchError((refreshError: unknown) => {
+          if (!isDeadSession(refreshError)) {
+            // Rate limited, forbidden or failing server: the refresh token may still be valid.
+            return throwError(() => refreshError);
+          }
           const hadSession = tokens.refreshToken() !== null || auth.isAuthenticated();
           auth.forgetSession();
           if (hadSession) {

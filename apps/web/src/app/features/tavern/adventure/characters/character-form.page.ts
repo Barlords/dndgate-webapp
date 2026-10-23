@@ -24,7 +24,7 @@ import { AuthService } from '../../../../core/auth/auth.service';
 import { ApiProblem, toApiProblem } from '../../../../core/errors/api-problem';
 import { NotifierService } from '../../../../core/errors/notifier.service';
 import { BreadcrumbService } from '../../../../layout/breadcrumb.service';
-import { Button } from '../../../../shared/ui/button/button';
+import { LoadError } from '../../../../shared/ui/load-error/load-error';
 import { Spinner } from '../../../../shared/ui/spinner/spinner';
 import { AdventureContext } from '../adventure-context.service';
 import { CharacterForm, CharacterSubmission, CharacterValue } from './character-form';
@@ -47,7 +47,7 @@ type LoadState = 'loading' | 'ready' | 'missing' | 'failed';
 @Component({
   selector: 'dg-character-form-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CharacterForm, RouterLink, Button, Spinner],
+  imports: [LoadError, CharacterForm, RouterLink, Spinner],
   styleUrl: '../../tavern-page.scss',
   template: `
     <h1>{{ characterId ? 'Modifier le personnage' : 'Nouveau personnage' }}</h1>
@@ -77,8 +77,11 @@ type LoadState = 'loading' | 'ready' | 'missing' | 'failed';
       }
       @case ('failed') {
         <div class="state">
-          <p role="alert">Impossible de charger le personnage.</p>
-          <dg-button variant="ghost" (click)="load()">Réessayer</dg-button>
+          <dg-load-error
+            message="Impossible de charger le personnage."
+            [problem]="loadProblem()"
+            (retry)="load()"
+          />
         </div>
       }
       @default {
@@ -105,6 +108,7 @@ export class CharacterFormPage {
 
   private readonly loaded = signal<GameCharacterDto | null>(null);
   protected readonly state = signal<LoadState>(this.characterId === null ? 'ready' : 'loading');
+  protected readonly loadProblem = signal<ApiProblem | null>(null);
   protected readonly initial = signal<CharacterValue>({
     name: '',
     race: '',
@@ -164,7 +168,9 @@ export class CharacterFormPage {
         error: (error: unknown) => {
           // A failed reload keeps what is shown.
           if (this.loaded() === null) {
-            this.state.set(toApiProblem(error).status === 404 ? 'missing' : 'failed');
+            const problem = toApiProblem(error);
+            this.loadProblem.set(problem);
+            this.state.set(problem.status === 404 ? 'missing' : 'failed');
           } else {
             this.notifier.error(toApiProblem(error), 'Chargement du personnage');
           }

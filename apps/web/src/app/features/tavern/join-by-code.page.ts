@@ -14,6 +14,7 @@ import { Parchment } from '../../shared/ui/parchment/parchment';
 
 export const CODE_MAX = 50;
 const UNAVAILABLE = 'Cette aventure a déjà commencé ou est complète.';
+const UNKNOWN_CODE = 'Ce code n’existe pas ou n’est plus valable.';
 
 /** « Rejoindre avec un code »: the way into a private adventure. */
 @Component({
@@ -72,8 +73,10 @@ export class JoinByCodePage {
         error: (error: unknown) => {
           this.busy.set(false);
           const problem = toApiProblem(error);
-          if (problem.status === 409) {
-            this.form.controls.code.setErrors({ server: UNAVAILABLE });
+          if (problem.status === 409 || problem.status === 404) {
+            this.form.controls.code.setErrors({
+              server: problem.status === 404 ? UNKNOWN_CODE : UNAVAILABLE,
+            });
             this.form.controls.code.markAsTouched();
           } else if (!(problem.status === 400 && applyFieldErrors(this.form, problem))) {
             this.notifier.error(problem, 'Invitation');

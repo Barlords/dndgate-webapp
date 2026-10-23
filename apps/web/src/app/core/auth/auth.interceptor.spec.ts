@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { provideApi } from '../api/api.providers';
 import { authInterceptor } from './auth.interceptor';
+import { AuthService } from './auth.service';
 import { TokenStore } from './token-store';
 
 describe('authInterceptor', () => {
@@ -31,6 +32,12 @@ describe('authInterceptor', () => {
 
   afterEach(() => backend.verify());
 
+  /** A session whose account is already loaded, as after a normal startup. */
+  function signedIn(): void {
+    TestBed.inject(AuthService).reloadAccount().subscribe();
+    backend.expectOne('/dndgate-api/accounts/me').flush({ id: '1', pseudo: 'Gandalf' });
+  }
+
   it('adds the bearer only to API calls', () => {
     http.get('/dndgate-api/things').subscribe();
     http.get('https://www.dnd5eapi.co/api/spells').subscribe();
@@ -44,6 +51,7 @@ describe('authInterceptor', () => {
   });
 
   it('refreshes once for concurrent 401s', () => {
+    signedIn();
     const results: string[] = [];
     http.get<string>('/dndgate-api/a').subscribe((v) => results.push(v));
     http.get<string>('/dndgate-api/b').subscribe((v) => results.push(v));
@@ -98,6 +106,63 @@ describe('authInterceptor', () => {
     expect(navigate).toHaveBeenCalledWith('/login?returnUrl=%2Fadventures%2F7');
   });
 
+  it.each([400, 401])('forgets the session and redirects when the refresh answers %s', (code) => {
+    http.get('/dndgate-api/a').subscribe({ error: () => undefined });
+    backend.expectOne('/dndgate-api/a').flush(null, { status: 401, statusText: 'Unauthorized' });
+    backend
+      .expectOne('/dndgate-api/accounts/refresh')
+      .flush(null, { status: code, statusText: 'No' });
+
+    expect(tokens.refreshToken()).toBeNull();
+    expect(navigate).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([403, 429, 503])(
+    'keeps the session and propagates the refresh error when the refresh answers %s',
+    (code) => {
+      let status = 0;
+      http.get('/dndgate-api/a').subscribe({ error: (e) => (status = e.status) });
+      backend.expectOne('/dndgate-api/a').flush(null, { status: 401, statusText: 'Unauthorized' });
+      backend
+        .expectOne('/dndgate-api/accounts/refresh')
+        .flush(null, { status: code, statusText: 'No' });
+
+      expect(status).toBe(code);
+      expect(tokens.refreshToken()).toBe('r1');
+      expect(navigate).not.toHaveBeenCalled();
+    },
+  );
+
+  it('forgets the session when the refresh cannot reach the server', () => {
+    http.get('/dndgate-api/a').subscribe({ error: () => undefined });
+    backend.expectOne('/dndgate-api/a').flush(null, { status: 401, statusText: 'Unauthorized' });
+    backend.expectOne('/dndgate-api/accounts/refresh').error(new ProgressEvent('error'));
+
+    expect(tokens.refreshToken()).toBeNull();
+    expect(navigate).toHaveBeenCalledTimes(1);
+  });
+
+  it('reloads the account after a refresh when none is loaded', () => {
+    http.get('/dndgate-api/a').subscribe();
+    backend.expectOne('/dndgate-api/a').flush(null, { status: 401, statusText: 'Unauthorized' });
+    backend.expectOne('/dndgate-api/accounts/refresh').flush({ token: 'new', refreshToken: 'r2' });
+    backend.expectOne('/dndgate-api/accounts/me').flush({ id: '1', pseudo: 'Gandalf' });
+    backend.expectOne('/dndgate-api/a').flush('A');
+
+    expect(TestBed.inject(AuthService).account()?.pseudo).toBe('Gandalf');
+  });
+
+  it('ignores a failure of that account reload', () => {
+    let result = '';
+    http.get<string>('/dndgate-api/a').subscribe((v) => (result = v));
+    backend.expectOne('/dndgate-api/a').flush(null, { status: 401, statusText: 'Unauthorized' });
+    backend.expectOne('/dndgate-api/accounts/refresh').flush({ token: 'new', refreshToken: 'r2' });
+    backend.expectOne('/dndgate-api/accounts/me').flush(null, { status: 503, statusText: 'No' });
+    backend.expectOne('/dndgate-api/a').flush('A');
+
+    expect(result).toBe('A');
+  });
+
   it('does not refresh on a 403', () => {
     let status = 0;
     http.get('/dndgate-api/a').subscribe({ error: (e) => (status = e.status) });
@@ -131,6 +196,7 @@ describe('authInterceptor', () => {
   });
 
   it('does not loop when the replayed call is rejected again', () => {
+    signedIn();
     let status = 0;
     http.get('/dndgate-api/a').subscribe({ error: (e) => (status = e.status) });
     backend.expectOne('/dndgate-api/a').flush(null, { status: 401, statusText: 'Unauthorized' });

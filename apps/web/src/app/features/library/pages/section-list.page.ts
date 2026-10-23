@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Params, Router, RouterLink } from '@angular/router';
 import { map, Subject, switchMap } from 'rxjs';
-import { Button } from '../../../shared/ui/button/button';
+import { toApiProblem } from '../../../core/errors/api-problem';
+import { LoadError } from '../../../shared/ui/load-error/load-error';
 import { Paginator } from '../../../shared/ui/paginator/paginator';
 import { Parchment } from '../../../shared/ui/parchment/parchment';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
@@ -59,7 +60,7 @@ function compare(a: FieldValue | undefined, b: FieldValue | undefined): number {
 @Component({
   selector: 'dg-section-list-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Parchment, RouterLink, Spinner, Button, Paginator],
+  imports: [LoadError, Parchment, RouterLink, Spinner, Paginator],
   templateUrl: './section-list.page.html',
   styleUrl: './section-list.page.scss',
 })
@@ -73,6 +74,7 @@ export class SectionListPage {
   private readonly loaded = signal<LoadState<EntrySummary[]>>(LOADING);
   protected readonly entries = computed(() => this.loaded().value);
   protected readonly failed = computed(() => this.loaded().failed);
+  protected readonly loadProblem = computed(() => toApiProblem(this.loaded().error));
 
   private readonly params = toSignal(this.route.paramMap, { requireSync: true });
   private readonly query = toSignal(this.route.queryParamMap, { requireSync: true });

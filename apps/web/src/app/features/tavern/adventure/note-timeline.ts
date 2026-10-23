@@ -88,7 +88,7 @@ export function formatNoteDate(date: string): string {
       font-size: var(--dg-text-sm);
       letter-spacing: 0.14em;
       text-transform: uppercase;
-      color: var(--dg-gold-deep);
+      color: var(--dg-gold-ink);
     }
 
     .badge {

@@ -53,6 +53,28 @@ describe('AuthService', () => {
     expect(auth.isAuthenticated()).toBe(false);
   });
 
+  it('restore gives up after 5 s on a hung API but keeps the refresh token', async () => {
+    vi.useFakeTimers();
+    try {
+      tokens.save({ token: 'x', refreshToken: 'r1' });
+      let settled = false;
+      const done = auth.restore().then(() => (settled = true));
+      const hung = backend.expectOne('/dndgate-api/accounts/refresh');
+
+      await vi.advanceTimersByTimeAsync(4999);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(2);
+      await done;
+
+      expect(settled).toBe(true);
+      expect(auth.isAuthenticated()).toBe(false);
+      expect(tokens.refreshToken()).toBe('r1');
+      hung.error(new ProgressEvent('error'));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('login saves tokens and loads the account', async () => {
     const done = firstValueFrom(auth.login('gandalf', 'pw'));
 

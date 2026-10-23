@@ -57,4 +57,26 @@ describe('ToastOutlet', () => {
     expect(reload).toHaveBeenCalledOnce();
     expect(el.querySelector('.dg-toast')).toBeNull();
   });
+
+  it('pauses the auto-close while the toast is hovered or focused', async () => {
+    vi.useFakeTimers();
+    try {
+      const { fixture, notifier, el } = render();
+      notifier.success('Ok');
+      fixture.detectChanges();
+      const toast = el.querySelector('.dg-toast') as HTMLElement;
+      toast.dispatchEvent(new Event('mouseenter'));
+      vi.advanceTimersByTime(30_000);
+      expect(notifier.toasts()).toHaveLength(1);
+      toast.dispatchEvent(new Event('mouseleave'));
+      toast.dispatchEvent(new Event('focusin'));
+      vi.advanceTimersByTime(30_000);
+      expect(notifier.toasts()).toHaveLength(1);
+      toast.dispatchEvent(new Event('focusout'));
+      vi.advanceTimersByTime(6001);
+      expect(notifier.toasts()).toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

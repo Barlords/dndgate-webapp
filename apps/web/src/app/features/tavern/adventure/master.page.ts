@@ -28,6 +28,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { ApiProblem, toApiProblem } from '../../../core/errors/api-problem';
 import { NotifierService } from '../../../core/errors/notifier.service';
 import { Button } from '../../../shared/ui/button/button';
+import { LoadError } from '../../../shared/ui/load-error/load-error';
 import { ConfirmService } from '../../../shared/ui/confirm-dialog/confirm.service';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 import { isClosed, Status } from '../adventure-status';
@@ -45,7 +46,7 @@ type ClaimState = 'idle' | 'loading' | 'ready' | 'failed';
 @Component({
   selector: 'dg-master-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Button, Spinner],
+  imports: [LoadError, Button, Spinner],
   styleUrl: '../tavern-page.scss',
   styles: `
     h2 {
@@ -191,8 +192,11 @@ type ClaimState = 'idle' | 'loading' | 'ready' | 'failed';
             }
             @case ('failed') {
               <div class="state">
-                <p role="alert">Impossible de charger le vote.</p>
-                <dg-button variant="ghost" (click)="loadClaim()">Réessayer</dg-button>
+                <dg-load-error
+                  message="Impossible de charger le vote."
+                  [problem]="loadProblem()"
+                  (retry)="loadClaim()"
+                />
               </div>
             }
             @default {
@@ -223,6 +227,7 @@ export class MasterPage {
   protected readonly copyMessage = signal('');
   protected readonly claim = signal<MasterClaimDto | null>(null);
   protected readonly claimState = signal<ClaimState>('idle');
+  protected readonly loadProblem = signal<ApiProblem | null>(null);
   protected readonly busy = signal<string | null>(null);
 
   protected readonly closed = computed(() => {
@@ -277,10 +282,12 @@ export class MasterPage {
         next: ({ body }) => this.showClaim(body),
         error: (error: unknown) => {
           // 404: no vote in progress.
-          if (toApiProblem(error).status === 404) {
+          const problem = toApiProblem(error);
+          if (problem.status === 404) {
             this.claim.set(null);
             this.claimState.set('ready');
           } else {
+            this.loadProblem.set(problem);
             this.claimState.set('failed');
           }
         },
