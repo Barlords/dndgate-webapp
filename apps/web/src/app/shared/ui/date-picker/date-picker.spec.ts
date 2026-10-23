@@ -32,7 +32,7 @@ describe('DatePicker', () => {
     day('2026-11-14').click();
     expect(emitted[1]).toEqual([]);
 
-    expect(day('2026-11-15').disabled).toBe(true);
+    expect(day('2026-11-15').getAttribute('aria-disabled')).toBe('true');
     expect(day('2026-11-15').closest('td')!.getAttribute('aria-disabled')).toBe('true');
     day('2026-11-15').click();
     expect(emitted.length).toBe(2);
@@ -77,10 +77,34 @@ describe('DatePicker', () => {
     }
   });
 
+  it('has exactly one tab stop in the visible month, after navigation too', async () => {
+    await render({ selected: ['2036-03-10'] });
+    const stops = () => el().querySelectorAll('.day[tabindex="0"]');
+    expect(stops().length).toBe(1);
+    (el().querySelector('[aria-label="Mois suivant"]') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    expect(stops().length).toBe(1);
+  });
+
+  it('keeps the tab stop when arrowing over unavailable days', async () => {
+    await render({ selected: ['2026-11-14'], allowed: ['2026-11-14', '2026-11-20'] });
+    day('2026-11-14').focus();
+    day('2026-11-14').dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }),
+    );
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(el().querySelectorAll('.day[tabindex="0"]').length).toBe(1);
+    expect(day('2026-11-15').getAttribute('tabindex')).toBe('0');
+    expect(el().contains(document.activeElement)).toBe(true);
+    day('2026-11-15').click();
+    expect(emitted).toEqual([]);
+  });
+
   it('stops adding at the maximum but still removes', async () => {
     await render({ selected: ['2026-11-14'], max: 1 });
-    expect(day('2026-11-15').disabled).toBe(true);
-    expect(day('2026-11-14').disabled).toBe(false);
+    expect(day('2026-11-15').getAttribute('aria-disabled')).toBe('true');
+    expect(day('2026-11-14').getAttribute('aria-disabled')).toBe(null);
   });
 
   it('formats and computes dates without timezone drift', () => {

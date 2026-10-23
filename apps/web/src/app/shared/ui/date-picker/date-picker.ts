@@ -85,8 +85,8 @@ function todayIso(): string {
                     [class.day--today]="day.iso === today"
                     [attr.data-date]="day.iso"
                     [attr.aria-label]="label(day.iso)"
-                    [attr.tabindex]="day.iso === focusDate() ? 0 : -1"
-                    [disabled]="isDisabled(day.iso)"
+                    [attr.tabindex]="day.iso === tabStop() ? 0 : -1"
+                    [attr.aria-disabled]="isDisabled(day.iso) ? 'true' : null"
                     (click)="toggle(day.iso)"
                     (focus)="focusDate.set(day.iso)"
                   >
@@ -172,7 +172,7 @@ function todayIso(): string {
       min-height: 2.25rem;
     }
 
-    .day:hover:not(:disabled),
+    .day:hover:not([aria-disabled='true']),
     .nav:hover {
       background: var(--dg-parchment-shadow);
     }
@@ -194,11 +194,11 @@ function todayIso(): string {
       border-color: var(--dg-gold);
     }
 
-    .day--selected:hover:not(:disabled) {
+    .day--selected:hover:not([aria-disabled='true']) {
       background: var(--dg-blood-bright);
     }
 
-    .day:disabled {
+    .day[aria-disabled='true'] {
       cursor: not-allowed;
       opacity: 0.35;
     }
@@ -235,6 +235,19 @@ export class DatePicker {
     }
     const first = [...this.selected()].sort(compareIso)[0] ?? this.today;
     return first.slice(0, 8) + '01';
+  });
+
+  /** The one day reachable with Tab: the focused day when visible, else the first usable one. */
+  protected readonly tabStop = computed(() => {
+    const first = this.firstOfMonth();
+    const focus = this.focusDate();
+    if (focus.slice(0, 7) === first.slice(0, 7)) {
+      return focus;
+    }
+    const days = this.weeks()
+      .flat()
+      .filter((d): d is Day => d !== null);
+    return (days.find((d) => !this.isDisabled(d.iso)) ?? days[0]).iso;
   });
 
   protected readonly monthLabel = computed(() => formatMonth(this.firstOfMonth()));

@@ -68,7 +68,7 @@ describe('PlanningPage', () => {
     expect(main().textContent).toContain('Choisis au moins une date.');
     tavern.backend.expectNone((r) => r.method === 'POST');
 
-    const days = [...main().querySelectorAll<HTMLButtonElement>('.day:not(:disabled)')];
+    const days = [...main().querySelectorAll<HTMLButtonElement>('.day:not([aria-disabled="true"])')];
     const picked = [days[3].dataset['date']!, days[1].dataset['date']!];
     days[3].click();
     await tavern.render();
