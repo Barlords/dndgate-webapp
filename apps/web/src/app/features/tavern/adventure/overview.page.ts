@@ -173,6 +173,7 @@ function toValue(adventure: AdventureDto): AdventureValue {
           submitLabel="Enregistrer"
           [initial]="formInitial()"
           [busy]="saving()"
+          [withVisibility]="false"
           (saved)="save($event)"
         />
       }
@@ -236,9 +237,9 @@ export class OverviewPage {
 
   protected save(value: AdventureValue): void {
     const id = this.adventure().id!;
-    // The visibility has its own button: leave it out unless this form changed it.
-    const { visibility, ...rest } = value;
-    const body = visibility === this.formInitial().visibility ? rest : { ...rest, visibility };
+    // The visibility has its own button and is never sent from here.
+    const body: Partial<AdventureValue> = { ...value };
+    delete body.visibility;
     this.saving.set(true);
     updateAdventure(this.http, this.rootUrl, { id, body })
       .pipe(takeUntilDestroyed(this.destroyRef))

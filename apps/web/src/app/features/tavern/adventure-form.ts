@@ -68,12 +68,14 @@ const BLANK: AdventureValue = {
         <dg-form-field label="Nombre de joueurs maximum" [control]="form.controls.maxPlayer">
           <input formControlName="maxPlayer" type="number" min="1" max="100" />
         </dg-form-field>
-        <dg-form-field label="Visibilité" [control]="form.controls.visibility">
-          <select formControlName="visibility">
-            <option value="PUBLIC">{{ labels.PUBLIC }}</option>
-            <option value="PRIVATE">{{ labels.PRIVATE }}</option>
-          </select>
-        </dg-form-field>
+        @if (withVisibility()) {
+          <dg-form-field label="Visibilité" [control]="form.controls.visibility">
+            <select formControlName="visibility">
+              <option value="PUBLIC">{{ labels.PUBLIC }}</option>
+              <option value="PRIVATE">{{ labels.PRIVATE }}</option>
+            </select>
+          </dg-form-field>
+        }
       </div>
       <div class="row">
         <dg-form-field label="Code postal" [control]="form.controls.postalCode">
@@ -91,6 +93,8 @@ export class AdventureForm {
   readonly initial = input<AdventureValue>(BLANK);
   readonly submitLabel = input('Créer');
   readonly busy = input(false);
+  /** False where the visibility has its own control, so that the form cannot contradict it. */
+  readonly withVisibility = input(true);
   readonly saved = output<AdventureValue>();
 
   protected readonly labels = VISIBILITY_LABEL;

@@ -1,6 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { filter, map, startWith } from 'rxjs';
+import {
+  ActivatedRoute,
+  NavigationEnd,
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  RouterOutlet,
+} from '@angular/router';
 import { BreadcrumbService } from '../../../layout/breadcrumb.service';
 import { Button } from '../../../shared/ui/button/button';
 import { Parchment } from '../../../shared/ui/parchment/parchment';
@@ -94,7 +102,17 @@ export class AdventureShell {
   protected readonly context = inject(AdventureContext);
   private readonly breadcrumb = inject(BreadcrumbService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private id = '';
+
+  // The tab shown, as the path of the child route.
+  private readonly activeTab = toSignal(
+    this.router.events.pipe(
+      filter((event) => event instanceof NavigationEnd),
+      startWith(null),
+      map(() => this.route.snapshot.firstChild?.routeConfig?.path),
+    ),
+  );
 
   protected readonly visibleTabs = computed(() =>
     ADVENTURE_TABS.filter((tab) => this.context.isParticipant() || !tab.participantsOnly),
@@ -109,6 +127,15 @@ export class AdventureShell {
       const name = this.context.adventure()?.name;
       if (name !== undefined) {
         this.breadcrumb.setLabelAt(`/tavern/adventures/${this.id}`, name);
+      }
+    });
+    // Hiding the tabs is not enough: a visitor could type the address of a reserved one.
+    effect(() => {
+      const reserved = ADVENTURE_TABS.some(
+        (tab) => tab.participantsOnly && tab.path === this.activeTab(),
+      );
+      if (this.context.state() === 'ready' && !this.context.isParticipant() && reserved) {
+        void this.router.navigate(['overview'], { relativeTo: this.route, replaceUrl: true });
       }
     });
   }

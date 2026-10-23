@@ -46,9 +46,13 @@ describe('PlayersPage', () => {
     expect(items[1].querySelector('a')!.getAttribute('href')).toBe('/players/p1');
   });
 
-  it('says so when nobody joined or the master seat is vacant', async () => {
-    await open({ players: [], masterVacant: true });
+  it('says so when nobody joined', async () => {
+    await open({ players: [] });
     expect(tavern.main().textContent).toContain('Aucun joueur pour le moment.');
+  });
+
+  it('says so when the master seat is vacant', async () => {
+    await open({ creatorId: 'gone', masterVacant: true, players: ['me'] });
     expect(tavern.main().textContent).toContain('Aucun MJ pour le moment.');
   });
 

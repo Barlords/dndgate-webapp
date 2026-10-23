@@ -218,6 +218,38 @@ describe('OverviewPage', () => {
     expect(nameInput().value).toBe('Ma saisie');
   });
 
+  it('the edit form has no visibility field and never sends one, even after a toggle', async () => {
+    await open({ creatorId: 'me' });
+    expect(tavern.main().querySelector('select')).toBeNull();
+    tavern.button('Rendre privée').click();
+    tavern.backend
+      .expectOne((r) => r.method === 'PUT' && /visibility$/.test(r.url))
+      .flush(adventure({ creatorId: 'me', visibility: 'PRIVATE' }));
+    await tavern.render();
+    expect(tavern.main().querySelector('select')).toBeNull();
+    type('Autre nom');
+    tavern.button('Enregistrer').click();
+    const request = tavern.backend.expectOne(patch);
+    expect('visibility' in request.request.body).toBe(false);
+    request.flush(adventure({ creatorId: 'me', visibility: 'PRIVATE', name: 'Autre nom' }));
+  });
+
+  it('a visitor opening a participants-only tab by address lands on the overview', async () => {
+    await open({ players: [] }, 'players');
+    expect(tavern.router.url).toBe('/tavern/adventures/a1/overview');
+    expect(tabs()).toEqual(['Informations', 'Planning']);
+  });
+
+  it('a visitor may open the planning tab', async () => {
+    await open({ players: [] }, 'planning');
+    expect(tavern.router.url).toBe('/tavern/adventures/a1/planning');
+  });
+
+  it('a participant stays on a participants-only tab', async () => {
+    await open({ players: ['me'] }, 'players');
+    expect(tavern.router.url).toBe('/tavern/adventures/a1/players');
+  });
+
   it('shows the field errors of a 400', async () => {
     await open({ creatorId: 'me' });
     tavern.button('Enregistrer').click();
