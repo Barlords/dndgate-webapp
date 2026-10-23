@@ -131,20 +131,23 @@ describe('AuthService', () => {
     expect(tokens.refreshToken()).toBeNull();
   });
 
-  it.each([0, 503])('restore keeps the token when the refresh answers %s', async (status) => {
-    tokens.save({ token: 'x', refreshToken: 'r1' });
-    const done = auth.restore();
+  it.each([0, 403, 429, 503])(
+    'restore keeps the token when the refresh answers %s',
+    async (status) => {
+      tokens.save({ token: 'x', refreshToken: 'r1' });
+      const done = auth.restore();
 
-    const call = backend.expectOne('/dndgate-api/accounts/refresh');
-    if (status === 0) {
-      call.error(new ProgressEvent('error'));
-    } else {
-      call.flush(null, { status, statusText: 'Unavailable' });
-    }
-    await done;
+      const call = backend.expectOne('/dndgate-api/accounts/refresh');
+      if (status === 0) {
+        call.error(new ProgressEvent('error'));
+      } else {
+        call.flush(null, { status, statusText: 'Unavailable' });
+      }
+      await done;
 
-    expect(tokens.refreshToken()).toBe('r1');
-  });
+      expect(tokens.refreshToken()).toBe('r1');
+    },
+  );
 
   describe('across tabs', () => {
     const tab = () => {
@@ -161,15 +164,37 @@ describe('AuthService', () => {
     afterEach(() => Reflect.deleteProperty(navigator, 'locks'));
 
     it('never presents the same refresh token twice when tabs refresh at once', async () => {
-      let queue: Promise<unknown> = Promise.resolve();
+      // Grants the next waiter the moment the holder's callback settles, like the real lock.
+      const waiting: (() => void)[] = [];
+      let held = false;
+      const grant = () => {
+        const next = waiting.shift();
+        held = next !== undefined;
+        next?.();
+      };
       Object.defineProperty(navigator, 'locks', {
         configurable: true,
         value: {
-          request: (_name: string, callback: () => Promise<unknown>) => {
-            const run = queue.then(callback);
-            queue = run.catch(() => undefined);
-            return run;
-          },
+          request: (_name: string, callback: () => Promise<unknown>) =>
+            new Promise((resolve, reject) => {
+              const start = () =>
+                callback().then(
+                  (value) => {
+                    grant();
+                    resolve(value);
+                  },
+                  (error) => {
+                    grant();
+                    reject(error);
+                  },
+                );
+              if (held) {
+                waiting.push(start);
+              } else {
+                held = true;
+                start();
+              }
+            }),
         },
       });
       tokens.save({ token: 'a1', refreshToken: 'r1' });

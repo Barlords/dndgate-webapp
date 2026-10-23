@@ -42,7 +42,7 @@ export class AuthService {
     } catch (error) {
       // A refresh token the server rejected is dead: drop it. Keep it when the API is merely
       // unreachable (status 0) or failing (5xx), so a later reload can still restore.
-      if (error instanceof HttpErrorResponse && error.status >= 400 && error.status < 500) {
+      if (error instanceof HttpErrorResponse && (error.status === 400 || error.status === 401)) {
         this.forgetSession();
       }
     }
@@ -71,10 +71,7 @@ export class AuthService {
   refreshAccessToken(): Observable<string> {
     if (this.inFlightRefresh === null) {
       this.inFlightRefresh = defer(() => this.refreshExclusively()).pipe(
-        map((auth) => {
-          this.tokens.save(auth);
-          return auth.token ?? '';
-        }),
+        map((auth) => auth.token ?? ''),
         finalize(() => (this.inFlightRefresh = null)),
         shareReplay({ bufferSize: 1, refCount: false }),
       );
@@ -98,8 +95,10 @@ export class AuthService {
     if (refreshToken === null) {
       return throwError(() => new Error('No refresh token'));
     }
+    // Saved here, inside the lock: the next tab must find the rotated token when it gets in.
     return refresh(this.http, this.rootUrl, { body: { refreshToken } }).pipe(
       map((response) => response.body),
+      tap((auth) => this.tokens.save(auth)),
     );
   }
 
