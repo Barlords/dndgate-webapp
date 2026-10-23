@@ -10,10 +10,24 @@ export const routes: Routes = [
     pathMatch: 'full',
     loadComponent: () => import('./features/home/home.page').then((m) => m.HomePage),
   },
-  { path: 'login', loadComponent: notBuilt },
-  { path: 'signup', loadComponent: notBuilt },
-  { path: 'verify-email', loadComponent: notBuilt },
-  { path: 'confirm-email', loadComponent: notBuilt },
+  {
+    path: 'login',
+    loadComponent: () => import('./features/account/login.page').then((m) => m.LoginPage),
+  },
+  {
+    path: 'signup',
+    loadComponent: () => import('./features/account/signup.page').then((m) => m.SignupPage),
+  },
+  {
+    path: 'verify-email',
+    loadComponent: () =>
+      import('./features/account/verify-email.page').then((m) => m.VerifyEmailPage),
+  },
+  {
+    path: 'confirm-email',
+    loadComponent: () =>
+      import('./features/account/confirm-email.page').then((m) => m.ConfirmEmailPage),
+  },
   { path: 'account', canActivate: [authGuard], loadComponent: notBuilt },
   { path: 'players/:accountId', canActivate: [authGuard], loadComponent: notBuilt },
   {
