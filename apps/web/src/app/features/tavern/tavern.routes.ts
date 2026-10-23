@@ -56,9 +56,52 @@ export const TAVERN_ROUTES: Routes = [
             data: { breadcrumb: 'Joueurs' },
             loadComponent: () => import('./adventure/players.page').then((m) => m.PlayersPage),
           },
+          {
+            path: 'characters',
+            data: { breadcrumb: 'Personnages' },
+            children: [
+              {
+                path: '',
+                pathMatch: 'full',
+                loadComponent: () =>
+                  import('./adventure/characters/character-list.page').then(
+                    (m) => m.CharacterListPage,
+                  ),
+              },
+              {
+                path: 'new',
+                data: { breadcrumb: 'Nouveau personnage' },
+                loadComponent: () =>
+                  import('./adventure/characters/character-form.page').then(
+                    (m) => m.CharacterFormPage,
+                  ),
+              },
+              {
+                path: ':characterId',
+                data: { breadcrumb: 'Personnage' },
+                children: [
+                  {
+                    path: '',
+                    pathMatch: 'full',
+                    loadComponent: () =>
+                      import('./adventure/characters/character-detail.page').then(
+                        (m) => m.CharacterDetailPage,
+                      ),
+                  },
+                  {
+                    path: 'edit',
+                    data: { breadcrumb: 'Modifier' },
+                    loadComponent: () =>
+                      import('./adventure/characters/character-form.page').then(
+                        (m) => m.CharacterFormPage,
+                      ),
+                  },
+                ],
+              },
+            ],
+          },
           // Built by later tasks.
           ...[
-            ['characters', 'Personnages'],
             ['chronicle', 'Chronique'],
             ['gm-notes', 'Notes du MJ'],
             ['planning', 'Planning'],
