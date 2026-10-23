@@ -14,10 +14,11 @@ Thumbs.db
 node_modules/
 dist/
 .angular/
+# API client generated from the contract by `npm run generate:api`
+apps/web/src/app/core/api/generated/
 
 # Java
 target/
 
 # Brainstorming companion (local mockups)
 .superpowers/
-apps/web/src/app/core/api/generated/

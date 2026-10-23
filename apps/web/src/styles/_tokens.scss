@@ -1,0 +1,71 @@
+// Design tokens of the "Grimoire enlumine" identity: dark leather, parchment, gold and blood red.
+// Components read these CSS variables; never hard-code a palette value elsewhere.
+
+:root {
+  // Leather: the dark background, from its darkest to its warmest tone.
+  --dg-leather-0: #17100a;
+  --dg-leather-1: #3b2a1a;
+  // Translucent leather for panels set on the background (sidebar, top bar).
+  --dg-leather-panel: #1f160ecc;
+  --dg-leather-deep: #120d08;
+
+  // Parchment: the reading surface.
+  --dg-parchment-0: #f3e6c8;
+  --dg-parchment-1: #e6d3a8;
+  --dg-parchment-shadow: #b8945a66;
+  --dg-parchment-border: #c9a24a;
+  // Lighter vellum for fields written on the parchment.
+  --dg-vellum: #fbf4e1;
+
+  // Gold leaf.
+  --dg-gold: #d9b45a;
+  --dg-gold-light: #e9cf8a;
+  // Antique gold, dark enough for a 3:1 contrast on parchment (focus ring, rules).
+  --dg-gold-deep: #8a6418;
+
+  // Blood red: titles on parchment, primary action, errors.
+  --dg-blood: #7a1f12;
+  --dg-blood-bright: #92291a;
+  --dg-blood-deep: #4d120a;
+
+  // Ink and light text. Ink on parchment is above 9:1, muted ink above 6:1 (WCAG AA).
+  --dg-ink: #3a2a17;
+  --dg-ink-muted: #5c4528;
+  --dg-text-light: #f1e4c8;
+
+  --dg-font-title: 'Cinzel', 'Trajan Pro', Georgia, serif;
+  --dg-font-body: 'Spectral', Georgia, 'Times New Roman', serif;
+
+  // Type scale (ratio 1.25 from a 17 px body).
+  --dg-text-sm: 0.875rem;
+  --dg-text-md: 1.0625rem;
+  --dg-text-lg: 1.3125rem;
+  --dg-text-xl: 1.625rem;
+  --dg-text-2xl: 2.0625rem;
+  --dg-text-3xl: 2.5625rem;
+
+  --dg-space-1: 0.25rem;
+  --dg-space-2: 0.5rem;
+  --dg-space-3: 0.75rem;
+  --dg-space-4: 1rem;
+  --dg-space-5: 1.5rem;
+  --dg-space-6: 2rem;
+
+  --dg-radius: 6px;
+  --dg-radius-sm: 3px;
+
+  // Focus ring colour: bright gold on leather; parchment switches it to antique gold.
+  --dg-focus-color: var(--dg-gold);
+  // Colour of quiet ("ghost") controls: gold on leather, ink on parchment.
+  --dg-quiet-color: var(--dg-gold-light);
+  // Colour of headings: light gold on leather, blood red on parchment.
+  --dg-title-color: var(--dg-gold-light);
+
+  --dg-transition: 160ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dg-transition: 0s;
+  }
+}

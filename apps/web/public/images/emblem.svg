@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" stroke-linejoin="round">
+  <!-- Provisional DnDGate emblem: a gold hexagon around a triangle, the silhouette of a d20.
+       Replace this single file to change the emblem everywhere. -->
+  <defs>
+    <linearGradient id="leaf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f3dc9a"/>
+      <stop offset=".55" stop-color="#d9b45a"/>
+      <stop offset="1" stop-color="#a8812f"/>
+    </linearGradient>
+  </defs>
+  <g stroke="url(#leaf)">
+    <path stroke-width="2" opacity=".6" d="M50 24 8 30M50 24 92 30M50 24V6M74 64 92 30M74 64l18 6M74 64 50 94M26 64 8 30M26 64 8 70M26 64l24 30"/>
+    <polygon stroke-width="5" points="50,6 92,30 92,70 50,94 8,70 8,30"/>
+    <polygon stroke-width="4" points="50,24 74,64 26,64"/>
+  </g>
+</svg>
