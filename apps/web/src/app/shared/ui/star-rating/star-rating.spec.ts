@@ -71,6 +71,18 @@ describe('StarRating', () => {
     expect(filled(element)).toBe(1);
   });
 
+  it('shows the value input after a click, not the clicked star', async () => {
+    const element = await render(2, false);
+
+    // A tap on a touch screen fires mouseenter then click, and no mouseleave.
+    stars(element)[4].dispatchEvent(new MouseEvent('mouseenter'));
+    stars(element)[4].click();
+    await fixture.whenStable();
+
+    expect(emitted).toEqual([5]);
+    expect(filled(element)).toBe(2);
+  });
+
   it('marks the chosen star for assistive technologies', async () => {
     const element = await render(2, false);
 

@@ -36,7 +36,7 @@ const STARS = [1, 2, 3, 4, 5] as const;
             [attr.aria-checked]="star === rounded()"
             [attr.aria-label]="star + ' sur 5'"
             (mouseenter)="hovered.set(star)"
-            (click)="valueChange.emit(star)"
+            (click)="choose(star)"
           >
             <dg-icon name="star" [filled]="star <= shown()" />
           </button>
@@ -96,4 +96,13 @@ export class StarRating {
   protected readonly shown = computed(() =>
     this.readonly() ? this.rounded() : (this.hovered() ?? this.rounded()),
   );
+
+  /**
+   * Ends the preview before emitting: a tap on a touch screen never fires mouseleave, and the stars
+   * must keep showing `value`, which the parent only changes once the rating is accepted.
+   */
+  protected choose(star: number): void {
+    this.hovered.set(null);
+    this.valueChange.emit(star);
+  }
 }
