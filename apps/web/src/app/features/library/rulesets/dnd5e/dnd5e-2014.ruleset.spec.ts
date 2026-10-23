@@ -308,6 +308,18 @@ describe('Dnd5e2014Ruleset', () => {
       }
     });
 
+    it('sends no request for an index that would climb the path', () => {
+      const failures: unknown[] = [];
+      for (const index of ['..', '.']) {
+        ruleset.detail('spells', index).subscribe({ error: (e) => failures.push(e) });
+      }
+      expect(failures).toHaveLength(2);
+      for (const failure of failures) {
+        expect(failure).toBeInstanceOf(RulesetEntryNotFoundError);
+      }
+      http.expectNone(() => true);
+    });
+
     it('keeps a server failure distinct from not-found', () => {
       const failures: unknown[] = [];
       ruleset.detail('spells', 'fireball').subscribe({ error: (e) => failures.push(e) });

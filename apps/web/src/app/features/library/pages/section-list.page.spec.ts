@@ -70,6 +70,22 @@ describe('SectionListPage', () => {
     expect(cells).toEqual(['<7>', '<0>']);
   });
 
+  it('shows the placeholder, not the format, for a missing or null value', async () => {
+    const format = vi.fn(() => 'formatted');
+    ruleset.sections[1].columns[1].format = format;
+    const entries: EntrySummary[] = [
+      { index: 'a', name: 'A', fields: { tags: null as never } },
+      { index: 'b', name: 'B', fields: {} },
+    ];
+    vi.spyOn(ruleset, 'list').mockReturnValue(of(entries));
+    await open('/library/dnd5e-2014/monsters');
+    const cells = [...library.root.querySelectorAll('tbody tr td:nth-child(2)')].map((cell) =>
+      cell.textContent?.trim(),
+    );
+    expect(cells).toEqual(['', '']);
+    expect(format).not.toHaveBeenCalled();
+  });
+
   it('list filters by name ignoring accents and case', async () => {
     await open('/library/dnd5e-2014/spells?q=ECLAIR');
     expect(names()).toEqual(['Éclair']);

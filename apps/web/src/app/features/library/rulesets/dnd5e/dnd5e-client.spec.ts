@@ -100,10 +100,8 @@ describe('Dnd5eClient', () => {
 
   it('encodes each path segment but keeps the separators', () => {
     client.rest('2014', 'spells/x?y#z').subscribe();
-    client.rest('2014', 'spells/..').subscribe();
     client.rest('2014', 'classes/wizard/levels').subscribe();
     http.expectOne('https://www.dnd5eapi.co/api/2014/spells/x%3Fy%23z').flush({});
-    http.expectOne('https://www.dnd5eapi.co/api/2014/spells/%2E%2E').flush({});
     http.expectOne('https://www.dnd5eapi.co/api/2014/classes/wizard/levels').flush({});
   });
 
@@ -112,5 +110,17 @@ describe('Dnd5eClient', () => {
     client.graphql('2014', '{ n }').subscribe({ error: (e) => failures.push(e) });
     http.expectOne('https://www.dnd5eapi.co/graphql/2014').flush({ data: null });
     expect(failures).toHaveLength(1);
+  });
+
+  it('refuses an empty, "." or ".." segment, encoded or not, without any request', () => {
+    const failures: unknown[] = [];
+    for (const path of ['spells/..', 'spells/.', 'spells/', 'spells/%2e%2E', 'spells/%2e']) {
+      client.rest('2014', path).subscribe({ error: (e) => failures.push(e) });
+    }
+    expect(failures).toHaveLength(5);
+    for (const failure of failures) {
+      expect(failure).toBeInstanceOf(RulesetEntryNotFoundError);
+    }
+    http.expectNone(() => true);
   });
 });

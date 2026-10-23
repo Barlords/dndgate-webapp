@@ -10,9 +10,18 @@ interface GraphqlResponse<T> {
   errors?: { message: string }[];
 }
 
-/** An index from the route must stay one segment: no `?`, `#`, `/`, nor a `..` that climbs. */
-function encodeSegment(segment: string): string {
-  return /^\.+$/.test(segment) ? segment.replace(/\./g, '%2E') : encodeURIComponent(segment);
+/**
+ * Whether a path segment is empty, `.` or `..`, also once percent-decoded: URL parsers treat
+ * `%2E%2E` as `..`, so such a segment would climb out of the resource it was meant for.
+ */
+function climbs(segment: string): boolean {
+  let decoded = segment;
+  try {
+    decoded = decodeURIComponent(segment);
+  } catch {
+    // Not valid percent-encoding: it is then encoded as is, and cannot climb.
+  }
+  return decoded === '' || decoded === '.' || decoded === '..';
 }
 
 /**
@@ -28,7 +37,11 @@ export class Dnd5eClient {
 
   /** GET `/api/<version>/<path>`; a 404 fails with `RulesetEntryNotFoundError`. */
   rest<T>(version: Dnd5eVersion, path: string): Observable<T> {
-    const url = `${this.baseUrl}/api/${version}/${path.split('/').map(encodeSegment).join('/')}`;
+    const segments = path.split('/');
+    if (segments.some(climbs)) {
+      return throwError(() => new RulesetEntryNotFoundError(`Invalid resource path: ${path}`));
+    }
+    const url = `${this.baseUrl}/api/${version}/${segments.map(encodeURIComponent).join('/')}`;
     return this.cached(url, () =>
       this.http
         .get<T>(url)

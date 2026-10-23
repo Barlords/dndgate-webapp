@@ -29,7 +29,7 @@ function value(entry: EntrySummary, key: string): FieldValue | undefined {
 }
 
 function display(field: FieldValue | undefined): string {
-  if (field === undefined) {
+  if (field == null) {
     return '';
   }
   if (typeof field === 'boolean') {
@@ -153,7 +153,7 @@ export class SectionListPage {
 
   protected cell(entry: EntrySummary, column: ColumnDef): string {
     const shown = value(entry, column.key);
-    return shown !== undefined && column.format ? column.format(shown) : display(shown);
+    return shown != null && column.format ? column.format(shown) : display(shown);
   }
 
   protected ariaSort(column: ColumnDef): string | null {
