@@ -9,6 +9,8 @@ export const TAVERN_GROUPS: NavGroup[] = [
     items: [
       { label: 'Tableau des quêtes', icon: 'scroll', link: '/tavern/quests' },
       { label: 'Rejoindre avec un code', icon: 'key', link: '/tavern/join' },
+      { label: 'Devenir MJ avec un code', icon: 'crown', link: '/tavern/master-code' },
+      { label: 'Devenir MJ avec un code', icon: 'crown', link: '/tavern/master-code' },
       { label: 'Créer une aventure', icon: 'plus', link: '/tavern/new' },
     ],
   },

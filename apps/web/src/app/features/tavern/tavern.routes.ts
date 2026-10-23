@@ -19,6 +19,11 @@ export const TAVERN_ROUTES: Routes = [
         loadComponent: () => import('./join-by-code.page').then((m) => m.JoinByCodePage),
       },
       {
+        path: 'master-code',
+        data: { breadcrumb: 'Devenir MJ avec un code' },
+        loadComponent: () => import('./accept-master.page').then((m) => m.AcceptMasterPage),
+      },
+      {
         path: 'new',
         data: { breadcrumb: 'Créer une aventure' },
         loadComponent: () => import('./create-adventure.page').then((m) => m.CreateAdventurePage),
@@ -100,7 +105,6 @@ export const TAVERN_ROUTES: Routes = [
               },
             ],
           },
-          // Built by later tasks.
           {
             path: 'chronicle',
             data: { breadcrumb: 'Chronique' },
@@ -124,8 +128,7 @@ export const TAVERN_ROUTES: Routes = [
           {
             path: 'master',
             data: { breadcrumb: 'MJ' },
-            loadComponent: () =>
-              import('./adventure/coming-soon.page').then((m) => m.ComingSoonPage),
+            loadComponent: () => import('./adventure/master.page').then((m) => m.MasterPage),
           },
         ],
       },

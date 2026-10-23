@@ -331,9 +331,4 @@ describe('OverviewPage', () => {
     expect(tavern.main().textContent).toContain('Aucun MJ pour le moment.');
     expect(tavern.main().textContent).toContain('MJ absent');
   });
-
-  it('placeholder tabs render', async () => {
-    await open({ players: ['me'] }, 'master');
-    expect(tavern.main().textContent).toContain('Bientôt disponible.');
-  });
 });
