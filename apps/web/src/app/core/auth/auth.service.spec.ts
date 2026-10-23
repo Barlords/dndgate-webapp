@@ -91,6 +91,20 @@ describe('AuthService', () => {
     expect(tokens.refreshToken()).toBeNull();
   });
 
+  it('says when the session ends, whether forgotten or logged out', async () => {
+    const ended = vi.fn();
+    auth.sessionEnded.subscribe(ended);
+
+    auth.forgetSession();
+    expect(ended).toHaveBeenCalledTimes(1);
+
+    tokens.save({ token: 'a1', refreshToken: 'r1' });
+    const done = firstValueFrom(auth.logout());
+    backend.expectOne('/dndgate-api/accounts/logout').flush(null);
+    await done;
+    expect(ended).toHaveBeenCalledTimes(2);
+  });
+
   it('shares one refresh between simultaneous callers', async () => {
     tokens.save({ token: 'a1', refreshToken: 'r1' });
     const first = firstValueFrom(auth.refreshAccessToken());

@@ -24,6 +24,12 @@ function describe(key: string, error: unknown): string {
       return `Saisis au moins ${details['requiredLength']} caractères.`;
     case 'maxlength':
       return `${details['requiredLength']} caractères au maximum.`;
+    case 'min':
+      return `Saisis un nombre supérieur ou égal à ${details['min']}.`;
+    case 'max':
+      return `Saisis un nombre inférieur ou égal à ${details['max']}.`;
+    case 'dateRange':
+      return 'La date doit être comprise entre 1900 et 2200.';
     case 'maxbytes':
       return `${details['max']} octets au maximum (les accents en comptent plusieurs).`;
     case 'mismatch':

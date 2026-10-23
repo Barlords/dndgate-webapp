@@ -111,3 +111,35 @@ describe('FormField', () => {
     expect(field().getAttribute('aria-describedby')).toBeNull();
   });
 });
+
+describe('FormField number bounds', () => {
+  @Component({
+    imports: [FormField, ReactiveFormsModule],
+    template: `
+      <dg-form-field label="Niveau" [control]="control">
+        <input type="number" [formControl]="control" />
+      </dg-form-field>
+    `,
+  })
+  class NumberHost {
+    readonly control = new FormControl<number | null>(null, [
+      Validators.min(0),
+      Validators.max(10),
+    ]);
+  }
+
+  async function messageFor(value: number): Promise<string> {
+    const fixture = TestBed.createComponent(NumberHost);
+    fixture.componentInstance.control.setValue(value);
+    fixture.componentInstance.control.markAsTouched();
+    await fixture.whenStable();
+    return (fixture.nativeElement as HTMLElement)
+      .querySelector('.dg-form-field__error')!
+      .textContent!.trim();
+  }
+
+  it('states the bound that was crossed, whatever its value', async () => {
+    expect(await messageFor(-1)).toBe('Saisis un nombre supérieur ou égal à 0.');
+    expect(await messageFor(11)).toBe('Saisis un nombre inférieur ou égal à 10.');
+  });
+});

@@ -76,6 +76,14 @@ describe('BreadcrumbService', () => {
     expect(service.crumbs().map((c) => c.label)).toEqual(['Bibliothèque', 'Sorts', 'Acid Arrow']);
   });
 
+  it('setLabelAt names an intermediate crumb and keeps it across navigations', async () => {
+    await router.navigateByUrl('/library/spells/acid-arrow');
+    service.setLabelAt('/library/spells', 'Grimoire');
+    expect(service.crumbs().map((c) => c.label)).toEqual(['Bibliothèque', 'Grimoire', 'Sort']);
+    await router.navigateByUrl('/library/spells');
+    expect(service.crumbs().map((c) => c.label)).toEqual(['Bibliothèque', 'Grimoire']);
+  });
+
   it('forgets the replaced label on the next navigation', async () => {
     await router.navigateByUrl('/library/spells/acid-arrow');
     service.setLast('Acid Arrow');

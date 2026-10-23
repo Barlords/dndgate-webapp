@@ -1,9 +1,138 @@
 import { Routes } from '@angular/router';
+import { TavernShell } from './tavern-shell';
 
-// Placeholder until the tavern pages exist: every address shows the "lost" page.
+/** Every Tavern page, under `/tavern`. */
 export const TAVERN_ROUTES: Routes = [
   {
-    path: '**',
-    loadComponent: () => import('../not-found.page').then((m) => m.NotFoundPage),
+    path: '',
+    component: TavernShell,
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'quests' },
+      {
+        path: 'quests',
+        data: { breadcrumb: 'Tableau des quêtes' },
+        loadComponent: () => import('./quest-board.page').then((m) => m.QuestBoardPage),
+      },
+      {
+        path: 'join',
+        data: { breadcrumb: 'Rejoindre avec un code' },
+        loadComponent: () => import('./join-by-code.page').then((m) => m.JoinByCodePage),
+      },
+      {
+        path: 'master-code',
+        data: { breadcrumb: 'Devenir MJ avec un code' },
+        loadComponent: () => import('./accept-master.page').then((m) => m.AcceptMasterPage),
+      },
+      {
+        path: 'new',
+        data: { breadcrumb: 'Créer une aventure' },
+        loadComponent: () => import('./create-adventure.page').then((m) => m.CreateAdventurePage),
+      },
+      {
+        path: 'mine',
+        data: { breadcrumb: 'Mes aventures' },
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'ongoing' },
+          {
+            path: 'ongoing',
+            data: { breadcrumb: 'En cours', closed: false },
+            loadComponent: () => import('./my-adventures.page').then((m) => m.MyAdventuresPage),
+          },
+          {
+            path: 'finished',
+            data: { breadcrumb: 'Terminées', closed: true },
+            loadComponent: () => import('./my-adventures.page').then((m) => m.MyAdventuresPage),
+          },
+        ],
+      },
+      {
+        path: 'adventures/:id',
+        data: { breadcrumb: 'Aventure' },
+        loadComponent: () => import('./adventure/adventure-shell').then((m) => m.AdventureShell),
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'overview' },
+          {
+            path: 'overview',
+            data: { breadcrumb: 'Informations' },
+            loadComponent: () => import('./adventure/overview.page').then((m) => m.OverviewPage),
+          },
+          {
+            path: 'players',
+            data: { breadcrumb: 'Joueurs' },
+            loadComponent: () => import('./adventure/players.page').then((m) => m.PlayersPage),
+          },
+          {
+            path: 'characters',
+            data: { breadcrumb: 'Personnages' },
+            children: [
+              {
+                path: '',
+                pathMatch: 'full',
+                loadComponent: () =>
+                  import('./adventure/characters/character-list.page').then(
+                    (m) => m.CharacterListPage,
+                  ),
+              },
+              {
+                path: 'new',
+                data: { breadcrumb: 'Nouveau personnage' },
+                loadComponent: () =>
+                  import('./adventure/characters/character-form.page').then(
+                    (m) => m.CharacterFormPage,
+                  ),
+              },
+              {
+                path: ':characterId',
+                data: { breadcrumb: 'Personnage' },
+                children: [
+                  {
+                    path: '',
+                    pathMatch: 'full',
+                    loadComponent: () =>
+                      import('./adventure/characters/character-detail.page').then(
+                        (m) => m.CharacterDetailPage,
+                      ),
+                  },
+                  {
+                    path: 'edit',
+                    data: { breadcrumb: 'Modifier' },
+                    loadComponent: () =>
+                      import('./adventure/characters/character-form.page').then(
+                        (m) => m.CharacterFormPage,
+                      ),
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            path: 'chronicle',
+            data: { breadcrumb: 'Chronique' },
+            loadComponent: () => import('./adventure/chronicle.page').then((m) => m.ChroniclePage),
+          },
+          {
+            path: 'gm-notes',
+            data: { breadcrumb: 'Notes du MJ' },
+            loadComponent: () => import('./adventure/gm-notes.page').then((m) => m.GmNotesPage),
+          },
+          {
+            path: 'planning',
+            data: { breadcrumb: 'Planning' },
+            loadComponent: () => import('./adventure/planning.page').then((m) => m.PlanningPage),
+          },
+          {
+            path: 'messages',
+            data: { breadcrumb: 'Messagerie' },
+            loadComponent: () => import('./adventure/messages.page').then((m) => m.MessagesPage),
+          },
+          {
+            path: 'master',
+            data: { breadcrumb: 'MJ' },
+            loadComponent: () => import('./adventure/master.page').then((m) => m.MasterPage),
+          },
+        ],
+      },
+    ],
   },
+  { path: '**', loadComponent: () => import('../not-found.page').then((m) => m.NotFoundPage) },
 ];
