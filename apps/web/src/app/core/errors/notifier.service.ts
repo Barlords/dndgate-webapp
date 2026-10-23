@@ -60,6 +60,9 @@ export class NotifierService {
 
   /** `context` says what was being done, e.g. « Chargement de l’aventure ». */
   error(problem: ApiProblem, context?: string): void {
+    if (problem.status === 401) {
+      return; // The interceptor already ended the session and redirected to the login page.
+    }
     const { message, detail } = messageFor(problem);
     this.push(
       {

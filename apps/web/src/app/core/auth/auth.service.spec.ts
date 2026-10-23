@@ -1,5 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { Injector } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 import { provideApi } from '../api/api.providers';
@@ -116,5 +117,84 @@ describe('AuthService', () => {
 
   it('fails the refresh without a refresh token', async () => {
     await expect(firstValueFrom(auth.refreshAccessToken())).rejects.toThrow();
+  });
+
+  it('restore forgets a rejected refresh token', async () => {
+    tokens.save({ token: 'x', refreshToken: 'dead' });
+    const done = auth.restore();
+
+    backend
+      .expectOne('/dndgate-api/accounts/refresh')
+      .flush(null, { status: 401, statusText: 'Unauthorized' });
+    await done;
+
+    expect(tokens.refreshToken()).toBeNull();
+  });
+
+  it.each([0, 503])('restore keeps the token when the refresh answers %s', async (status) => {
+    tokens.save({ token: 'x', refreshToken: 'r1' });
+    const done = auth.restore();
+
+    const call = backend.expectOne('/dndgate-api/accounts/refresh');
+    if (status === 0) {
+      call.error(new ProgressEvent('error'));
+    } else {
+      call.flush(null, { status, statusText: 'Unavailable' });
+    }
+    await done;
+
+    expect(tokens.refreshToken()).toBe('r1');
+  });
+
+  describe('across tabs', () => {
+    const tab = () => {
+      const injector = Injector.create({
+        parent: TestBed.inject(Injector),
+        providers: [
+          { provide: TokenStore, useClass: TokenStore },
+          { provide: AuthService, useClass: AuthService },
+        ],
+      });
+      return injector.get(AuthService);
+    };
+
+    afterEach(() => Reflect.deleteProperty(navigator, 'locks'));
+
+    it('never presents the same refresh token twice when tabs refresh at once', async () => {
+      let queue: Promise<unknown> = Promise.resolve();
+      Object.defineProperty(navigator, 'locks', {
+        configurable: true,
+        value: {
+          request: (_name: string, callback: () => Promise<unknown>) => {
+            const run = queue.then(callback);
+            queue = run.catch(() => undefined);
+            return run;
+          },
+        },
+      });
+      tokens.save({ token: 'a1', refreshToken: 'r1' });
+      const first = firstValueFrom(tab().refreshAccessToken());
+      const second = firstValueFrom(tab().refreshAccessToken());
+
+      const call1 = await vi.waitFor(() => backend.expectOne('/dndgate-api/accounts/refresh'));
+      expect(call1.request.body).toEqual({ refreshToken: 'r1' });
+      call1.flush({ token: 'a2', refreshToken: 'r2' });
+      await first;
+
+      const call2 = await vi.waitFor(() => backend.expectOne('/dndgate-api/accounts/refresh'));
+      expect(call2.request.body).toEqual({ refreshToken: 'r2' });
+      call2.flush({ token: 'a3', refreshToken: 'r3' });
+      await second;
+    });
+
+    it('still refreshes when navigator.locks is unavailable', async () => {
+      Object.defineProperty(navigator, 'locks', { configurable: true, value: undefined });
+      tokens.save({ token: 'a1', refreshToken: 'r1' });
+      const done = firstValueFrom(auth.refreshAccessToken());
+
+      backend.expectOne('/dndgate-api/accounts/refresh').flush({ token: 'a2', refreshToken: 'r2' });
+
+      expect(await done).toBe('a2');
+    });
   });
 });

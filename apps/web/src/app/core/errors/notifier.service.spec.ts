@@ -14,6 +14,11 @@ describe('NotifierService', () => {
 
   afterEach(() => vi.useRealTimers());
 
+  it('error ignores 401', () => {
+    notifier.error(problem({ status: 401 }));
+    expect(notifier.toasts()).toEqual([]);
+  });
+
   it('error toast shows the correlation id', () => {
     notifier.error(problem({ status: 500, detail: 'Boom', correlationId: 'cid-1' }));
     const [toast] = notifier.toasts();
