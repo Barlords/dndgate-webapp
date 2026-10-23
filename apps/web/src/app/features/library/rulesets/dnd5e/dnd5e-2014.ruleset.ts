@@ -8,7 +8,7 @@ import {
   RulesetSection,
 } from '../ruleset.model';
 import { Dnd5eClient } from './dnd5e-client';
-import { fetchTraits, listRefs } from './dnd5e-resources';
+import { fetchTraits, listPersonality, listRefs, personalityDetail } from './dnd5e-resources';
 import {
   MONSTERS_SECTION,
   NAME_COLUMN,
@@ -20,16 +20,7 @@ import { mapBackground, ApiBackground } from './mappers/background.mapper';
 import { ApiClass, ApiClassLevel, mapClass } from './mappers/class.mapper';
 import { ApiRef } from './mappers/common';
 import { ApiMonster, GqlMonster, mapMonster, mapMonsterSummary } from './mappers/monster.mapper';
-import {
-  ALIGNMENT_PREFIX,
-  ApiAlignment,
-  ApiLanguage,
-  LANGUAGE_PREFIX,
-  mapAlignment,
-  mapAlignmentSummary,
-  mapLanguage,
-  mapLanguageSummary,
-} from './mappers/personality.mapper';
+import { mapAlignment, mapLanguage } from './mappers/personality.mapper';
 import { ApiRace, ApiTrait, mapRace } from './mappers/race.mapper';
 import { ApiRule, mapRule } from './mappers/rule.mapper';
 import { ApiSpell, GqlSpell, mapSpell, mapSpellSummary } from './mappers/spell.mapper';
@@ -72,12 +63,7 @@ export class Dnd5e2014Ruleset implements Ruleset {
           .graphql<{ monsters: GqlMonster[] }>(VERSION, MONSTERS_QUERY)
           .pipe(map((data) => data.monsters.map(mapMonsterSummary)));
       case 'personality':
-        return forkJoin([this.refs('alignments'), this.refs('languages')]).pipe(
-          map(([alignments, languages]) => [
-            ...alignments.map(mapAlignmentSummary),
-            ...languages.map(mapLanguageSummary),
-          ]),
-        );
+        return listPersonality(this.client, VERSION);
       case 'classes':
       case 'races':
       case 'backgrounds':
@@ -118,7 +104,7 @@ export class Dnd5e2014Ruleset implements Ruleset {
       case 'rules':
         return this.client.rest<ApiRule>(VERSION, `rules/${index}`).pipe(map(mapRule));
       case 'personality':
-        return this.personality(index);
+        return personalityDetail(this.client, VERSION, index, { mapAlignment, mapLanguage });
       default:
         return throwError(() => new RulesetEntryNotFoundError(`No section ${sectionId}`));
     }
@@ -126,19 +112,5 @@ export class Dnd5e2014Ruleset implements Ruleset {
 
   private refs(resource: string): Observable<ApiRef[]> {
     return listRefs(this.client, VERSION, resource);
-  }
-
-  private personality(index: string): Observable<EntryDetail> {
-    if (index.startsWith(ALIGNMENT_PREFIX)) {
-      return this.client
-        .rest<ApiAlignment>(VERSION, `alignments/${index.slice(ALIGNMENT_PREFIX.length)}`)
-        .pipe(map(mapAlignment));
-    }
-    if (index.startsWith(LANGUAGE_PREFIX)) {
-      return this.client
-        .rest<ApiLanguage>(VERSION, `languages/${index.slice(LANGUAGE_PREFIX.length)}`)
-        .pipe(map(mapLanguage));
-    }
-    return throwError(() => new RulesetEntryNotFoundError(`No personality entry ${index}`));
   }
 }
