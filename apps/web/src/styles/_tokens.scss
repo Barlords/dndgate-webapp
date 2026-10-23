@@ -22,6 +22,8 @@
   --dg-gold-light: #e9cf8a;
   // Antique gold, dark enough for a 3:1 contrast on parchment (focus ring, rules).
   --dg-gold-deep: #8a6418;
+  // Gold for text on parchment: 5.4:1 on parchment-1 (WCAG AA), where gold-deep only serves borders.
+  --dg-gold-ink: #6b4b10;
 
   // Blood red: titles on parchment, primary action, errors.
   --dg-blood: #7a1f12;

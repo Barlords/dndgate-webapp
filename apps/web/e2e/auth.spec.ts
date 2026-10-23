@@ -1,4 +1,5 @@
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
+import { expect, test } from './support/test';
 import { ACCOUNT, authDto, emptyPage, json, mockDnd5eApi } from './support/mocks';
 
 const API = '**/dndgate-api';
