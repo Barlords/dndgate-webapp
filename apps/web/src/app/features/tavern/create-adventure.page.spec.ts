@@ -56,11 +56,14 @@ describe('CreateAdventurePage', () => {
 
   it('create form enforces maxPlayer 1..100', async () => {
     await open();
-    for (const bad of ['0', '101']) {
+    for (const [bad, message] of [
+      ['0', 'Saisis un nombre supérieur ou égal à 1.'],
+      ['101', 'Saisis un nombre inférieur ou égal à 100.'],
+    ]) {
       fill(bad);
       submit();
       await tavern.render();
-      expect(tavern.main().textContent).toContain('Saisis un nombre entre 1 et 100.');
+      expect(tavern.main().textContent).toContain(message);
     }
     fill('');
     submit();

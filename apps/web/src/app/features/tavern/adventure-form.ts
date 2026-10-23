@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, OnInit, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, input, output } from '@angular/core';
 import {
   AbstractControl,
   FormControl,
@@ -87,7 +87,7 @@ const BLANK: AdventureValue = {
     </form>
   `,
 })
-export class AdventureForm implements OnInit {
+export class AdventureForm {
   readonly initial = input<AdventureValue>(BLANK);
   readonly submitLabel = input('Créer');
   readonly busy = input(false);
@@ -120,9 +120,10 @@ export class AdventureForm implements OnInit {
     }),
   });
 
-  /** Fills the form once the inputs are known. */
-  ngOnInit(): void {
-    this.form.reset(this.initial());
+  constructor() {
+    // Every new `initial` replaces what is in the fields, edits included: the parent hands one over
+    // when the adventure arrives after render, or is reloaded after a conflict.
+    effect(() => this.form.reset(this.initial()));
   }
 
   /** Puts the API's per-field messages on the fields; false when none matched. */
