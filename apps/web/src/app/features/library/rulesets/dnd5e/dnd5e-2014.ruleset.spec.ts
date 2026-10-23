@@ -132,6 +132,38 @@ describe('Dnd5e2014Ruleset', () => {
     expect(monsters.filters[0].options.map((o) => o.value)).toContain('dragon');
   });
 
+  it('formats the challenge rating column as fractions, leaving the raw value to sort on', () => {
+    const cr = ruleset.sections
+      .find((s) => s.id === 'monsters')!
+      .columns.find((c) => c.key === 'cr')!;
+    expect([0, 0.125, 0.25, 0.5, 10].map((v) => cr.format?.(v))).toEqual([
+      '0',
+      '1/8',
+      '1/4',
+      '1/2',
+      '10',
+    ]);
+  });
+
+  it('offers only the classes that have spells and the challenge ratings the SRD has', () => {
+    const filters = ruleset.sections.flatMap((s) => s.filters);
+    const classes = filters.find((f) => f.key === 'classes')!.options.map((o) => o.value);
+    expect(classes).toEqual([
+      'Bard',
+      'Cleric',
+      'Druid',
+      'Paladin',
+      'Ranger',
+      'Sorcerer',
+      'Warlock',
+      'Wizard',
+    ]);
+    const cr = filters.find((f) => f.key === 'cr')!.options.map((o) => o.value);
+    expect(cr).not.toContain('18');
+    expect(cr).toContain('30');
+    expect(cr).toHaveLength(28);
+  });
+
   it('lists the REST sections from their resource', () => {
     const lists: [string, string, { results: { index: string }[] }][] = [
       ['classes', 'classes', classesList],
@@ -195,13 +227,13 @@ describe('Dnd5e2014Ruleset', () => {
       expect(result()?.blocks.some((b) => b.kind === 'table')).toBe(true);
     });
 
-    it('reads a race with its traits, leaving out one that fails', () => {
+    it('reads a race with its traits, leaving out one that is gone', () => {
       const result = detailOf('races', 'dwarf');
       http.expectOne(`${API}/races/dwarf`).flush(dwarf);
       for (const trait of dwarf.traits) {
         const request = http.expectOne(`${API}/traits/${trait.index}`);
         if (trait.index === 'stonecunning') {
-          request.flush('x', { status: 500, statusText: 'Error' });
+          request.flush({ error: 'Not found' }, { status: 404, statusText: 'Not Found' });
         } else {
           request.flush({ index: trait.index, name: trait.name, desc: ['Text.'] });
         }
@@ -213,6 +245,27 @@ describe('Dnd5e2014Ruleset', () => {
         'Dwarven Combat Training',
         'Tool Proficiency',
       ]);
+    });
+
+    it('fails the whole race when a trait fails for another reason than 404', () => {
+      const failures: unknown[] = [];
+      let result: EntryDetail | null = null;
+      ruleset.detail('races', 'dwarf').subscribe({
+        next: (value) => (result = value),
+        error: (e) => failures.push(e),
+      });
+      http.expectOne(`${API}/races/dwarf`).flush(dwarf);
+      for (const trait of dwarf.traits) {
+        const request = http.expectOne(`${API}/traits/${trait.index}`);
+        if (trait.index === 'stonecunning') {
+          request.flush('x', { status: 500, statusText: 'Error' });
+        } else {
+          request.flush({ index: trait.index, name: trait.name, desc: ['Text.'] });
+        }
+      }
+      expect(result).toBeNull();
+      expect(failures).toHaveLength(1);
+      expect(failures[0]).not.toBeInstanceOf(RulesetEntryNotFoundError);
     });
 
     it('reads a race without traits without further requests', () => {

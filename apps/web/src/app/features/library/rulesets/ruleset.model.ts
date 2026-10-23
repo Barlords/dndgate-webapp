@@ -12,11 +12,15 @@ import { IconName } from '../../../shared/ui/icon/icon-paths';
 export type RulesetId = string; // ^[a-z0-9]+(-[a-z0-9]+)*$
 export type SectionGroup = 'players' | 'master' | 'rules';
 
-/** A list column. The key `name` reads `EntrySummary.name`; any other key reads `fields[key]`. */
+/**
+ * A list column. The key `name` reads `EntrySummary.name`; any other key reads `fields[key]`.
+ * `format` changes how a value is shown; sorting and filtering keep using the raw value.
+ */
 export interface ColumnDef {
   key: string;
   label: string;
   sortable: boolean;
+  format?: (value: FieldValue) => string;
 }
 
 /** A select over `fields[key]`; an entry matches when its value equals (or, for a list, holds) the option. */

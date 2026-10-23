@@ -11,7 +11,13 @@ import { Dnd5eClient } from './dnd5e-client';
 import { mapBackground, ApiBackground } from './mappers/background.mapper';
 import { ApiClass, ApiClassLevel, mapClass } from './mappers/class.mapper';
 import { ApiList, ApiRef } from './mappers/common';
-import { ApiMonster, GqlMonster, mapMonster, mapMonsterSummary } from './mappers/monster.mapper';
+import {
+  ApiMonster,
+  formatChallenge,
+  GqlMonster,
+  mapMonster,
+  mapMonsterSummary,
+} from './mappers/monster.mapper';
 import {
   ALIGNMENT_PREFIX,
   ApiAlignment,
@@ -51,13 +57,20 @@ const SPELL_LEVELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((level) => ({
   label: level === 0 ? 'Tour de magie' : `Niveau ${level}`,
 }));
 
-const CHALLENGE_RATINGS = [
+const CHALLENGE_FRACTIONS: [number, string][] = [
   [0, '0'],
   [0.125, '1/8'],
   [0.25, '1/4'],
   [0.5, '1/2'],
-  ...Array.from({ length: 30 }, (_, i) => [i + 1, String(i + 1)] as [number, string]),
-].map(([value, label]) => ({ value: String(value), label: String(label) }));
+];
+
+/** The challenge ratings that SRD 2014 monsters have (there is none at 18). */
+const CHALLENGE_RATINGS = [
+  ...CHALLENGE_FRACTIONS,
+  ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22, 23, 24, 30].map(
+    (value): [number, string] => [value, String(value)],
+  ),
+].map(([value, label]) => ({ value: String(value), label }));
 
 const SECTIONS: readonly RulesetSection[] = [
   plain('classes', 'Classes', 'players', 'sword'),
@@ -98,15 +111,11 @@ const SECTIONS: readonly RulesetSection[] = [
         key: 'classes',
         label: 'Classe',
         options: options([
-          'Barbarian',
           'Bard',
           'Cleric',
           'Druid',
-          'Fighter',
-          'Monk',
           'Paladin',
           'Ranger',
-          'Rogue',
           'Sorcerer',
           'Warlock',
           'Wizard',
@@ -123,7 +132,7 @@ const SECTIONS: readonly RulesetSection[] = [
       NAME_COLUMN,
       { key: 'type', label: 'Type', sortable: true },
       { key: 'size', label: 'Taille', sortable: true },
-      { key: 'cr', label: 'FP', sortable: true },
+      { key: 'cr', label: 'FP', sortable: true, format: (value) => formatChallenge(Number(value)) },
     ],
     filters: [
       {
@@ -240,16 +249,19 @@ export class Dnd5e2014Ruleset implements Ruleset {
     return throwError(() => new RulesetEntryNotFoundError(`No personality entry ${index}`));
   }
 
-  /** The traits of a race; one that cannot be read is left out rather than hiding the race. */
+  /** The traits of a race; one that is gone (404) is left out. */
   private traits(race: ApiRace): Observable<ApiTrait[]> {
     if (race.traits.length === 0) {
       return of([]);
     }
     return forkJoin(
       race.traits.map((trait) =>
-        this.client
-          .rest<ApiTrait>(VERSION, `traits/${trait.index}`)
-          .pipe(catchError(() => of(null))),
+        this.client.rest<ApiTrait>(VERSION, `traits/${trait.index}`).pipe(
+          // A trait that no longer exists is skipped; any other failure fails the race.
+          catchError((error: unknown) =>
+            error instanceof RulesetEntryNotFoundError ? of(null) : throwError(() => error),
+          ),
+        ),
       ),
     ).pipe(map((traits) => traits.filter((trait): trait is ApiTrait => trait !== null)));
   }

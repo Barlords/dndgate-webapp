@@ -10,6 +10,11 @@ interface GraphqlResponse<T> {
   errors?: { message: string }[];
 }
 
+/** An index from the route must stay one segment: no `?`, `#`, `/`, nor a `..` that climbs. */
+function encodeSegment(segment: string): string {
+  return /^\.+$/.test(segment) ? segment.replace(/\./g, '%2E') : encodeURIComponent(segment);
+}
+
 /**
  * The only door to dnd5eapi.co. Answers are cached in memory for the life of the page, by URL (REST)
  * or by query and variables (GraphQL); a failure is never cached, so asking again retries.
@@ -23,7 +28,7 @@ export class Dnd5eClient {
 
   /** GET `/api/<version>/<path>`; a 404 fails with `RulesetEntryNotFoundError`. */
   rest<T>(version: Dnd5eVersion, path: string): Observable<T> {
-    const url = `${this.baseUrl}/api/${version}/${path}`;
+    const url = `${this.baseUrl}/api/${version}/${path.split('/').map(encodeSegment).join('/')}`;
     return this.cached(url, () =>
       this.http
         .get<T>(url)
@@ -46,7 +51,7 @@ export class Dnd5eClient {
     return this.cached(key, () =>
       this.http.post<GraphqlResponse<T>>(url, { query, variables }).pipe(
         map((response) => {
-          if (response.data === undefined || (response.errors?.length ?? 0) > 0) {
+          if (response.data == null || (response.errors?.length ?? 0) > 0) {
             throw new Error(response.errors?.[0]?.message ?? 'Empty GraphQL answer');
           }
           return response.data;

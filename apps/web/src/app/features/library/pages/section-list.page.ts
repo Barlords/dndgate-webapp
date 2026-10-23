@@ -152,7 +152,8 @@ export class SectionListPage {
   }
 
   protected cell(entry: EntrySummary, column: ColumnDef): string {
-    return display(value(entry, column.key));
+    const shown = value(entry, column.key);
+    return shown !== undefined && column.format ? column.format(shown) : display(shown);
   }
 
   protected ariaSort(column: ColumnDef): string | null {

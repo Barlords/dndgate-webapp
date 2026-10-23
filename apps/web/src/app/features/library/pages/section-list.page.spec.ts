@@ -61,6 +61,15 @@ describe('SectionListPage', () => {
     ).toBe('Non');
   });
 
+  it('displays a column through its format, sorting on the raw value', async () => {
+    ruleset.sections[1].columns[1].format = (value) => `<${String(value).length}>`;
+    await open('/library/dnd5e-2014/monsters');
+    const cells = [...library.root.querySelectorAll('tbody tr td:nth-child(2)')].map((cell) =>
+      cell.textContent?.trim(),
+    );
+    expect(cells).toEqual(['<7>', '<0>']);
+  });
+
   it('list filters by name ignoring accents and case', async () => {
     await open('/library/dnd5e-2014/spells?q=ECLAIR');
     expect(names()).toEqual(['Éclair']);
