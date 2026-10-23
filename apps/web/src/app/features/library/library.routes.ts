@@ -46,9 +46,22 @@ export const LIBRARY_ROUTES: Routes = [
         path: 'grimoires',
         canActivate: [authGuard],
         data: { breadcrumb: 'Mes grimoires' },
-        loadComponent: notFound,
+        children: [
+          {
+            path: '',
+            pathMatch: 'full',
+            loadComponent: () =>
+              import('./spellbooks/spellbook-list.page').then((m) => m.SpellBookListPage),
+          },
+          {
+            path: ':id',
+            // Replaced by the book's name once it has loaded.
+            data: { breadcrumb: 'Grimoire' },
+            loadComponent: () =>
+              import('./spellbooks/spellbook-detail.page').then((m) => m.SpellBookDetailPage),
+          },
+        ],
       },
-      { path: 'grimoires/:id', canActivate: [authGuard], loadComponent: notFound },
       {
         path: ':rulesetId',
         canMatch: [knownRulesetAndSection],
