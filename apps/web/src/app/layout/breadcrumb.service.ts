@@ -34,8 +34,14 @@ export class BreadcrumbService {
   // The label set by `setLast`, valid for the URL that set it only.
   private readonly override = signal<{ url: string; label: string } | null>(null);
 
+  // Labels given to a crumb by its link, whatever the page shown below it.
+  private readonly named = signal<Record<string, string>>({});
+
   readonly crumbs = computed<Crumb[]>(() => {
-    const trail = this.trail();
+    const named = this.named();
+    const trail = this.trail().map((crumb) =>
+      crumb.link in named ? { ...crumb, label: named[crumb.link] } : crumb,
+    );
     const override = this.override();
     if (override === null || override.url !== this.currentUrl() || trail.length === 0) {
       return trail;
@@ -55,6 +61,11 @@ export class BreadcrumbService {
   /** Names the last crumb for the current URL; a page may call it while it is still activating. */
   setLast(label: string): void {
     this.override.set({ url: this.router.url, label });
+  }
+
+  /** Names the crumb that links to `link`, which stays named while the reader moves below it. */
+  setLabelAt(link: string, label: string): void {
+    this.named.update((named) => ({ ...named, [link]: label }));
   }
 
   private build(root: ActivatedRouteSnapshot): Crumb[] {

@@ -29,7 +29,9 @@ describe('JoinByCodePage', () => {
     expect(request.request.body).toEqual({ code: 'ABC123' });
     request.flush(adventure({ id: 'z9' }));
     await tavern.render();
-    expect(tavern.router.url).toBe('/tavern/adventures/z9');
+    // The adventure page opens on its information tab and starts loading.
+    expect(tavern.router.url).toBe('/tavern/adventures/z9/overview');
+    tavern.backend.match(() => true);
   });
 
   it('refuses an empty or too long code without calling the API', async () => {

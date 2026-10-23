@@ -56,7 +56,9 @@ describe('QuestBoardPage', () => {
     tavern.button('Rejoindre').click();
     tavern.backend.expectOne(join).flush(adventure());
     await tavern.render();
-    expect(tavern.router.url).toBe('/tavern/adventures/a1');
+    // The adventure page opens on its information tab and starts loading.
+    expect(tavern.router.url).toBe('/tavern/adventures/a1/overview');
+    tavern.backend.match(() => true);
   });
 
   it('reloads the board when the adventure cannot be joined any more', async () => {

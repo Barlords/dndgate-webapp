@@ -40,11 +40,37 @@ export const TAVERN_ROUTES: Routes = [
           },
         ],
       },
-      // Replaced by the adventure page.
       {
         path: 'adventures/:id',
         data: { breadcrumb: 'Aventure' },
-        loadComponent: () => import('../not-found.page').then((m) => m.NotFoundPage),
+        loadComponent: () => import('./adventure/adventure-shell').then((m) => m.AdventureShell),
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'overview' },
+          {
+            path: 'overview',
+            data: { breadcrumb: 'Informations' },
+            loadComponent: () => import('./adventure/overview.page').then((m) => m.OverviewPage),
+          },
+          {
+            path: 'players',
+            data: { breadcrumb: 'Joueurs' },
+            loadComponent: () => import('./adventure/players.page').then((m) => m.PlayersPage),
+          },
+          // Built by later tasks.
+          ...[
+            ['characters', 'Personnages'],
+            ['chronicle', 'Chronique'],
+            ['gm-notes', 'Notes du MJ'],
+            ['planning', 'Planning'],
+            ['messages', 'Messagerie'],
+            ['master', 'MJ'],
+          ].map(([path, breadcrumb]) => ({
+            path,
+            data: { breadcrumb },
+            loadComponent: () =>
+              import('./adventure/coming-soon.page').then((m) => m.ComingSoonPage),
+          })),
+        ],
       },
     ],
   },

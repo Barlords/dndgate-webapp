@@ -51,7 +51,9 @@ describe('CreateAdventurePage', () => {
     });
     request.flush(adventure({ id: 'new1' }));
     await tavern.render();
-    expect(tavern.router.url).toBe('/tavern/adventures/new1');
+    // The adventure page opens on its information tab and starts loading.
+    expect(tavern.router.url).toBe('/tavern/adventures/new1/overview');
+    tavern.backend.match(() => true);
   });
 
   it('create form enforces maxPlayer 1..100', async () => {
@@ -75,6 +77,7 @@ describe('CreateAdventurePage', () => {
       submit();
       tavern.backend.expectOne(create).flush(adventure());
       await tavern.render();
+      tavern.backend.match(() => true); // The adventure page starts loading.
       await tavern.go('/tavern/new');
     }
   });
