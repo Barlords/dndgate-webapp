@@ -20,3 +20,4 @@ target/
 
 # Brainstorming companion (local mockups)
 .superpowers/
+apps/web/src/app/core/api/generated/
