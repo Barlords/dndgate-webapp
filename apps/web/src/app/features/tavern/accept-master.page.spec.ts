@@ -59,6 +59,6 @@ describe('AcceptMasterPage', () => {
 
   it('is reachable from the Tavern menu', () => {
     const links = [...tavern.root.querySelectorAll('a')].map((a) => a.getAttribute('href'));
-    expect(links).toContain('/tavern/master-code');
+    expect(links.filter((href) => href === '/tavern/master-code')).toHaveLength(1);
   });
 });

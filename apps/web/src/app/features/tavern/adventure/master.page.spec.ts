@@ -143,8 +143,14 @@ describe('MasterPage', () => {
     // The role changed: the adventure is read again.
     tavern.backend
       .expectOne(getAdventure)
-      .flush(adventure({ creatorId: 'me', masterVacant: true, players: [] }));
+      .flush(adventure({ creatorId: 'me', masterVacant: true, players: ['me'] }));
     await tavern.render();
+    // The master view is gone; as a player of a vacant seat the reader is asked about the vote.
+    expect(text()).not.toContain('Générer un code');
+    expect(text()).not.toContain('Quitter le rôle de MJ');
+    tavern.backend.expectOne(getClaim).flush({}, { status: 404, statusText: 'Not Found' });
+    await tavern.render();
+    expect(text()).toContain('Demander à devenir MJ');
   });
 
   it('step down does nothing when cancelled', async () => {
@@ -201,6 +207,9 @@ describe('MasterPage', () => {
       .flush(adventure({ creatorId: 'me', masterVacant: false, players: ['p1'] }));
     await tavern.render();
     expect(toasts()[0].message).toContain('changé de mains');
+    // The reader is the master now.
+    expect(text()).toContain('Générer un code');
+    expect(text()).not.toContain('Demander à devenir MJ');
   });
 
   it('voters see approve and refuse, the candidate can cancel', async () => {
@@ -252,6 +261,48 @@ describe('MasterPage', () => {
     tavern.backend.expectOne(cancel).flush(null, { status: 204, statusText: 'No Content' });
     await tavern.render();
     expect(text()).toContain('Demander à devenir MJ');
+    // A new request is possible.
+    tavern.button('Demander à devenir MJ').click();
+    expect(tavern.backend.expectOne(claim).request.method).toBe('POST');
+  });
+
+  it.each(['REJECTED', 'EXPIRED'] as const)(
+    'a vote that ends as %s leaves the seat vacant and offers a new request',
+    async (status) => {
+      await openVacant(claimDto());
+      tavern.button('Refuser').click();
+      tavern.backend.expectOne(vote).flush(claimDto({ status }));
+      // The adventure is read again and the seat is still vacant.
+      tavern.backend
+        .expectOne(getAdventure)
+        .flush(adventure({ creatorId: 'gone', masterVacant: true, players: ['me', 'p1', 'p2'] }));
+      await tavern.render();
+      tavern.backend.expectOne(getClaim).flush({}, { status: 404, statusText: 'Not Found' });
+      await tavern.render();
+      expect(text()).not.toContain('Accepter');
+      expect(text()).not.toContain('Refuser');
+      expect(text()).toContain('Demander à devenir MJ');
+    },
+  );
+
+  it('a conflict on claim reloads the adventure', async () => {
+    await openVacant(null);
+    tavern.button('Demander à devenir MJ').click();
+    tavern.backend.expectOne(claim).flush({}, { status: 409, statusText: 'Conflict' });
+    tavern.backend.expectOne(getAdventure).flush(adventure({ creatorId: 'other' }));
+    tavern.backend.match(getClaim);
+    await tavern.render();
+    expect(toasts()[0].message).toContain('modifié');
+  });
+
+  it('a conflict on vote reloads the adventure', async () => {
+    await openVacant(claimDto());
+    tavern.button('Accepter').click();
+    tavern.backend.expectOne(vote).flush({}, { status: 409, statusText: 'Conflict' });
+    tavern.backend.expectOne(getAdventure).flush(adventure({ creatorId: 'other' }));
+    tavern.backend.match(getClaim);
+    await tavern.render();
+    expect(toasts()[0].message).toContain('modifié');
   });
 
   it('retries a failed vote lookup', async () => {
