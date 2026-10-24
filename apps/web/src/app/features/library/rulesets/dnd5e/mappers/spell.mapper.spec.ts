@@ -71,4 +71,10 @@ describe('spell mapper', () => {
       'Action (Overgrowth) or 8 hours (Enrichment)',
     );
   });
+
+  it('cuts the trigger whatever the language the casting time is written in', () => {
+    expect(
+      shortCastingTime('1 réaction, que vous jouez lorsqu’une créature vous inflige des dégâts'),
+    ).toBe('1 réaction');
+  });
 });

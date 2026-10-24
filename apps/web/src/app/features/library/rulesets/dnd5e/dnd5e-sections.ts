@@ -86,35 +86,10 @@ export const SPELLS_SECTION: RulesetSection = {
   ],
   filters: [
     { key: 'level', label: 'Niveau', options: SPELL_LEVELS },
-    {
-      key: 'school',
-      label: 'École',
-      options: options([
-        'Abjuration',
-        'Conjuration',
-        'Divination',
-        'Enchantment',
-        'Evocation',
-        'Illusion',
-        'Necromancy',
-        'Transmutation',
-      ]),
-    },
-    {
-      key: 'classes',
-      label: 'Classe',
-      options: options([
-        'Bard',
-        'Cleric',
-        'Druid',
-        'Paladin',
-        'Ranger',
-        'Sorcerer',
-        'Warlock',
-        'Wizard',
-      ]),
-    },
-    // The casting times differ between SRD 2014 and 2024: the list offers those it has.
+    // The schools, classes and casting times are the names the list has, in the language it came
+    // in (and the casting times differ between SRD 2014 and 2024): no fixed list of English words.
+    { key: 'school', label: 'École' },
+    { key: 'classes', label: 'Classe' },
     { key: 'castingTime', label: "Temps d'incantation" },
     {
       key: 'components',

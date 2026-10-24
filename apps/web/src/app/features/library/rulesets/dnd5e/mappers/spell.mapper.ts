@@ -53,10 +53,12 @@ export function mapSpellSummary(spell: GqlSpell): EntrySummary {
 
 /**
  * The casting time without its trigger: SRD 2024 writes "Reaction, which you take when you are
- * hit…", too long for a column and a filter, where "Reaction" says enough.
+ * hit…" (and the French SRD 2014 "1 réaction, que vous jouez…"), too long for a column and a
+ * filter, where "Reaction" says enough. The trigger is what follows the first comma, in any
+ * language: no casting time of the API has a comma otherwise.
  */
 export function shortCastingTime(castingTime: string): string {
-  return castingTime.split(', which')[0];
+  return castingTime.split(',')[0].trim();
 }
 
 export function mapSpell(spell: ApiSpell): EntryDetail {

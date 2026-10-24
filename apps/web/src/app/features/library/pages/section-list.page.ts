@@ -13,6 +13,7 @@ import { AddToSpellbook } from '../spellbooks/add-to-spellbook.component';
 import { MySpellBooksStore } from '../spellbooks/my-spellbooks.store';
 import { EntryTable } from './entry-table.component';
 import { LOADING, LoadState, loadWithRetry } from './load-state';
+import { UntranslatedNote } from './untranslated-note.component';
 
 /**
  * The entries of one section: its tabs, when it has some, over the table of the entries (search,
@@ -22,7 +23,15 @@ import { LOADING, LoadState, loadWithRetry } from './load-state';
 @Component({
   selector: 'dg-section-list-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LoadError, Loading, Parchment, RouterLink, EntryTable, AddToSpellbook],
+  imports: [
+    LoadError,
+    Loading,
+    Parchment,
+    RouterLink,
+    EntryTable,
+    AddToSpellbook,
+    UntranslatedNote,
+  ],
   // One read of the reader's spell books per visit, shared by the buttons of every row.
   providers: [MySpellBooksStore],
   templateUrl: './section-list.page.html',

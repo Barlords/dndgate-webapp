@@ -13,12 +13,21 @@ import { RulesetRegistry } from '../rulesets/ruleset-registry';
 import { EntryDetail, Ruleset, RulesetEntryNotFoundError } from '../rulesets/ruleset.model';
 import { DetailBlocks } from './detail-blocks.component';
 import { LOADING, LoadState, loadWithRetry } from './load-state';
+import { UntranslatedNote } from './untranslated-note.component';
 
 /** One entry of a section: its name, subtitle and tags over the ruleset's blocks. */
 @Component({
   selector: 'dg-entry-detail-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LoadError, Loading, Parchment, DetailBlocks, RouterLink, AddToSpellbook],
+  imports: [
+    LoadError,
+    Loading,
+    Parchment,
+    DetailBlocks,
+    RouterLink,
+    AddToSpellbook,
+    UntranslatedNote,
+  ],
   // One read of the reader's spell books per visit.
   providers: [MySpellBooksStore],
   template: `
@@ -38,6 +47,9 @@ import { LOADING, LoadState, loadWithRetry } from './load-state';
             </div>
             @if (shown.subtitle) {
               <p class="entry__subtitle">{{ shown.subtitle }}</p>
+            }
+            @if (ruleset().untranslated(sectionId())) {
+              <dg-untranslated-note />
             }
             @if (shown.tags.length > 0) {
               <ul class="entry__tags">

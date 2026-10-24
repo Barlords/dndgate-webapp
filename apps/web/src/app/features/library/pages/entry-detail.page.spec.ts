@@ -48,6 +48,20 @@ describe('EntryDetailPage', () => {
     expect(ruleset.detail).toHaveBeenCalledWith('spells', 'fireball');
   });
 
+  it('says when the entry is not in the reader’s language', async () => {
+    ruleset = new FakeRuleset({ untranslated: ['spells'] });
+    await open('/library/dnd5e-2014/spells/fireball');
+    expect(library.root.querySelector('dg-untranslated-note')?.textContent).toContain(
+      'Pas encore traduit',
+    );
+  });
+
+  it('says nothing about the language of a translated entry', async () => {
+    await open('/library/dnd5e-2014/spells/fireball');
+    expect(library.root.querySelector('h1')?.textContent).toContain('Fireball');
+    expect(library.root.querySelector('dg-untranslated-note')).toBeNull();
+  });
+
   it('detail sets the breadcrumb to the entry name', async () => {
     await open('/library/dnd5e-2014/spells/fireball');
     expect(crumbs()).toEqual(['Bibliothèque', 'Sorts', 'Fireball']);

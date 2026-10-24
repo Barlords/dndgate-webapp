@@ -214,19 +214,26 @@ function levelsTable(levels: ApiClassLevel[], anchorOf: FeatureBlocks['anchorOf'
   return [{ kind: 'table', title: 'Class levels', columns, rows }];
 }
 
-/** The API lists the saving throws among the proficiencies too, as « Saving Throw: INT ». */
-const SAVING_THROW = /^Saving Throw:\s*/i;
+/**
+ * The API lists the saving throws among the proficiencies too. They are told apart by their
+ * identifier (`saving-throw-int`), never by their name (« Saving Throw: INT »), which depends on
+ * the language of the data.
+ */
+const SAVING_THROW_PREFIX = 'saving-throw-';
 
 /**
  * The saving throws on a line of their own and the other proficiencies apart: the saving throws
- * are not repeated among the proficiencies, nor prefixed one by one.
+ * are not repeated among the proficiencies. Without the class's own list, they are read from the
+ * identifiers of the proficiencies (`saving-throw-int` gives INT).
  */
 function splitProficiencies(cls: ApiClass): { saves: string; others: string } {
   const all = cls.proficiencies ?? [];
-  const others = all.filter((ref) => !SAVING_THROW.test(ref.name));
-  const fromProficiencies = all
-    .filter((ref) => SAVING_THROW.test(ref.name))
-    .map((ref) => ({ ...ref, name: ref.name.replace(SAVING_THROW, '') }));
+  const isSave = (ref: ApiRef) => ref.index.startsWith(SAVING_THROW_PREFIX);
+  const others = all.filter((ref) => !isSave(ref));
+  const fromProficiencies = all.filter(isSave).map((ref) => {
+    const ability = ref.index.slice(SAVING_THROW_PREFIX.length);
+    return { index: ability, name: ability.toUpperCase() };
+  });
   const saves = cls.saving_throws?.length > 0 ? cls.saving_throws : fromProficiencies;
   return { saves: joinNames(saves), others: joinNames(others) };
 }

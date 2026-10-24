@@ -1,6 +1,9 @@
 <dg-parchment>
   <p class="list__ruleset">{{ ruleset().label }}</p>
   <h1 class="list__title">{{ section().label }}</h1>
+  @if (ruleset().untranslated(section().id)) {
+    <dg-untranslated-note />
+  }
 
   @if (section().tabs; as tabs) {
     <nav class="list__tabs" [attr.aria-label]="tabs.label">

@@ -60,6 +60,25 @@ describe('class mapper', () => {
     expect(stat({ ...wizard, saving_throws: [] }, 'Saving throws')).toBe('INT, WIS');
   });
 
+  it('recognises the saving throws by their identifier, whatever the language of their names', () => {
+    const french = {
+      ...wizard,
+      proficiencies: [
+        { index: 'daggers', name: 'Dagues' },
+        { index: 'saving-throw-int', name: 'Jet de sauvegarde : INT' },
+        { index: 'saving-throw-wis', name: 'Jet de sauvegarde : SAG' },
+      ],
+      saving_throws: [
+        { index: 'int', name: 'INT' },
+        { index: 'wis', name: 'SAG' },
+      ],
+    };
+    expect(stat(french, 'Proficiencies')).toBe('Dagues');
+    expect(stat(french, 'Saving throws')).toBe('INT, SAG');
+    // Without the list of the class, the abilities are read from the identifiers.
+    expect(stat({ ...french, saving_throws: [] }, 'Saving throws')).toBe('INT, WIS');
+  });
+
   it('says so when a class has no proficiency left once the saving throws are apart', () => {
     const onlySaves = wizard.proficiencies.filter((p) => p.name.startsWith('Saving Throw'));
     expect(stat({ ...wizard, proficiencies: onlySaves }, 'Proficiencies')).toBe('None');

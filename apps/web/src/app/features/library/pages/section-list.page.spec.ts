@@ -73,6 +73,17 @@ describe('SectionListPage', () => {
     return header;
   }
 
+  it('says when the entries of the section are not in the reader’s language', async () => {
+    ruleset = new FakeRuleset({ untranslated: ['monsters'] });
+    await open('/library/dnd5e-2014/monsters');
+    expect(library.root.querySelector('dg-untranslated-note [role="note"]')?.textContent).toBe(
+      'Pas encore traduit dans ta langue : affiché en anglais.',
+    );
+
+    await library.go('/library/dnd5e-2014/spells');
+    expect(library.root.querySelector('dg-untranslated-note')).toBeNull();
+  });
+
   it('lists the entries with their columns and links them to their page', async () => {
     await open('/library/dnd5e-2014/monsters');
     expect(library.root.querySelector('h1')?.textContent).toContain('Monstres');

@@ -123,6 +123,11 @@ export interface Ruleset {
   readonly spellSectionId: string | null;
   list(sectionId: string): Observable<EntrySummary[]>;
   detail(sectionId: string, index: string): Observable<EntryDetail>;
+  /**
+   * Whether the entries of a section come in another language than the reader's, the source not
+   * having them in it: the pages then say so.
+   */
+  untranslated(sectionId: string): boolean;
 }
 
 export const RULESETS = new InjectionToken<Ruleset[]>('RULESETS');

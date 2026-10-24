@@ -55,15 +55,23 @@ export class Dnd5e2014Ruleset implements Ruleset {
 
   private readonly client = inject(Dnd5eClient);
 
+  /** The personality section reads the alignments and the languages, translated alike. */
+  untranslated(sectionId: string): boolean {
+    return this.client.untranslated(
+      VERSION,
+      sectionId === 'personality' ? 'alignments' : sectionId,
+    );
+  }
+
   list(sectionId: string): Observable<EntrySummary[]> {
     switch (sectionId) {
       case 'spells':
         return this.client
-          .graphql<{ spells: GqlSpell[] }>(VERSION, SPELLS_QUERY)
+          .graphql<{ spells: GqlSpell[] }>(VERSION, 'spells', SPELLS_QUERY)
           .pipe(map((data) => data.spells.map(mapSpellSummary)));
       case 'monsters':
         return this.client
-          .graphql<{ monsters: GqlMonster[] }>(VERSION, MONSTERS_QUERY)
+          .graphql<{ monsters: GqlMonster[] }>(VERSION, 'monsters', MONSTERS_QUERY)
           .pipe(map((data) => data.monsters.map(mapMonsterSummary)));
       case 'personality':
         return listPersonality(this.client, VERSION);
@@ -89,9 +97,14 @@ export class Dnd5e2014Ruleset implements Ruleset {
         return forkJoin([
           this.client.rest<ApiClass>(VERSION, `classes/${index}`),
           this.client.rest<ApiClassLevel[]>(VERSION, `classes/${index}/levels`),
-          this.client.graphql<GqlClassFeatures>(VERSION, CLASS_FEATURES_QUERIES[VERSION], {
-            class: index,
-          }),
+          this.client.graphql<GqlClassFeatures>(
+            VERSION,
+            'features',
+            CLASS_FEATURES_QUERIES[VERSION],
+            {
+              class: index,
+            },
+          ),
         ]).pipe(map(([cls, levels, features]) => mapClass(cls, levels, features)));
       case 'races':
         return this.client

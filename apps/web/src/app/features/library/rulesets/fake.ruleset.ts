@@ -85,6 +85,8 @@ export interface FakeRulesetOptions {
   label?: string;
   /** Without spells: no spell section and `spellSectionId` null. */
   spells?: boolean;
+  /** The sections whose entries are not in the reader's language. */
+  untranslated?: string[];
 }
 
 export class FakeRuleset implements Ruleset {
@@ -92,12 +94,15 @@ export class FakeRuleset implements Ruleset {
   readonly label: string;
   readonly sections: RulesetSection[];
   readonly spellSectionId: string | null;
+  private readonly untranslatedSections: string[];
 
   constructor({
     id = 'dnd5e-2014',
     label = 'Jeu factice',
     spells = true,
+    untranslated = [],
   }: FakeRulesetOptions = {}) {
+    this.untranslatedSections = untranslated;
     this.id = id;
     this.label = label;
     // A copy per instance: a test may change its sections.
@@ -120,5 +125,9 @@ export class FakeRuleset implements Ruleset {
     return sectionId === 'spells' && index === 'fireball'
       ? of(FAKE_FIREBALL)
       : throwError(() => new Error(`No entry ${sectionId}/${index}`));
+  }
+
+  untranslated(sectionId: string): boolean {
+    return this.untranslatedSections.includes(sectionId);
   }
 }

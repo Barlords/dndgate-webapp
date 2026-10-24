@@ -184,19 +184,12 @@ describe('Dnd5e2014Ruleset', () => {
     ]);
   });
 
-  it('offers only the classes that have spells and the challenge ratings the SRD has', () => {
+  it('offers the spell filters of the data and the challenge ratings the SRD has', () => {
     const filters = ruleset.sections.flatMap((s) => s.filters);
-    const classes = filters.find((f) => f.key === 'classes')!.options!.map((o) => o.value);
-    expect(classes).toEqual([
-      'Bard',
-      'Cleric',
-      'Druid',
-      'Paladin',
-      'Ranger',
-      'Sorcerer',
-      'Warlock',
-      'Wizard',
-    ]);
+    // In the language of the data: the names the list has, never a fixed list of English words.
+    for (const key of ['school', 'classes', 'castingTime']) {
+      expect(filters.find((f) => f.key === key)!.options).toBeUndefined();
+    }
     const cr = filters.find((f) => f.key === 'cr')!.options!.map((o) => o.value);
     expect(cr).not.toContain('18');
     expect(cr).toContain('30');
