@@ -8,16 +8,12 @@ import java.time.Duration;
  * The message limit is a rate: at most {@code messagesPerWindow} messages per account in any {@code messageWindow}.
  */
 public record QuantityLimits(
-        int charactersPerPlayerAndAdventure,
         int spellsPerSpellBook,
-        int adventureNotesPerAdventure,
-        int historicalNotesPerAdventure,
         int messagesPerWindow,
         Duration messageWindow) {
 
     public QuantityLimits {
-        if (charactersPerPlayerAndAdventure < 1 || spellsPerSpellBook < 1 || adventureNotesPerAdventure < 1
-                || historicalNotesPerAdventure < 1 || messagesPerWindow < 1) {
+        if (spellsPerSpellBook < 1 || messagesPerWindow < 1) {
             throw new IllegalArgumentException("Every quantity limit must be at least 1");
         }
         if (messageWindow == null || messageWindow.isZero() || messageWindow.isNegative()) {
@@ -26,7 +22,7 @@ public record QuantityLimits(
     }
 
     public static QuantityLimits defaults() {
-        return new QuantityLimits(10, 1000, 500, 500, 30, Duration.ofMinutes(1));
+        return new QuantityLimits(1000, 30, Duration.ofMinutes(1));
     }
 
 }

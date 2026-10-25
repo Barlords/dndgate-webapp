@@ -11,7 +11,6 @@ import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterUpdaterA
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureAccessVerifierApi;
-import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
 import fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,11 +31,9 @@ public class GameCharacterServiceConfiguration {
             AdventureAccessVerifierApi adventureAccessVerifierApi,
             CurrentAccountService currentAccountService,
             MinioSpi minioSpi,
-            QuantityLimits quantityLimits,
             EntitlementApi entitlementApi
     ) {
-        return new GameCharacterCreatorService(spi, adventureAccessVerifierApi, currentAccountService, minioSpi, quantityLimits,
-                entitlementApi);
+        return new GameCharacterCreatorService(spi, adventureAccessVerifierApi, currentAccountService, minioSpi, entitlementApi);
     }
 
     @Bean

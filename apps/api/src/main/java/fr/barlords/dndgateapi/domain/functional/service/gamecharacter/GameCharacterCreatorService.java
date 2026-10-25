@@ -1,6 +1,5 @@
 package fr.barlords.dndgateapi.domain.functional.service.gamecharacter;
 
-import fr.barlords.dndgateapi.domain.functional.exception.QuantityLimitExceededException;
 import fr.barlords.dndgateapi.domain.functional.exception.InvalidPictureException;
 import fr.barlords.dndgateapi.domain.functional.model.PictureFormat;
 import fr.barlords.dndgateapi.domain.functional.model.GameCharacter;
@@ -11,7 +10,6 @@ import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureAccessVerifierAp
 import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterCreatorApi;
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
-import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
 import fr.barlords.dndgateapi.domain.functional.model.plan.PlanLimit;
 import fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi;
 import lombok.RequiredArgsConstructor;
@@ -33,8 +31,6 @@ public class GameCharacterCreatorService implements GameCharacterCreatorApi {
     private final CurrentAccountService currentAccountService;
 
     private final MinioSpi minioSpi;
-
-    private final QuantityLimits limits;
 
     private final EntitlementApi entitlementApi;
 
@@ -59,7 +55,7 @@ public class GameCharacterCreatorService implements GameCharacterCreatorApi {
         Adventure adventure = adventureId == null ? null : adventureAccessVerifierApi.verifyParticipant(accountId, adventureId);
 
         // Checked before the picture is read and stored: a refused character must not leave a file behind
-        verifyLimit(account.getId(), adventureId);
+        verifyLimit(account.getId(), adventure);
 
         // The format is recognised by the content of the file: what the client declares is not trusted
         byte[] picture = readPicture(pictureInputStream);
@@ -85,11 +81,12 @@ public class GameCharacterCreatorService implements GameCharacterCreatorApi {
         }
     }
 
-    private void verifyLimit(UUID ownerId, UUID adventureId) {
-        if (adventureId == null) {
+    private void verifyLimit(UUID ownerId, Adventure adventure) {
+        if (adventure == null) {
             entitlementApi.verifyAccountLimit(ownerId, PlanLimit.CHARACTERS_WITHOUT_ADVENTURE, spi.countByOwnerIdWithoutAdventure(ownerId));
-        } else if (spi.countByOwnerIdAndAdventureId(ownerId, adventureId) >= limits.charactersPerPlayerAndAdventure()) {
-            throw QuantityLimitExceededException.characters(limits.charactersPerPlayerAndAdventure());
+        } else {
+            entitlementApi.verifyAdventureLimit(adventure, PlanLimit.CHARACTERS_PER_PLAYER_AND_ADVENTURE,
+                    spi.countByOwnerIdAndAdventureId(ownerId, adventure.getId()));
         }
     }
 

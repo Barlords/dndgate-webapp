@@ -13,15 +13,11 @@ public class QuantityLimitsConfiguration {
 
     @Bean
     public QuantityLimits quantityLimits(
-            @Value("${limits.characters-per-player-and-adventure:10}") int charactersPerPlayerAndAdventure,
             @Value("${limits.spells-per-spell-book:1000}") int spellsPerSpellBook,
-            @Value("${limits.adventure-notes-per-adventure:500}") int adventureNotesPerAdventure,
-            @Value("${limits.historical-notes-per-adventure:500}") int historicalNotesPerAdventure,
             @Value("${limits.messages.max:30}") int messagesPerWindow,
             @Value("${limits.messages.window:PT1M}") Duration messageWindow
     ) {
-        return new QuantityLimits(charactersPerPlayerAndAdventure, spellsPerSpellBook, adventureNotesPerAdventure,
-                historicalNotesPerAdventure, messagesPerWindow, messageWindow);
+        return new QuantityLimits(spellsPerSpellBook, messagesPerWindow, messageWindow);
     }
 
 }

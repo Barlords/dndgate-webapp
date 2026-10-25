@@ -12,8 +12,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Own application context with low technical ceilings (2 characters per adventure, 3 spells per book, 2 notes of each
- * kind, 3 messages per minute): nothing stops an account from filling the storage and the database otherwise.
+ * Own application context with low technical ceilings (3 spells per book, 3 messages per minute): nothing stops an account from filling the storage and the database otherwise.
  * The quotas that depend on the plan are in {@link PlanLimitIntegrationTest}.
  */
 @SpringBootTest(
@@ -28,10 +27,7 @@ import java.util.UUID;
                 "security.rate-limit.verify.max=1000000",
                 "security.rate-limit.resend.max=1000000",
                 "plans.file=classpath:plans/test-plans.json",
-                "limits.characters-per-player-and-adventure=2",
                 "limits.spells-per-spell-book=3",
-                "limits.adventure-notes-per-adventure=2",
-                "limits.historical-notes-per-adventure=2",
                 "limits.messages.max=3",
                 "limits.messages.window=PT1M"})
 @ActiveProfiles("dev")
@@ -40,27 +36,6 @@ class QuantityLimitIntegrationTest extends ApiIntegrationTestSupport {
     private void assertConflict(ResponseEntity<String> response) {
         Assertions.assertEquals(409, response.getStatusCode().value(), response.getBody());
         Assertions.assertTrue(response.getHeaders().getContentType().toString().contains("problem+json"));
-    }
-
-    // ---- characters ----
-
-    @Test
-    void a_player_has_a_limited_number_of_characters_per_adventure() {
-        TestAccount master = registerAndLogin();
-        UUID adventureId = createAdventure(master, "PUBLIC");
-        UUID otherAdventureId = createAdventure(master, "PUBLIC");
-        Assertions.assertEquals(201, createCharacter(master, adventureId, "One").getStatusCode().value());
-        Assertions.assertEquals(201, createCharacter(master, adventureId, "Two").getStatusCode().value());
-
-        assertConflict(createCharacter(master, adventureId, "Three"));
-
-        Assertions.assertEquals(201, createCharacter(master, otherAdventureId, "Elsewhere").getStatusCode().value(),
-                "the limit is per adventure");
-        TestAccount other = registerAndLogin();
-        Assertions.assertEquals(200, call(HttpMethod.POST, "/adventures/" + adventureId + "/join", other.token(), null)
-                .getStatusCode().value());
-        Assertions.assertEquals(201, createCharacter(other, adventureId, "Other's").getStatusCode().value(),
-                "the limit is per player");
     }
 
     // ---- spell books and spells ----
@@ -86,35 +61,6 @@ class QuantityLimitIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(201, addSpell(wizard, bookId, "fireball").getStatusCode().value());
         Assertions.assertEquals(3, jdbc.queryForObject("select count(*) from spellbook_spells where spellbook_id = ?::uuid",
                 Integer.class, bookId));
-    }
-
-    // ---- notes ----
-
-    private ResponseEntity<String> adventureNote(TestAccount master, UUID adventureId) {
-        return call(HttpMethod.POST, "/adventure-notes", master.token(), Map.of(
-                "adventureId", adventureId.toString(), "content", "n", "date", "2026-01-01", "visibility", "PUBLIC"));
-    }
-
-    private ResponseEntity<String> historicalNote(TestAccount master, UUID adventureId) {
-        return call(HttpMethod.POST, "/historical-notes", master.token(), Map.of(
-                "adventureId", adventureId.toString(), "content", "h", "date", "2026-01-01"));
-    }
-
-    @Test
-    void an_adventure_has_a_limited_number_of_notes_of_each_kind() {
-        TestAccount master = registerAndLogin();
-        UUID adventureId = createAdventure(master, "PUBLIC");
-        UUID otherAdventureId = createAdventure(master, "PUBLIC");
-        Assertions.assertEquals(201, adventureNote(master, adventureId).getStatusCode().value());
-        Assertions.assertEquals(201, adventureNote(master, adventureId).getStatusCode().value());
-        Assertions.assertEquals(201, historicalNote(master, adventureId).getStatusCode().value());
-        Assertions.assertEquals(201, historicalNote(master, adventureId).getStatusCode().value());
-
-        assertConflict(adventureNote(master, adventureId));
-        assertConflict(historicalNote(master, adventureId));
-
-        Assertions.assertEquals(201, adventureNote(master, otherAdventureId).getStatusCode().value(), "the limit is per adventure");
-        Assertions.assertEquals(201, historicalNote(master, otherAdventureId).getStatusCode().value(), "the limit is per adventure");
     }
 
     // ---- messages ----

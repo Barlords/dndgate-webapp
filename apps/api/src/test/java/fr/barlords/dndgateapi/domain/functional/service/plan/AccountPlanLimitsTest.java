@@ -85,8 +85,7 @@ class AccountPlanLimitsTest {
     }
 
     private GameCharacterCreatorService characterCreator() {
-        return new GameCharacterCreatorService(characterSpi, accessVerifier, currentAccountService, minioSpi,
-                QuantityLimits.defaults(), entitlement);
+        return new GameCharacterCreatorService(characterSpi, accessVerifier, currentAccountService, minioSpi, entitlement);
     }
 
     @Test

@@ -62,7 +62,7 @@ class GameCharacterCreatorServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new GameCharacterCreatorService(spi, adventureAccessVerifierApi, currentAccountService, minioSpi, QuantityLimits.defaults(), entitlement);
+        service = new GameCharacterCreatorService(spi, adventureAccessVerifierApi, currentAccountService, minioSpi, entitlement);
         when(currentAccountService.getAccountById(player.getId())).thenReturn(player);
     }
 

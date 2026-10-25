@@ -137,6 +137,82 @@ class PlanLimitIntegrationTest extends ApiIntegrationTestSupport {
         assertPlanProblem(createMagicItem(owner), "magicItems");
     }
 
+    // ---- adventure quotas: the plan of the game master applies, whoever writes ----
+
+    private ResponseEntity<String> adventureNote(TestAccount master, UUID adventureId) {
+        return call(HttpMethod.POST, "/adventure-notes", master.token(), Map.of(
+                "adventureId", adventureId.toString(), "content", "n", "date", "2026-01-01", "visibility", "PUBLIC"));
+    }
+
+    private ResponseEntity<String> historicalNote(TestAccount master, UUID adventureId) {
+        return call(HttpMethod.POST, "/historical-notes", master.token(), Map.of(
+                "adventureId", adventureId.toString(), "content", "h", "date", "2026-01-01"));
+    }
+
+    private TestAccount playerOn(String planId, UUID adventureId) {
+        TestAccount player = registerAndLogin();
+        subscribe(player, planId);
+        Assertions.assertEquals(200, call(HttpMethod.POST, "/adventures/" + adventureId + "/join", player.token(), null)
+                .getStatusCode().value());
+        return player;
+    }
+
+    @Test
+    void a_note_is_refused_when_the_master_plan_is_full() {
+        TestAccount master = tightAccount();
+        UUID adventureId = createAdventure(master, "PUBLIC");
+        TestAccount otherMaster = tightAccount();
+        UUID otherAdventureId = createAdventure(otherMaster, "PUBLIC");
+        Assertions.assertEquals(201, adventureNote(master, adventureId).getStatusCode().value());
+
+        assertPlanProblem(adventureNote(master, adventureId), "masterNotesPerAdventure");
+
+        Assertions.assertEquals(201, adventureNote(otherMaster, otherAdventureId).getStatusCode().value(),
+                "the limit is per adventure");
+    }
+
+    @Test
+    void a_chronicle_entry_counts_against_the_master_plan() {
+        TestAccount master = tightAccount();
+        UUID adventureId = createAdventure(master, "PUBLIC");
+        Assertions.assertEquals(201, historicalNote(master, adventureId).getStatusCode().value());
+
+        assertPlanProblem(historicalNote(master, adventureId), "historicalNotesPerAdventure");
+    }
+
+    @Test
+    void a_player_character_counts_against_the_master_plan_not_the_player_plan() {
+        TestAccount master = tightAccount();
+        UUID adventureId = createAdventure(master, "PUBLIC");
+        TestAccount player = playerOn("test-paid", adventureId);
+        Assertions.assertEquals(201, createCharacter(player, adventureId, "One").getStatusCode().value());
+
+        assertPlanProblem(createCharacter(player, adventureId, "Two"), "charactersPerPlayerAndAdventure");
+    }
+
+    @Test
+    void a_player_on_a_tight_plan_is_not_limited_by_a_master_on_a_larger_plan() {
+        TestAccount master = registerAndLogin();
+        subscribe(master, "test-paid");
+        UUID adventureId = createAdventure(master, "PUBLIC");
+        TestAccount player = playerOn("test-tight", adventureId);
+
+        Assertions.assertEquals(201, createCharacter(player, adventureId, "One").getStatusCode().value());
+        Assertions.assertEquals(201, createCharacter(player, adventureId, "Two").getStatusCode().value());
+    }
+
+    @Test
+    void the_adventure_quotas_follow_the_plan_of_the_master() {
+        TestAccount master = tightAccount();
+        UUID adventureId = createAdventure(master, "PUBLIC");
+        Assertions.assertEquals(201, adventureNote(master, adventureId).getStatusCode().value());
+        assertPlanProblem(adventureNote(master, adventureId), "masterNotesPerAdventure");
+
+        subscribe(master, "test-paid");
+
+        Assertions.assertEquals(201, adventureNote(master, adventureId).getStatusCode().value());
+    }
+
     @Test
     void an_account_that_moves_to_a_higher_plan_can_create_more() {
         TestAccount owner = tightAccount();
