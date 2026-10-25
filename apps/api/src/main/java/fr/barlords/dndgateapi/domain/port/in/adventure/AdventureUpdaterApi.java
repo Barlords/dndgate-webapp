@@ -4,6 +4,7 @@ import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureStatus;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureVisibility;
 
+import java.util.Map;
 import java.util.UUID;
 
 public interface AdventureUpdaterApi {
@@ -14,6 +15,11 @@ public interface AdventureUpdaterApi {
     Adventure joinAdventure(UUID adventureId, UUID accountId);
     Adventure joinAdventureByCode(UUID accountId, String code);
     void sendInvitationCode(UUID accountId, UUID adventureId, String targetPseudo);
-    Adventure quitAdventure(UUID adventureId, UUID accountId);
+    
+    /**
+     * The player leaves; the characters they have there go to their reserve, except those listed in
+     * {@code deletions} (character id to retyped name), which are deleted. All or nothing.
+     */
+    Adventure quitAdventure(UUID adventureId, UUID accountId, Map<UUID, String> deletions);
 
 }

@@ -204,6 +204,42 @@ public class AdventureDeleterServiceTest {
     }
 
     @Test
+    void the_characters_of_the_players_go_back_to_their_reserve_before_the_adventure_is_deleted() {
+        ownerIsVerified();
+        when(plannings.findByAdventureId(adventure.getId())).thenReturn(Optional.empty());
+
+        service.deleteById(accountId, adventure.getId(), "La quête du soir");
+
+        InOrder order = inOrder(gameCharacters, spi);
+        order.verify(gameCharacters).moveToReserveByAdventureId(adventure.getId());
+        order.verify(gameCharacters).findByAdventureId(adventure.getId());
+        order.verify(spi).deleteById(adventure.getId());
+    }
+
+    @Test
+    void the_pictures_of_the_characters_that_moved_to_a_reserve_are_kept() {
+        ownerIsVerified();
+        when(plannings.findByAdventureId(adventure.getId())).thenReturn(Optional.empty());
+        // Once the players' characters have moved, nothing is left in the adventure
+        when(gameCharacters.findByAdventureId(adventure.getId())).thenReturn(List.of());
+
+        service.deleteById(accountId, adventure.getId(), "La quête du soir");
+
+        verify(minioSpi, never()).deleteAfterCommit(any());
+    }
+
+    @Test
+    void an_adventure_that_cannot_be_deleted_is_not_touched_in_its_characters() {
+        ownerIsVerified();
+        when(ownerVerifier.verify(accountId, adventure.getId())).thenReturn(adventure.withStatus(AdventureStatus.ONGOING));
+
+        Assertions.assertThrows(AdventureInProgressException.class,
+                () -> service.deleteById(accountId, adventure.getId(), "La quête du soir"));
+
+        verify(gameCharacters, never()).moveToReserveByAdventureId(any());
+    }
+
+    @Test
     void the_pictures_are_kept_when_the_adventure_cannot_be_deleted() throws Exception {
         ownerIsVerified();
         when(plannings.findByAdventureId(adventure.getId())).thenReturn(Optional.empty());

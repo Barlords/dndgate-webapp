@@ -19,8 +19,12 @@ import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureDeleterApi;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureFinderApi;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureUpdaterApi;
 import fr.barlords.dndgateapi.domain.port.in.plan.AdventureEntitlementsApi;
+import fr.barlords.dndgateapi.domain.functional.exception.DeletionNotConfirmedException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.UUID;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -176,11 +180,21 @@ public class AdventureController {
 
     @DeleteMapping("/{id}/players/me")
     @ResponseStatus(OK)
-    public AdventureDto quitAdventure(@PathVariable String id) {
+    public AdventureDto quitAdventure(@PathVariable String id, @Valid @RequestBody(required = false) QuitAdventureRequest request) {
+        Map<UUID, String> deletions = new LinkedHashMap<>();
+        if (request != null && request.deletions() != null) {
+            for (CharacterDeletion deletion : request.deletions()) {
+                // The same character twice would be a contradictory request
+                if (deletions.put(deletion.characterId(), deletion.confirmation()) != null) {
+                    throw new DeletionNotConfirmedException();
+                }
+            }
+        }
         return AdventureDtoMapper.toDto(
                 adventureUpdaterApi.quitAdventure(
                         UuidValidator.validate(id),
-                        authVerifierService.currentAccountId()
+                        authVerifierService.currentAccountId(),
+                        deletions
                 )
         );
     }

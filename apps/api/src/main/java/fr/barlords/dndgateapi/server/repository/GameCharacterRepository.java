@@ -31,6 +31,10 @@ public interface GameCharacterRepository extends JpaRepository<GameCharacterEnti
     void deleteByAdventureId(@Param("adventureId") UUID adventureId);
 
 
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update GameCharacterEntity e set e.adventure = null, e.active = false where e.adventure.id = :adventureId")
+    void moveToReserveByAdventureId(@Param("adventureId") UUID adventureId);
+
     long countByOwner_IdAndAdventure_Id(UUID ownerId, UUID adventureId);
 
     @EntityGraph(attributePaths = "adventure")

@@ -60,5 +60,32 @@ class AdventureDeletionIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(0, jdbc.queryForObject("select count(*) from availability where id = ?", Integer.class, availabilityId));
         Assertions.assertEquals(0, jdbc.queryForObject("select count(*) from availability_dates where availability_id = ?", Integer.class, availabilityId));
         Assertions.assertEquals(0, jdbc.queryForObject("select count(*) from propositions where planning_id = ?", Integer.class, planningId));
+        Assertions.assertEquals(1, jdbc.queryForObject("select count(*) from \"character\" where account_id = ? and adventure_id is null",
+                Integer.class, player.id()), "the character of the player survives in their reserve");
+    }
+
+    @Test
+    void deleting_an_adventure_moves_player_characters_to_their_reserve_even_when_full() {
+        TestAccount master = registerAndLogin();
+        TestAccount player = registerAndLogin();
+        subscribe(player, "test-tight");
+        UUID adventureId = createAdventure(master, "PUBLIC");
+        Assertions.assertEquals(200, call(HttpMethod.POST, "/adventures/" + adventureId + "/join", player.token(), null)
+                .getStatusCode().value());
+        String waiting = body(createCharacterWithoutPicture(player, null, "Waiting")).get("id").asString();
+        String played = body(createCharacter(player, adventureId, "Gandalf")).get("id").asString();
+        String picture = jdbc.queryForObject("select picture_path from \"character\" where id = ?", String.class, UUID.fromString(played));
+        Assertions.assertNotNull(picture);
+
+        ResponseEntity<String> deleted = call(HttpMethod.DELETE, "/adventures/" + adventureId, master.token(),
+                java.util.Map.of("confirmation", "Quest"));
+
+        Assertions.assertEquals(204, deleted.getStatusCode().value(), deleted.getBody());
+        Assertions.assertEquals(2, jdbc.queryForObject("select count(*) from \"character\" where account_id = ? and adventure_id is null",
+                Integer.class, player.id()), "the reserve exceeds its quota, nothing is lost");
+        Assertions.assertEquals(picture, jdbc.queryForObject("select picture_path from \"character\" where id = ?", String.class,
+                UUID.fromString(played)));
+        Assertions.assertEquals(0, jdbc.queryForObject("select count(*) from \"character\" where id in (?, ?) and active",
+                Integer.class, UUID.fromString(waiting), UUID.fromString(played)));
     }
 }

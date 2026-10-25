@@ -89,7 +89,11 @@ class AdventureUpdaterServiceInvitationTest {
         service = new AdventureUpdaterService(spi, adventureFinderApi, currentAccountService,
                 adventureOwnerVerifierService, accountFinderApi, emailingSpi, invitationLog,
                 Clock.fixed(NOW, ZoneOffset.UTC), new InvitationLimits(3, SENDER_WINDOW, RECIPIENT_WINDOW),
-                org.mockito.Mockito.mock(fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi.class));
+                org.mockito.Mockito.mock(fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi.class),
+                org.mockito.Mockito.mock(fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi.class),
+                org.mockito.Mockito.mock(fr.barlords.dndgateapi.domain.port.out.MinioSpi.class),
+                org.mockito.Mockito.mock(fr.barlords.dndgateapi.domain.port.out.AuditSpi.class),
+                org.mockito.Mockito.mock(fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi.class));
     }
 
     private void ready() {

@@ -73,4 +73,10 @@ public class GameCharacterDatabaseAdapter implements GameCharacterPersistenceSpi
     public long countByOwnerIdWithoutAdventure(UUID ownerId) {
         return repository.countByOwner_IdAndAdventureIsNull(ownerId);
     }
+
+    @Override
+    @Transactional
+    public void moveToReserveByAdventureId(UUID adventureId) {
+        repository.moveToReserveByAdventureId(adventureId);
+    }
 }

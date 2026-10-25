@@ -18,4 +18,7 @@ public interface GameCharacterPersistenceSpi extends PersistenceSpi<GameCharacte
     Optional<GameCharacter> findActive(UUID ownerId, UUID adventureId);
 
     long countByOwnerIdWithoutAdventure(UUID ownerId);
+
+    /** Takes the characters of the adventure back to the reserve of their owners (no adventure, not active). */
+    void moveToReserveByAdventureId(UUID adventureId);
 }

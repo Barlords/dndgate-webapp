@@ -2323,6 +2323,11 @@ paths:
         required: true
         schema:
           type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuitAdventureRequest"
       responses:
         "200":
           description: OK
@@ -3406,6 +3411,28 @@ components:
           type: boolean
       required:
       - confirm
+    CharacterDeletion:
+      type: object
+      properties:
+        characterId:
+          type: string
+          format: uuid
+        confirmation:
+          type: string
+          maxLength: 300
+          minLength: 0
+      required:
+      - characterId
+      - confirmation
+    QuitAdventureRequest:
+      type: object
+      properties:
+        deletions:
+          type: array
+          items:
+            $ref: "#/components/schemas/CharacterDeletion"
+          maxItems: 10
+          minItems: 0
   securitySchemes:
     bearerAuth:
       type: http
