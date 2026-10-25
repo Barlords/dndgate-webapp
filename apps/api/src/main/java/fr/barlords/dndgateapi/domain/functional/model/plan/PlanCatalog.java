@@ -16,6 +16,9 @@ public record PlanCatalog(String currency, String defaultPlanId, List<Plan> plan
             throw new IllegalArgumentException("The catalog needs at least one plan");
         }
         plans = List.copyOf(plans);
+        if (plans.stream().noneMatch(plan -> plan.id().equals(defaultPlanId))) {
+            throw new IllegalArgumentException("Unknown default plan: " + defaultPlanId);
+        }
         Set<String> ids = new HashSet<>();
         for (Plan plan : plans) {
             if (!ids.add(plan.id())) {
@@ -24,9 +27,6 @@ public record PlanCatalog(String currency, String defaultPlanId, List<Plan> plan
             if (!plan.id().equals(defaultPlanId) && plan.isFree()) {
                 throw new IllegalArgumentException("Plan " + plan.id() + " is not the default plan and has no price");
             }
-        }
-        if (!ids.contains(defaultPlanId)) {
-            throw new IllegalArgumentException("Unknown default plan: " + defaultPlanId);
         }
         Plan defaultPlan = plans.stream().filter(plan -> plan.id().equals(defaultPlanId)).findFirst().orElseThrow();
         if (!defaultPlan.isFree()) {

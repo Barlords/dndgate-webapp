@@ -69,8 +69,9 @@ class PlanCatalogTest {
 
     @Test
     void a_catalog_is_refused_when_the_default_plan_is_unknown() {
-        assertThrows(IllegalArgumentException.class,
-                () -> new PlanCatalog("EUR", "nobody", List.of(free(), plan("paid", PRICE, 10, true))));
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> new PlanCatalog("EUR", "nobody", List.of(plan("paid", PRICE, 10, true))));
+        assertTrue(error.getMessage().contains("Unknown default plan"));
     }
 
     @Test
@@ -86,7 +87,8 @@ class PlanCatalogTest {
 
     @Test
     void a_catalog_is_refused_when_empty() {
-        assertThrows(IllegalArgumentException.class, () -> catalog());
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> catalog());
+        assertTrue(error.getMessage().contains("at least one plan"));
     }
 
     @Test
