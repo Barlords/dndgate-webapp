@@ -149,4 +149,74 @@ class PlanCatalogReaderTest {
                 () -> read(plan(LIMITS, FEATURES, "null", prices)));
         assertTrue(error.getMessage().contains("weekly"));
     }
+
+    private PlanCatalog readRaw(String json) {
+        return reader.read(new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)));
+    }
+
+    private void assertRefusedNaming(String key, String json) {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> readRaw(json), json);
+        assertTrue(error.getMessage().contains(key), error.getMessage());
+    }
+
+    private static String catalog(String plan) {
+        return "{\"currency\": \"EUR\", \"defaultPlan\": \"free\", \"plans\": [" + plan + "]}";
+    }
+
+    private static final String PRICES = "\"prices\": {\"monthly\": {\"amount\": 100, \"stripeLookupKey\": \"paid_monthly\"}}, ";
+
+    /** The free default plan and a paid plan with the prices. */
+    private static String pricedCatalog(String prices) {
+        return catalog(plan(LIMITS, FEATURES, "null", "") + ", "
+                + plan(LIMITS, FEATURES, "null", prices).replace("\"id\": \"free\"", "\"id\": \"paid\""));
+    }
+
+    @Test
+    void a_limit_must_be_a_whole_number() {
+        for (String value : new String[]{"\"1\"", "1.5", "2.0", "true", "null", "3000000000"}) {
+            assertRefusedNaming("spellBooks", catalog(plan(LIMITS.replace("\"spellBooks\": 1", "\"spellBooks\": " + value),
+                    FEATURES, "null", "")));
+        }
+    }
+
+    @Test
+    void an_amount_must_be_a_whole_number_and_a_lookup_key_a_string() {
+        assertEquals(100, readRaw(pricedCatalog(PRICES)).find("paid").orElseThrow()
+                .prices().get(BillingInterval.MONTHLY).amount());
+        assertRefusedNaming("amount", pricedCatalog(PRICES.replace("100", "99.9")));
+        assertRefusedNaming("amount", pricedCatalog(PRICES.replace("100", "\"100\"")));
+        assertRefusedNaming("stripeLookupKey", pricedCatalog(PRICES.replace("\"paid_monthly\"", "42")));
+    }
+
+    @Test
+    void a_feature_and_highlighted_must_be_booleans() {
+        for (String value : new String[]{"\"true\"", "1", "null"}) {
+            assertRefusedNaming("video", catalog(plan(LIMITS, FEATURES.replace("\"video\": false", "\"video\": " + value),
+                    "null", "")));
+        }
+        assertRefusedNaming("highlighted", catalog(plan(LIMITS, FEATURES, "null", "\"highlighted\": \"yes\", ")));
+        assertRefusedNaming("highlighted", catalog(plan(LIMITS, FEATURES, "null", "\"highlighted\": 1, ")));
+    }
+
+    @Test
+    void the_texts_must_be_strings() {
+        assertRefusedNaming("currency", catalog(plan(LIMITS, FEATURES, "null", "")).replace("\"EUR\"", "978"));
+        assertRefusedNaming("defaultPlan", catalog(plan(LIMITS, FEATURES, "null", "")).replace("\"defaultPlan\": \"free\"",
+                "\"defaultPlan\": 1"));
+        assertRefusedNaming("id", catalog(plan(LIMITS, FEATURES, "null", "")).replace("\"id\": \"free\"", "\"id\": 1"));
+        assertRefusedNaming("badge", catalog(plan(LIMITS, FEATURES, "true", "")));
+    }
+
+    @Test
+    void a_missing_required_key_is_named() {
+        String valid = pricedCatalog(PRICES);
+        assertEquals(2, readRaw(valid).plans().size());
+        assertRefusedNaming("currency", valid.replace("\"currency\": \"EUR\", ", ""));
+        assertRefusedNaming("defaultPlan", valid.replace("\"defaultPlan\": \"free\", ", ""));
+        assertRefusedNaming("plans", "{\"currency\": \"EUR\", \"defaultPlan\": \"free\"}");
+        assertRefusedNaming("plans", "{\"currency\": \"EUR\", \"defaultPlan\": \"free\", \"plans\": {}}");
+        assertRefusedNaming("id", valid.replace("\"id\": \"free\", ", ""));
+        assertRefusedNaming("amount", valid.replace("\"amount\": 100, ", ""));
+        assertRefusedNaming("stripeLookupKey", valid.replace(", \"stripeLookupKey\": \"paid_monthly\"", ""));
+    }
 }
