@@ -1,0 +1,59 @@
+{
+  "currency": "EUR",
+  "defaultPlan": "adventurer",
+  "plans": [
+    {
+      "id": "adventurer",
+      "highlighted": false,
+      "prices": {},
+      "limits": {"activeAdventuresAsMaster": 1, "charactersWithoutAdventure": 3, "spellBooks": 2, "magicItems": 10,
+        "masterNotesPerAdventure": 50, "historicalNotesPerAdventure": 50, "charactersPerPlayerAndAdventure": 1,
+        "npcsPerAdventure": 5, "messagesPerAdventure": 200},
+      "features": {"characterPictures": false, "video": false, "equippedTable": false, "earlyAccess": false,
+        "prioritySupport": false},
+      "badge": null
+    },
+    {
+      "id": "hero",
+      "highlighted": false,
+      "prices": {
+        "monthly": {"amount": 99, "stripeLookupKey": "hero_monthly"},
+        "yearly": {"amount": 990, "stripeLookupKey": "hero_yearly"}
+      },
+      "limits": {"activeAdventuresAsMaster": 2, "charactersWithoutAdventure": 15, "spellBooks": 10, "magicItems": 50,
+        "masterNotesPerAdventure": 100, "historicalNotesPerAdventure": 100, "charactersPerPlayerAndAdventure": 1,
+        "npcsPerAdventure": 10, "messagesPerAdventure": 200},
+      "features": {"characterPictures": true, "video": false, "equippedTable": false, "earlyAccess": false,
+        "prioritySupport": false},
+      "badge": null
+    },
+    {
+      "id": "dungeon-master",
+      "highlighted": true,
+      "prices": {
+        "monthly": {"amount": 499, "stripeLookupKey": "dungeon_master_monthly"},
+        "yearly": {"amount": 4990, "stripeLookupKey": "dungeon_master_yearly"}
+      },
+      "limits": {"activeAdventuresAsMaster": 10, "charactersWithoutAdventure": 50, "spellBooks": 50, "magicItems": 200,
+        "masterNotesPerAdventure": 500, "historicalNotesPerAdventure": 500, "charactersPerPlayerAndAdventure": 5,
+        "npcsPerAdventure": 50, "messagesPerAdventure": 1000},
+      "features": {"characterPictures": true, "video": true, "equippedTable": true, "earlyAccess": false,
+        "prioritySupport": false},
+      "badge": "dungeon-master"
+    },
+    {
+      "id": "legendary",
+      "highlighted": false,
+      "prices": {
+        "monthly": {"amount": 999, "stripeLookupKey": "legendary_monthly"},
+        "yearly": {"amount": 9990, "stripeLookupKey": "legendary_yearly"}
+      },
+      "limits": {"activeAdventuresAsMaster": 25, "charactersWithoutAdventure": 75, "spellBooks": 100, "magicItems": 500,
+        "masterNotesPerAdventure": 500, "historicalNotesPerAdventure": 500, "charactersPerPlayerAndAdventure": 10,
+        "npcsPerAdventure": 100, "messagesPerAdventure": 2000},
+      "features": {"characterPictures": true, "video": true, "equippedTable": true, "earlyAccess": true,
+        "prioritySupport": true},
+      "badge": "legend"
+    }
+  ]
+}

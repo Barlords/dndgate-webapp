@@ -47,7 +47,8 @@ import java.util.UUID;
                 "security.rate-limit.refresh.max=1000000",
                 "security.rate-limit.register.max=1000000",
                 "security.rate-limit.verify.max=1000000",
-                "security.rate-limit.resend.max=1000000"})
+                "security.rate-limit.resend.max=1000000",
+                "plans.file=classpath:plans/test-plans.json"})
 @ActiveProfiles("dev")
 abstract class ApiIntegrationTestSupport {
 
