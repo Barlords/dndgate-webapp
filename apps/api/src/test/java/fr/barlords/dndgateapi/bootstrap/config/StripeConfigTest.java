@@ -54,4 +54,10 @@ class StripeConfigTest {
         }
     }
 
+    @Test
+    void without_an_api_base_the_enabled_adapter_targets_the_real_stripe() {
+        runner().withPropertyValues("stripe.secret-key=sk_test_1", "stripe.webhook-secret=whsec_1")
+                .run(context -> assertTrue(context.getBean(PaymentProviderSpi.class).isEnabled()));
+    }
+
 }

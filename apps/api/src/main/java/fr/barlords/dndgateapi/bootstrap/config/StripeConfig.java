@@ -16,6 +16,7 @@ public class StripeConfig {
 
     private static final int CONNECT_TIMEOUT_MILLIS = 5_000;
     private static final int READ_TIMEOUT_MILLIS = 20_000;
+    private static final int MAX_NETWORK_RETRIES = 2;
 
     /** A blank secret key means billing is off: the adapter is built without a client and reports itself disabled. */
     @Bean
@@ -31,6 +32,7 @@ public class StripeConfig {
         }
         StripeClient.StripeClientBuilder builder = StripeClient.builder()
                 .setApiKey(secretKey)
+                .setMaxNetworkRetries(MAX_NETWORK_RETRIES)
                 .setConnectTimeout(CONNECT_TIMEOUT_MILLIS)
                 .setReadTimeout(READ_TIMEOUT_MILLIS);
         if (!apiBase.isBlank()) {

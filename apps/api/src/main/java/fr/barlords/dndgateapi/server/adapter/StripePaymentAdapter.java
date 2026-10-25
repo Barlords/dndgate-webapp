@@ -35,7 +35,9 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -46,7 +48,9 @@ import java.util.UUID;
 @Slf4j
 public class StripePaymentAdapter implements PaymentProviderSpi {
 
-    private static final Duration CHECKOUT_LIFETIME = Duration.ofMinutes(30);
+    // Stripe refuses an expiry under 30 minutes from the moment it receives the request: keep a margin
+    private static final Duration CHECKOUT_LIFETIME = Duration.ofMinutes(31);
+    private static final long SUBSCRIPTION_PAGE_SIZE = 100L;
     private static final String ACCOUNT_ID_KEY = "account_id";
     private static final String PLAN_ID_KEY = "plan_id";
 
@@ -85,22 +89,44 @@ public class StripePaymentAdapter implements PaymentProviderSpi {
     public List<ProviderSubscription> findSubscriptions(String customerId) {
         StripeClient stripe = enabledClient();
         try {
-            List<Subscription> subscriptions = stripe.subscriptions().list(SubscriptionListParams.builder()
+            // The product is not expanded (Stripe allows 4 levels at most, this would need 5): it is fetched below.
+            // All the pages are read, canceled subscriptions stay listed for ever with status=all.
+            Iterable<Subscription> subscriptions = stripe.subscriptions().list(SubscriptionListParams.builder()
                     .setCustomer(customerId)
                     .setStatus(SubscriptionListParams.Status.ALL)
-                    .addExpand("data.items.data.price.product")
-                    .build()).getData();
+                    .setLimit(SUBSCRIPTION_PAGE_SIZE)
+                    .build()).autoPagingIterable();
+            Map<String, String> planIdByProduct = new HashMap<>();
             List<ProviderSubscription> result = new ArrayList<>();
             for (Subscription subscription : subscriptions) {
-                toProviderSubscription(subscription).ifPresent(result::add);
+                toProviderSubscription(stripe, subscription, planIdByProduct).ifPresent(result::add);
             }
             return result;
         } catch (StripeException e) {
             throw unavailable("list the subscriptions", e);
+        } catch (RuntimeException e) {
+            // the paging iterator reports a failing next page as an unchecked exception wrapping the Stripe one
+            if (e.getCause() instanceof StripeException cause) {
+                throw unavailable("list the subscriptions", cause);
+            }
+            throw e;
         }
     }
 
-    private Optional<ProviderSubscription> toProviderSubscription(Subscription subscription) {
+    private String planIdOf(StripeClient stripe, String productId, Map<String, String> planIdByProduct)
+            throws StripeException {
+        if (productId == null) {
+            return null;
+        }
+        if (!planIdByProduct.containsKey(productId)) {
+            Map<String, String> metadata = stripe.products().retrieve(productId).getMetadata();
+            planIdByProduct.put(productId, metadata == null ? null : metadata.get(PLAN_ID_KEY));
+        }
+        return planIdByProduct.get(productId);
+    }
+
+    private Optional<ProviderSubscription> toProviderSubscription(
+            StripeClient stripe, Subscription subscription, Map<String, String> planIdByProduct) throws StripeException {
         Optional<SubscriptionStatus> status = SubscriptionStatus.fromStripe(subscription.getStatus());
         List<SubscriptionItem> items = subscription.getItems() == null ? List.of() : subscription.getItems().getData();
         if (status.isEmpty() || items.isEmpty() || items.get(0).getPrice() == null) {
@@ -114,8 +140,7 @@ public class StripePaymentAdapter implements PaymentProviderSpi {
             log.warn("The Stripe subscription {} is not billed monthly or yearly and is ignored", subscription.getId());
             return Optional.empty();
         }
-        var product = item.getPrice().getProductObject();
-        String planId = product == null || product.getMetadata() == null ? null : product.getMetadata().get(PLAN_ID_KEY);
+        String planId = planIdOf(stripe, item.getPrice().getProduct(), planIdByProduct);
         Instant periodEnd = item.getCurrentPeriodEnd() == null ? null : Instant.ofEpochSecond(item.getCurrentPeriodEnd());
         return Optional.of(new ProviderSubscription(subscription.getId(), planId, interval.get(), status.get(),
                 periodEnd, Boolean.TRUE.equals(subscription.getCancelAtPeriodEnd())));

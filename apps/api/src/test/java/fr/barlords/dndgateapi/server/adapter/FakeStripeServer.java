@@ -40,7 +40,8 @@ public final class FakeStripeServer implements AutoCloseable {
     }
 
     private final HttpServer server;
-    private final Map<String, Stub> stubs = new ConcurrentHashMap<>();
+    private final Map<String, List<Stub>> stubs = new ConcurrentHashMap<>();
+    private final Map<String, Integer> served = new ConcurrentHashMap<>();
     private final List<Call> calls = new CopyOnWriteArrayList<>();
 
     public FakeStripeServer() {
@@ -54,8 +55,9 @@ public final class FakeStripeServer implements AutoCloseable {
             String method = exchange.getRequestMethod();
             String path = exchange.getRequestURI().getPath();
             calls.add(new Call(method, path, exchange.getRequestURI().getRawQuery(), body));
-            Stub stub = stubs.getOrDefault(method + " " + path,
-                    new Stub(404, "{\"error\":{\"type\":\"invalid_request_error\",\"message\":\"No such route\"}}"));
+            Stub stub = tooDeepExpansion(calls.get(calls.size() - 1))
+                    ? new Stub(400, "{\"error\":{\"type\":\"invalid_request_error\",\"message\":\"You cannot expand more than 4 levels\"}}")
+                    : next(method + " " + path);
             byte[] bytes = stub.json().getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", "application/json");
             exchange.sendResponseHeaders(stub.status(), bytes.length);
@@ -65,13 +67,29 @@ public final class FakeStripeServer implements AutoCloseable {
         server.start();
     }
 
+    /** Several answers on one route are served in order; the last one repeats. */
+    private Stub next(String key) {
+        List<Stub> list = stubs.get(key);
+        if (list == null) {
+            return new Stub(404, "{\"error\":{\"type\":\"invalid_request_error\",\"message\":\"No such route\"}}");
+        }
+        int index = served.merge(key, 1, Integer::sum) - 1;
+        return list.get(Math.min(index, list.size() - 1));
+    }
+
+    /** Like Stripe: an expand path of more than 4 segments is refused. */
+    private static boolean tooDeepExpansion(Call call) {
+        return call.form().entrySet().stream()
+                .anyMatch(entry -> entry.getKey().startsWith("expand[") && entry.getValue().split("[.]").length > 4);
+    }
+
     public FakeStripeServer answer(String method, String path, String json) {
-        stubs.put(method + " " + path, new Stub(200, json));
+        stubs.computeIfAbsent(method + " " + path, key -> new CopyOnWriteArrayList<>()).add(new Stub(200, json));
         return this;
     }
 
     public FakeStripeServer fail(String method, String path, int status, String json) {
-        stubs.put(method + " " + path, new Stub(status, json));
+        stubs.computeIfAbsent(method + " " + path, key -> new CopyOnWriteArrayList<>()).add(new Stub(status, json));
         return this;
     }
 

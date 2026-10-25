@@ -116,7 +116,7 @@ class StripePaymentAdapterTest {
         assertEquals(ACCOUNT.toString(), form.get("subscription_data[metadata][account_id]"));
         assertEquals("https://app/ok", form.get("success_url"));
         assertEquals("https://app/ko", form.get("cancel_url"));
-        assertEquals(String.valueOf(NOW.plusSeconds(30 * 60).getEpochSecond()), form.get("expires_at"));
+        assertEquals(String.valueOf(NOW.plusSeconds(31 * 60).getEpochSecond()), form.get("expires_at"));
         assertEquals("required", form.get("consent_collection[terms_of_service]"));
         assertEquals(TERMS, form.get("custom_text[terms_of_service_acceptance][message]"));
         assertEquals("false", form.get("allow_promotion_codes"));
@@ -133,36 +133,78 @@ class StripePaymentAdapterTest {
         assertTrue(stripe.calls().stream().noneMatch(call -> call.path().equals("/v1/checkout/sessions")));
     }
 
+    private static String page(boolean hasMore, String... subscriptions) {
+        return "{\"object\":\"list\",\"url\":\"/v1/subscriptions\",\"has_more\":" + hasMore
+                + ",\"data\":[" + String.join(",", subscriptions) + "]}";
+    }
+
+    private static String product(String id, String metadata) {
+        return "{\"id\":\"" + id + "\",\"object\":\"product\",\"metadata\":" + metadata + "}";
+    }
+
     @Test
     void subscriptions_are_read_with_their_plan_status_and_period_end() {
-        stripe.answer("GET", "/v1/subscriptions",
-                "{\"object\":\"list\",\"url\":\"/v1/subscriptions\",\"has_more\":false,\"data\":["
-                        + subscription("sub_1", "past_due", true, "year", "{\"plan_id\":\"hero\"}", 1_800_000_000L) + ","
-                        + subscription("sub_2", "canceled", false, "month", "{}", 1_700_000_000L) + ","
-                        + subscription("sub_3", "active", false, "week", "{}", 1_700_000_000L)
-                        + "]}");
+        stripe.answer("GET", "/v1/subscriptions", page(false,
+                        subscription("sub_1", "past_due", true, "year", "prod_hero", 1_800_000_000L),
+                        subscription("sub_2", "canceled", false, "month", "prod_none", 1_700_000_000L),
+                        subscription("sub_3", "active", false, "week", "prod_hero", 1_700_000_000L),
+                        subscription("sub_4", "active", false, "month", "prod_hero", 1_750_000_000L)))
+                .answer("GET", "/v1/products/prod_hero", product("prod_hero", "{\"plan_id\":\"hero\"}"))
+                .answer("GET", "/v1/products/prod_none", product("prod_none", "{}"));
 
         List<ProviderSubscription> subscriptions = adapter().findSubscriptions("cus_9");
 
-        assertEquals(2, subscriptions.size(), "a subscription billed on an unknown interval is left out");
+        assertEquals(3, subscriptions.size(), "a subscription billed on an unknown interval is left out");
         assertEquals(new ProviderSubscription("sub_1", "hero", BillingInterval.YEARLY, SubscriptionStatus.PAST_DUE,
                 Instant.ofEpochSecond(1_800_000_000L), true), subscriptions.get(0));
         assertEquals(new ProviderSubscription("sub_2", null, BillingInterval.MONTHLY, SubscriptionStatus.CANCELED,
                 Instant.ofEpochSecond(1_700_000_000L), false), subscriptions.get(1));
+        assertEquals("hero", subscriptions.get(2).planId());
         Map<String, String> query = stripe.only("GET", "/v1/subscriptions").form();
         assertEquals("cus_9", query.get("customer"));
         assertEquals("all", query.get("status"));
-        assertEquals("data.items.data.price.product", query.get("expand[0]"));
+        assertEquals("100", query.get("limit"));
+        assertTrue(query.keySet().stream().noneMatch(key -> key.startsWith("expand")),
+                "the product is fetched, never expanded (Stripe allows 4 levels, this would need 5)");
+        assertEquals(1, stripe.calls().stream().filter(call -> call.path().equals("/v1/products/prod_hero")).count(),
+                "a product shared by several subscriptions is fetched once");
+    }
+
+    @Test
+    void every_page_of_subscriptions_is_read() {
+        stripe.answer("GET", "/v1/subscriptions",
+                        page(true, subscription("sub_1", "canceled", false, "month", "prod_hero", 1_700_000_000L)))
+                .answer("GET", "/v1/subscriptions",
+                        page(false, subscription("sub_2", "active", false, "year", "prod_hero", 1_800_000_000L)))
+                .answer("GET", "/v1/products/prod_hero", product("prod_hero", "{\"plan_id\":\"hero\"}"));
+
+        List<ProviderSubscription> subscriptions = adapter().findSubscriptions("cus_9");
+
+        assertEquals(List.of("sub_1", "sub_2"), subscriptions.stream().map(ProviderSubscription::id).toList());
+        List<FakeStripeServer.Call> pages = stripe.calls().stream()
+                .filter(call -> call.path().equals("/v1/subscriptions")).toList();
+        assertEquals(2, pages.size());
+        assertEquals("sub_1", pages.get(1).form().get("starting_after"));
+    }
+
+    @Test
+    void a_failing_next_page_becomes_unavailable() {
+        stripe.answer("GET", "/v1/subscriptions",
+                        page(true, subscription("sub_1", "canceled", false, "month", "prod_hero", 1_700_000_000L)))
+                .fail("GET", "/v1/subscriptions", 500, "{\"error\":{\"type\":\"api_error\",\"message\":\"boom\"}}")
+                .answer("GET", "/v1/products/prod_hero", product("prod_hero", "{}"));
+
+        assertThrows(PaymentProviderUnavailableException.class, () -> adapter().findSubscriptions("cus_9"));
     }
 
     private static String subscription(String id, String status, boolean cancelAtPeriodEnd, String interval,
-                                       String productMetadata, long periodEnd) {
+                                       String productId, long periodEnd) {
         return "{\"id\":\"" + id + "\",\"object\":\"subscription\",\"status\":\"" + status + "\","
                 + "\"cancel_at_period_end\":" + cancelAtPeriodEnd + ","
                 + "\"items\":{\"object\":\"list\",\"url\":\"/v1/subscription_items\",\"has_more\":false,\"data\":["
                 + "{\"id\":\"si_" + id + "\",\"object\":\"subscription_item\",\"current_period_end\":" + periodEnd + ","
-                + "\"price\":{\"id\":\"price_" + id + "\",\"object\":\"price\",\"recurring\":{\"interval\":\"" + interval + "\"},"
-                + "\"product\":{\"id\":\"prod_" + id + "\",\"object\":\"product\",\"metadata\":" + productMetadata + "}}}]}}";
+                + "\"price\":{\"id\":\"price_" + id + "\",\"object\":\"price\",\"product\":\"" + productId + "\","
+                + "\"recurring\":{\"interval\":\"" + interval + "\"}}}]}}";
     }
 
     @Test
