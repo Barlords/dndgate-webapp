@@ -101,14 +101,10 @@ Les listes bornées par nature (personnages d'une aventure ou d'un compte, grimo
 - **Images** : 5 Mo au plus (`413` au-delà). Seuls le **PNG** et le **JPEG** sont acceptés, reconnus par le **contenu** du fichier (signature) et non par le type annoncé par le client ; un autre contenu, un fichier vide ou tronqué répond `400`. L'extension du fichier stocké suit le format réel (`.png` ou `.jpg`).
 - **Textes obligatoires** (noms, descriptions, contenus) : non vides une fois les espaces retirés. **Textes facultatifs d'une modification** (`PATCH`) : s'ils sont présents, non vides ; **absents, ils ne changent pas**.
 - **Plannings et disponibilités** : de 1 à 100 dates. **Dates** (plannings, disponibilités, notes) : entre les années 1900 et 2200, sinon `400` (le format accepte des années que PostgreSQL ne sait pas stocker, ce qui finissait en `500`). **Signaux WebRTC** : type `offer`, `answer` ou `candidate`, contenu de 20 000 caractères au plus.
-- **Quantités** : au-delà d'un plafond, la création répond `409` (`application/problem+json`) ; les plafonds sont comptés en base par des requêtes `COUNT` et appliqués par le domaine (clés `limits.*` de `application-dev.properties` / `application-prod.properties`) :
-  - **personnages hors aventure**, **aventures actives** comme MJ, **grimoires** (import compris) et **objets magiques** par compte : plafonds du plan de l'abonnement du compte (catalogue `plans.json`, clé du problème `urn:dndgate:plan-limit-reached`), plus aucune clé `limits.*` ; le plafond de personnages hors aventure est vérifié avant le stockage de l'image ;
-  - **notes d'aventure** et **notes d'historique** par aventure, et **personnages par joueur et par aventure** : plafonds du plan du **MJ** de l'aventure (celui du plan par défaut si le siège de MJ est vacant), pas du plan de celui qui crée ; même problème `urn:dndgate:plan-limit-reached` ; le plafond de personnages est vérifié avant le stockage de l'image ;
-    Les aventures actives sont celles dont le compte est le MJ (`creator_id`, sans MJ vacant) et dont le statut est `NOT_STARTED` ou `ONGOING` ; une aventure terminée ou abandonnée ne compte plus ;
+- **Quantités** : voir « Abonnements et paiement ». Au-delà d'un quota d'offre, la création répond `409` (`application/problem+json`, type `urn:dndgate:plan-limit-reached`). Les plafonds techniques sont les mêmes pour tous et se règlent dans `application-dev.properties` / `application-prod.properties` :
   - **1 000 sorts** par grimoire (`limits.spells-per-spell-book`), import compris ; ajouter un sort déjà présent n'est pas une erreur ;
   - **30 messages par compte et par minute** (`limits.messages.max`, `limits.messages.window`) : au-delà, `429` avec `Retry-After` (secondes). Les messages sont comptés en base sur la dernière minute (index `message(sender_id, send_date)`).
-  Une aventure terminée ou abandonnée ne peut pas être rouverte (machine à états du statut, voir « Statut d'une aventure ») : le plafond d'aventures actives ne se contourne donc pas ainsi. Le transfert de MJ (cession, réclamation) ne vérifie volontairement pas le plafond du nouveau MJ.
-  Les comptages ne sont pas verrouillés : deux créations simultanées peuvent dépasser un plafond d'une unité ou deux. Les limites de taille des images ne changent pas.
+  Les comptages ne sont pas verrouillés : deux créations simultanées peuvent dépasser un quota d'une unité ou deux.
 - **WebSocket** : un client n'envoie que `CONNECT`, `SUBSCRIBE` (et `UNSUBSCRIBE`) et des battements de cœur ; toute publication est refusée. Une trame de plus de 16 Ko coupe la connexion avant d'être lue. Seules les destinations exactes `/topic/adventure/chat/{id}` et `/topic/adventure/webrtc/{id}` (UUID en minuscules, rien avant ni après) sont acceptées au `SUBSCRIBE`. Une connexion ouvre au plus **20 abonnements** (`limits.websocket.subscriptions-per-connection`) ; un identifiant d'abonnement déjà utilisé sur la connexion est refusé, comme un second `CONNECT`. Limite connue : Spring ne garantit pas l'ordre de traitement des trames reçues d'une même connexion (pas d'option `preserveReceiveOrder` sur le canal entrant) ; un `UNSUBSCRIBE` suivi aussitôt d'un `SUBSCRIBE` avec le même identifiant peut donc être refusé si le second passe avant le premier. Le client doit attendre ou changer d'identifiant.
 - Toutes les routes qui reçoivent un corps JSON sont validées (`@Valid`).
 - **Modifications simultanées** : les comptes, aventures, grimoires, personnages, notes, notes d'historique, plannings et votes de disponibilité portent une version (pas les évaluations ni les messages). Une modification de l'une de ces lignes faite à partir d'une lecture devenue périmée (quelqu'un a modifié la même ligne entre-temps) répond `409` (`application/problem+json`) au lieu d'effacer l'autre modification : le client relit et renvoie. Sont rejoués automatiquement, sans `409`, l'ajout et le retrait d'un sort, le vote de disponibilité, la création simultanée d'un planning par `PUT /planning` et celle d'une évaluation par `PUT /ratings` : deux sorts ajoutés en même temps sont tous les deux gardés. Changer le mot de passe et terminer les sessions se font dans la même transaction : l'un ne va pas sans l'autre. Le mot de passe demandé pour modifier ou supprimer le compte est vérifié avant cette transaction, et un échec est toujours compté pour le verrouillage.
@@ -120,6 +116,79 @@ Le bucket MinIO est **privé** : au démarrage, l'API crée le bucket s'il manqu
 Une image se lit par `GET /game-characters/{id}/picture` (authentification comme le reste de l'API) : le propriétaire du personnage et les participants de l'aventure (s'il en a une), personne d'autre.
 Le personnage renvoie `pictureUrl` (cette route) et non plus `picturePath` (le chemin interne). Réponse : `Content-Type` du format réel, `Cache-Control: private, max-age=3600`, `Content-Disposition: inline`.
 Pour l'afficher, le front récupère l'image avec le jeton (`HttpClient`, `responseType: 'blob'`) puis l'affiche (`URL.createObjectURL`) : une balise `<img src>` seule n'envoie pas l'en-tête d'authentification.
+
+## Abonnements et paiement
+
+Le site propose quatre offres. Le paiement passe par **Stripe** (pages hébergées Checkout, portail client) : l'API ne manipule aucune carte. Le catalogue est le fichier `apps/api/src/main/resources/plans/plans.json` (montants en centimes, EUR) ; il ne contient aucun texte affiché.
+
+### Les offres
+
+| | Aventurier | Héros | Maître du Donjon | Légendaire |
+|---|---|---|---|---|
+| Identifiant | `adventurer` | `hero` | `dungeon-master` (mis en avant) | `legendary` |
+| Mensuel / annuel | gratuit | 0,99 € / 9,90 € | 4,99 € / 49,90 € | 9,99 € / 99,90 € |
+| Aventures actives en MJ (`activeAdventuresAsMaster`) | 1 | 2 | 10 | 25 |
+| Personnages hors aventure (`charactersWithoutAdventure`) | 3 | 15 | 50 | 75 |
+| Grimoires (`spellBooks`) | 2 | 10 | 50 | 100 |
+| Objets magiques (`magicItems`) | 10 | 50 | 200 | 500 |
+| Notes MJ et notes d'historique par aventure (chacune) | 50 | 100 | 500 | 500 |
+| Personnages par joueur et par aventure | 1 | 1 | 5 | 10 |
+| PNJ par aventure (`npcsPerAdventure`) | 5 | 10 | 50 | 100 |
+| Messages conservés par aventure (`messagesPerAdventure`) | 200 | 200 | 1 000 | 2 000 |
+| Images de personnage (`characterPictures`) | non | oui | oui | oui |
+| Visio (`video`) | non | non | oui | oui |
+| Table équipée (`equippedTable`) | non | non | oui | oui |
+| Accès anticipé, support prioritaire (affichage seulement) | non | non | non | oui |
+| Badge | aucun | aucun | `dungeon-master` | `legend` |
+
+Rejoindre des aventures en joueur est illimité pour tous.
+
+- **Au démarrage**, l'API refuse de démarrer si le catalogue est invalide : clé inconnue ou manquante, identifiant en double, `defaultPlan` inconnu ou avec des prix, limite inférieure à 1, offre payante sans prix. L'ordre du tableau `plans` est l'ordre d'affichage et « inférieur → supérieur ».
+- **`PLANS_FILE`** (facultatif) : chemin d'un catalogue externe (`file:/chemin/plans.json`) qui remplace celui du jar, sans rebuild (une valeur vide n'est pas acceptée : laisser la variable absente, ou `classpath:plans/plans.json`, valeur par défaut de `docker-compose.prod.yml`). Changer un montant dans ce fichier ne change pas le prix Stripe (voir plus bas).
+- **Quelle offre s'applique** : ce qui touche au compte (aventures actives en MJ, personnages hors aventure, grimoires, objets magiques) dépend de l'offre du **compte qui agit** ; ce qui touche à une aventure (notes, personnages par joueur, PNJ, messages conservés, visio) dépend de l'offre du **MJ** de l'aventure. Une aventure sans MJ (`masterVacant`) suit l'offre par défaut (`adventurer`). Après un transfert de MJ, l'aventure suit l'offre du nouveau MJ (le transfert ne vérifie pas son quota).
+- **Images de personnage** : hors aventure, l'offre du compte ; dans une aventure, l'offre du compte **ou** celle du MJ si elle a `equippedTable`. L'image est facultative à la création (`picturePresentation` peut manquer) ; en envoyer une sans l'outil répond `403`.
+- **Quand l'offre baisse** (résiliation, impayé, offre inférieure) : **rien n'est supprimé ni masqué**. Ce qui dépasse le nouveau quota reste lisible et modifiable ; seule la création est refusée. Un outil perdu ne sert plus pour la suite (visio, nouvelle image) mais les images déjà envoyées restent affichées. Seule exception : l'historique des messages (plus bas).
+- **Refus** : `409` `urn:dndgate:plan-limit-reached` pour un quota ; `403` `urn:dndgate:feature-not-included` (avec `feature` et `planId`) pour un outil absent de l'offre.
+- **Ce que voit le client** : `GET /plans` (public, le catalogue sans les clés Stripe), `GET /accounts/me/subscription` (offre effective, `interval`, `status`, `currentPeriodEnd`, `cancelAtPeriodEnd`, `billingEnabled` et `usage` de chaque limite de compte en `used` / `max`) et `GET /adventures/{id}/entitlements` (outils disponibles pour l'appelant dans cette aventure, et usage des limites de l'aventure ; l'offre du MJ n'est jamais nommée).
+- **Badges** : les réponses qui montrent un compte portent `founder` (booléen) et `planBadge` (`dungeon-master`, `legend` ou rien, calculé à partir de l'offre effective). Le badge fondateur est gardé à vie, indépendant des offres, remis à `false` par l'anonymisation, et attribué à la main :
+
+```sql
+UPDATE accounts SET founder = true WHERE lower(pseudo) = lower('<pseudo>');
+```
+
+### Personnages : réserve, aventure, PNJ
+
+- La **réserve** d'un compte, ce sont ses personnages hors aventure (quota `charactersWithoutAdventure`). `GET /game-characters/mine` liste les personnages du compte.
+- **Un seul personnage actif** par joueur et par aventure (`active` dans la réponse). Le premier personnage d'un joueur dans l'aventure devient actif ; si l'actif sort ou est supprimé, aucun autre ne le devient. `PUT /adventures/{id}/players/me/active-character` `{ "characterId": "..." }` change de personnage actif.
+- `PUT /game-characters/{id}/adventure` `{ "adventureId": "..." }` envoie un personnage de la réserve dans une aventure (quota « personnages par joueur » de l'offre du MJ ; le MJ n'a pas de personnage joueur). `DELETE /game-characters/{id}/adventure` le remet dans la réserve (sans confirmation : c'est réversible) ; `409` si la réserve est pleine.
+- **Quitter une aventure** : `DELETE /adventures/{id}/players/me` avec un corps facultatif `{ "deletions": [{ "characterId": "...", "confirmation": "<nom du personnage>" }] }` (10 au plus). Les personnages du joueur passent dans sa réserve ; ceux qui n'y tiennent pas doivent être listés dans `deletions` avec leur nom retapé, sinon `409` et rien ne change (tout ou rien).
+- **Suppression d'une aventure par le MJ** : les personnages des joueurs passent dans la réserve de leur propriétaire **même si elle est pleine** (la réserve peut alors dépasser son quota, seule la création reste bloquée) ; les PNJ sont supprimés avec l'aventure.
+- **PNJ** : une fiche créée par le MJ dans son aventure (`POST /game-characters` avec son `adventureId`) est un PNJ (`npc: true`), **privé** par défaut (seul le MJ le lit, filtre appliqué dans la requête en base) ou **public** (toute la table le lit sans le modifier). `PUT /game-characters/{id}/visibility` `{ "visibility": "PUBLIC" | "PRIVATE" }` bascule d'un clic ; `409` sur un personnage qui n'est pas un PNJ. Un PNJ appartient à l'aventure : après un transfert de MJ, le nouveau MJ le gère. Un PNJ ne passe pas dans une réserve.
+
+### Historique des messages
+
+Une aventure garde au plus `messagesPerAdventure` messages, selon l'offre du MJ. Au-delà, chaque nouveau message **supprime définitivement les plus anciens**, dans la même transaction que l'envoi : c'est la seule suppression automatique du site. Si le MJ baisse d'offre, les messages en trop sont supprimés au premier envoi suivant. L'usage (`used` / `max`) est dans `GET /adventures/{id}/entitlements`. Le débit de 30 messages par minute s'ajoute.
+
+### Configurer Stripe
+
+Variables d'environnement : `STRIPE_SECRET_KEY` (`sk_test_…` / `sk_live_…`) et `STRIPE_WEBHOOK_SECRET` (`whsec_…`) ; `WEB_BASE_URL` sert aux URL de retour de Checkout et du portail. Sans clé secrète (dev par défaut), l'API démarre, tout le monde est sur l'offre gratuite et les routes de paiement répondent `503`. En production (`docker-compose.prod.yml`), les deux variables sont obligatoires et ne peuvent pas être vides.
+
+1. **Produits** : un produit par offre payante (`hero`, `dungeon-master`, `legendary`) avec la métadonnée `plan_id` égale à l'identifiant du catalogue. C'est le produit qui dit l'offre d'un abonnement.
+2. **Prix** : deux prix récurrents par produit (mensuel, annuel) avec les **lookup keys** du catalogue (`hero_monthly`, `hero_yearly`, `dungeon_master_monthly`, …). L'API vend par lookup key, car les identifiants de prix diffèrent entre test et live.
+3. **Conditions générales** : Stripe refuse `consent_collection.terms_of_service` (utilisé par Checkout) tant qu'aucune URL de conditions n'est réglée dans les informations publiques du compte (Paramètres > Informations publiques) : y mettre `WEB_BASE_URL/terms`. Checkout affiche aussi que le client demande l'accès immédiat et renonce à son droit de rétractation de 14 jours (`billing.checkout.terms-acceptance-message`). Une session Checkout expire au bout de 31 minutes.
+4. **Portail client** : autoriser le changement d'offre entre ces prix, la résiliation et la mise à jour de la carte.
+5. **Webhook** : un endpoint `<api>/dndgate-api/billing/stripe-webhook` avec les quatre événements `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated` et `customer.subscription.deleted`. Son secret de signature est `STRIPE_WEBHOOK_SECRET`.
+6. **Test en local** : `stripe listen --forward-to localhost:4000/dndgate-api/billing/stripe-webhook` affiche le `whsec_…` à mettre dans `STRIPE_WEBHOOK_SECRET`.
+
+**Changer un prix** : un prix Stripe ne change jamais de montant. Créer un nouveau prix sur le même produit avec `transfer_lookup_key` (la lookup key passe du vieux prix au nouveau), puis mettre le montant à jour dans le catalogue. Les abonnés existants gardent leur ancien prix, et leur offre (reconnue par le produit).
+
+### Routes de paiement et règles
+
+- `POST /billing/checkout-session` `{ "planId": "hero", "interval": "monthly" | "yearly" }` renvoie `{ url }` ; `409` si le compte a déjà un abonnement non terminé chez Stripe (`active`, `trialing`, `past_due`, `incomplete` : il passe par le portail). `POST /billing/portal-session` renvoie `{ url }` ; `409` sans client Stripe. Les deux répondent `503` si le paiement est désactivé.
+- `POST /billing/stripe-webhook` est public, mais la **signature est vérifiée sur le corps brut** : absente ou fausse, `400` et rien n'est fait. Les autres événements répondent `200` sans effet.
+- **Offre effective selon le statut** : `active`, `trialing` et `past_due` (le temps des relances) donnent l'offre du produit ; `canceled`, `unpaid`, `incomplete`, `incomplete_expired`, `paused` ou aucun abonnement donnent l'offre par défaut. Une résiliation demandée au portail garde l'offre jusqu'à `currentPeriodEnd`. Un `plan_id` inconnu du catalogue retombe sur l'offre par défaut (log d'erreur).
+- **Synchronisation** : à chaque événement d'abonnement, l'API **relit tous les abonnements du client chez Stripe** et retient le meilleur actif (offre la plus haute, puis fin de période la plus lointaine) : l'ordre et les doublons des événements n'ont pas d'importance. L'écriture est un compare-and-set sur la ligne lue ; après plusieurs conflits de suite, la réponse est `503` pour que Stripe réessaie. Un doublon actif est journalisé en erreur pour un remboursement à la main. Seul le webhook donne une offre, jamais le retour de Checkout.
+- **Suppression de compte** : voir « Suppression de compte ».
 
 ## Changer de MJ
 
@@ -212,6 +281,7 @@ Une invitation refusée n'est pas comptée. Les lignes plus anciennes que la plu
 - Les aventures du compte qui n'ont pas démarré sont annulées et masquées ; celles qui ont démarré restent consultables par leurs joueurs.
   Sa place est libérée dans les aventures qui n'ont pas démarré, conservée dans les autres.
 - L'ancien pseudo et l'ancien e-mail peuvent être réutilisés par une nouvelle inscription.
+- **Abonnement** : avant l'anonymisation, l'API **résilie immédiatement** les abonnements Stripe du compte (sans remboursement au prorata) puis efface la ligne d'abonnement ; le client Stripe et ses factures restent chez Stripe. Si l'appel à Stripe échoue, la suppression répond `503` et rien n'est anonymisé. Fenêtre d'échec partiel acceptée : Stripe résilie, puis la transaction d'anonymisation échoue ; le compte reste, son abonnement est terminé, et **relancer la suppression est sans danger**.
 
 ### Vérification de l'adresse e-mail
 
