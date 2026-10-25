@@ -10,6 +10,7 @@ import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureAccessVerifierAp
 import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterCreatorApi;
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
+import fr.barlords.dndgateapi.domain.functional.model.plan.Feature;
 import fr.barlords.dndgateapi.domain.functional.model.plan.PlanLimit;
 import fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi;
 import lombok.RequiredArgsConstructor;
@@ -56,6 +57,13 @@ public class GameCharacterCreatorService implements GameCharacterCreatorApi {
 
         // Checked before the picture is read and stored: a refused character must not leave a file behind
         verifyLimit(account.getId(), adventure);
+
+        if (pictureInputStream == null) {
+            return spi.save(gameCharacter.withOwner(account).withAdventure(adventure));
+        }
+
+        // Checked before the picture is read: a refused picture is never stored
+        entitlementApi.verifyFeature(account.getId(), adventure, Feature.CHARACTER_PICTURES);
 
         // The format is recognised by the content of the file: what the client declares is not trusted
         byte[] picture = readPicture(pictureInputStream);

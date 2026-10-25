@@ -2,6 +2,8 @@ package fr.barlords.dndgateapi.domain.functional.service.gamecharacter;
 
 import fr.barlords.dndgateapi.domain.functional.exception.InvalidPictureException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureAccessDeniedException;
+import fr.barlords.dndgateapi.domain.functional.exception.plan.FeatureNotIncludedException;
+import fr.barlords.dndgateapi.domain.functional.model.plan.Feature;
 import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
 import fr.barlords.dndgateapi.domain.functional.model.GameCharacter;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
@@ -214,5 +216,42 @@ class GameCharacterCreatorServiceTest {
         IllegalStateException thrown = Assertions.assertThrows(IllegalStateException.class, () -> create(PNG));
 
         Assertions.assertSame(failure, thrown);
+    }
+
+    @Test
+    void a_character_without_picture_is_saved_without_upload() throws Exception {
+        playerIsParticipant();
+        when(spi.save(any(GameCharacter.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        GameCharacter created = service.create(player.getId(), adventure.getId(), draft, null);
+
+        Assertions.assertNull(created.getPicturePath());
+        Assertions.assertEquals(player, created.getOwner());
+        verify(minioSpi, never()).uploadFile(any(), any(), any());
+        verify(entitlement, never()).verifyFeature(any(), any(), any());
+    }
+
+    @Test
+    void a_picture_without_the_feature_is_refused_before_upload() throws Exception {
+        playerIsParticipant();
+        doThrow(new FeatureNotIncludedException(Feature.CHARACTER_PICTURES, "free", "paid")).when(entitlement)
+                .verifyFeature(player.getId(), adventure, Feature.CHARACTER_PICTURES);
+
+        Assertions.assertThrows(FeatureNotIncludedException.class, () -> create(PNG));
+
+        verify(minioSpi, never()).uploadFile(any(), any(), any());
+        verify(spi, never()).save(any());
+    }
+
+    @Test
+    void a_free_player_sends_a_picture_in_an_equipped_table() throws Exception {
+        playerIsParticipant();
+        // The entitlements decide whether the picture is shared by the master's plan: the creator just asks for the adventure
+        when(spi.save(any(GameCharacter.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        GameCharacter created = create(PNG);
+
+        verify(entitlement).verifyFeature(player.getId(), adventure, Feature.CHARACTER_PICTURES);
+        verify(minioSpi).uploadFile(eq("image/png"), any(), eq(created.getPicturePath()));
     }
 }

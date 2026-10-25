@@ -25,6 +25,8 @@ public interface MessageRepository extends JpaRepository<MessageEntity, UUID> {
 
     Page<MessageEntity> findByAdventureId(UUID adventureId, Pageable pageable);
 
+    long countByAdventureId(UUID adventureId);
+
     List<MessageEntity> findMessageEntitiesBySenderIdOrderBySendDate(UUID senderId);
 
 

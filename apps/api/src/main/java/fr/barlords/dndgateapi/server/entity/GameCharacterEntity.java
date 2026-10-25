@@ -43,7 +43,7 @@ public class GameCharacterEntity implements Serializable {
     @Column(name = "background", nullable = false, length = 80000)
     private String background;
 
-    @Column(name = "picture_path", nullable = false)
+    @Column(name = "picture_path")
     private String picturePath;
 
     @Version

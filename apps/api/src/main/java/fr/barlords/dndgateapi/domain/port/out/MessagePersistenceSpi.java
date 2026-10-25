@@ -15,6 +15,9 @@ public interface MessagePersistenceSpi extends PersistenceSpi<Message, UUID> {
     /** Newest first. */
     Page<Message> findByAdventureId(UUID adventureId, PageRequest request);
 
+    /** How many messages the adventure holds. */
+    long countByAdventureId(UUID adventureId);
+
     List<Message> findBySenderId(UUID senderId);
 
     void deleteByAdventureId(UUID adventureId);

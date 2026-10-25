@@ -73,7 +73,10 @@ public class EntitlementService implements EntitlementApi {
     @Override
     public void verifyFeature(UUID accountId, Adventure adventureOrNull, Feature feature) {
         if (!allows(accountId, adventureOrNull, feature)) {
-            Plan plan = planOf(accountId);
+            // A master feature is unlocked by the plan of the game master, not by the one of the caller
+            Plan plan = feature.reach() == Feature.Reach.MASTER && adventureOrNull != null
+                    ? masterPlanOf(adventureOrNull)
+                    : planOf(accountId);
             String upgrade = catalog.lowestWith(plan, feature).map(Plan::id).orElse(null);
             throw new FeatureNotIncludedException(feature, plan.id(), upgrade);
         }

@@ -171,6 +171,25 @@ abstract class ApiIntegrationTestSupport {
         return createCharacter(account, adventureId, name, PNG, MediaType.IMAGE_PNG);
     }
 
+    /** A character sent without the picture part: the picture is optional. */
+    ResponseEntity<String> createCharacterWithoutPicture(TestAccount account, UUID adventureId, String name) {
+        HttpHeaders requestHeaders = new HttpHeaders();
+        requestHeaders.setContentType(MediaType.APPLICATION_JSON);
+        Map<String, String> request = new LinkedHashMap<>(Map.of("name", name, "race", "Human", "martialClass", "Wizard",
+                "personality", "Wise", "background", "Old"));
+        if (adventureId != null) {
+            request.put("adventureId", adventureId.toString());
+        }
+        LinkedMultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
+        parts.add("createGameCharacterRequest", new HttpEntity<>(json.writeValueAsString(request), requestHeaders));
+
+        return client().post().uri("/game-characters")
+                .headers(headers -> headers.setBearerAuth(account.token()))
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(parts)
+                .retrieve().toEntity(String.class);
+    }
+
     ResponseEntity<String> createCharacter(TestAccount account, UUID adventureId, String name, byte[] content, MediaType declaredType) {
         return createCharacter(account, adventureId, name, content, declaredType, "Old");
     }

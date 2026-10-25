@@ -57,6 +57,12 @@ public class MessageDatabaseAdapter implements MessagePersistenceSpi {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public long countByAdventureId(UUID adventureId) {
+        return repository.countByAdventureId(adventureId);
+    }
+
+    @Override
     @Transactional
     public List<Message> findBySenderId(UUID senderId) {
         return repository.findMessageEntitiesBySenderIdOrderBySendDate(senderId).stream().map(MessageEntityMapper::toDomain).toList();

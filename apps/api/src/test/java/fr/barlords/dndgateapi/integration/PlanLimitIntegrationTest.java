@@ -103,12 +103,12 @@ class PlanLimitIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     void a_second_character_in_the_reserve_is_refused_with_the_plan_problem() {
         TestAccount player = tightAccount();
-        Assertions.assertEquals(201, createCharacter(player, null, "One").getStatusCode().value());
+        Assertions.assertEquals(201, createCharacterWithoutPicture(player, null, "One").getStatusCode().value());
 
-        assertPlanProblem(createCharacter(player, null, "Two"), "charactersWithoutAdventure");
+        assertPlanProblem(createCharacterWithoutPicture(player, null, "Two"), "charactersWithoutAdventure");
 
         UUID adventureId = createAdventure(player, "PRIVATE");
-        Assertions.assertEquals(201, createCharacter(player, adventureId, "In adventure").getStatusCode().value(),
+        Assertions.assertEquals(201, createCharacterWithoutPicture(player, adventureId, "In adventure").getStatusCode().value(),
                 "the reserve quota does not count characters in an adventure");
     }
 

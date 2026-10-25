@@ -108,14 +108,14 @@ public class GameCharacterController {
     @PostMapping(value = "", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
     @ResponseStatus(CREATED)
     public GameCharacterDto createGameCharacter(
-            @Valid @RequestPart("picturePresentation") MultipartFile pictureFile,
+            @RequestPart(value = "picturePresentation", required = false) MultipartFile pictureFile,
             @Valid @RequestPart("createGameCharacterRequest") GameCharacterCreationRequest request) throws IOException {
         return GameCharacterDtoMapper.toDto(
                 gameCharacterCreatorApi.create(
                         authVerifierService.currentAccountId(),
                         request.adventureId(),
                         GameCharacterDtoMapper.creationRequestToDomain(request),
-                        pictureFile.getInputStream()
+                        pictureFile == null ? null : pictureFile.getInputStream()
                 )
         );
     }

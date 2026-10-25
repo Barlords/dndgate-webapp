@@ -1,6 +1,7 @@
 package fr.barlords.dndgateapi.domain.functional.service.gamecharacter;
 
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureAccessDeniedException;
+import fr.barlords.dndgateapi.domain.functional.exception.gamecharacter.GameCharacterNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.exception.gamecharacter.GameCharacterOwnerException;
 import fr.barlords.dndgateapi.domain.functional.model.GameCharacter;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
@@ -93,6 +94,14 @@ class GameCharacterFinderServiceTest {
         GameCharacter alone = stored(null);
 
         Assertions.assertThrows(GameCharacterOwnerException.class, () -> service.findPicture(other.getId(), alone.getId()));
+        verify(minioSpi, never()).downloadFile(any());
+    }
+
+    @Test
+    void a_character_without_picture_has_no_picture_to_serve() throws Exception {
+        GameCharacter alone = stored(null);
+
+        Assertions.assertThrows(GameCharacterNotFoundException.class, () -> service.findPicture(owner.getId(), alone.getId()));
         verify(minioSpi, never()).downloadFile(any());
     }
 }

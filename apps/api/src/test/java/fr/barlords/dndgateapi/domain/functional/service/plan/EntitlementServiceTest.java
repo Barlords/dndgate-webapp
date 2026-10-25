@@ -202,6 +202,30 @@ class EntitlementServiceTest {
     }
 
     @Test
+    void a_refused_master_feature_names_the_plan_of_the_master_and_its_upgrade() {
+        subscribe(account, "top", SubscriptionStatus.ACTIVE);
+        subscribe(master, "mid", SubscriptionStatus.ACTIVE);
+
+        FeatureNotIncludedException e = assertThrows(FeatureNotIncludedException.class,
+                () -> service.verifyFeature(account, adventureOf(master), Feature.VIDEO));
+
+        assertEquals("mid", e.getPlanId());
+        assertEquals("top", e.getUpgradePlanId());
+    }
+
+    @Test
+    void a_refused_shareable_feature_names_the_plan_of_the_caller_and_its_upgrade() {
+        Mockito.when(subscriptions.findByAccountId(account)).thenReturn(Optional.empty());
+        subscribe(master, "free", SubscriptionStatus.ACTIVE);
+
+        FeatureNotIncludedException e = assertThrows(FeatureNotIncludedException.class,
+                () -> service.verifyFeature(account, adventureOf(master), Feature.CHARACTER_PICTURES));
+
+        assertEquals("free", e.getPlanId());
+        assertEquals("mid", e.getUpgradePlanId());
+    }
+
+    @Test
     void available_features_lists_what_works_in_the_adventure() {
         Mockito.when(subscriptions.findByAccountId(account)).thenReturn(Optional.empty());
         subscribe(master, "top", SubscriptionStatus.ACTIVE);

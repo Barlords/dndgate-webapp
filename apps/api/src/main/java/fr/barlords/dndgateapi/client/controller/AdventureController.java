@@ -7,6 +7,7 @@ import fr.barlords.dndgateapi.domain.functional.model.pagination.PageRequest;
 import fr.barlords.dndgateapi.client.dto.DeletionConfirmationRequest;
 import fr.barlords.dndgateapi.client.dto.adventure.*;
 import fr.barlords.dndgateapi.client.mapper.AdventureDtoMapper;
+import fr.barlords.dndgateapi.client.mapper.AdventureEntitlementsDtoMapper;
 import fr.barlords.dndgateapi.client.service.AuthVerifierService;
 import fr.barlords.dndgateapi.client.validator.UuidValidator;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureNotFoundException;
@@ -14,6 +15,7 @@ import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureCreatorApi;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureDeleterApi;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureFinderApi;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureUpdaterApi;
+import fr.barlords.dndgateapi.domain.port.in.plan.AdventureEntitlementsApi;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -34,6 +36,7 @@ public class AdventureController {
     private final AdventureFinderApi adventureFinderApi;
     private final AdventureDeleterApi adventureDeleterApi;
     private final AdventureUpdaterApi adventureUpdaterApi;
+    private final AdventureEntitlementsApi adventureEntitlementsApi;
 
     @GetMapping
     @ResponseStatus(OK)
@@ -71,6 +74,13 @@ public class AdventureController {
         return adventureFinderApi.findByIdVisibleTo(authVerifierService.currentAccountId(), UuidValidator.validate(id))
                 .map(AdventureDtoMapper::toDto)
                 .orElseThrow(AdventureNotFoundException::new);
+    }
+
+    @GetMapping("/{id}/entitlements")
+    @ResponseStatus(OK)
+    public AdventureEntitlementsDto getAdventureEntitlements(@PathVariable String id) {
+        return AdventureEntitlementsDtoMapper.toDto(
+                adventureEntitlementsApi.of(authVerifierService.currentAccountId(), UuidValidator.validate(id)));
     }
 
     @GetMapping("/as-player")
