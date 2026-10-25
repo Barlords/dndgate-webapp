@@ -182,11 +182,33 @@ describe('NotifierService plan refusals', () => {
   });
 
   it('a_master_decided_refusal_tells_the_player_to_ask_the_master', () => {
-    notifier.error(refusal({ decidedBy: 'master' }));
+    notifier.error(refusal({ kind: 'feature', key: 'video', decidedBy: 'master' }));
     const [toast] = notifier.toasts();
     expect(toast.action).toBeUndefined();
-    expect(toast.message).toContain('Héros');
-    expect(toast.message).toContain('MJ');
+    expect(toast.message).toBe(
+      'Cette fonction n’est pas incluse : Visio. Demande à ton MJ : il lui faudrait l’offre Héros pour le permettre.',
+    );
+  });
+
+  it('a_master_decided_refusal_without_upgrade_names_only_the_limit', () => {
+    notifier.error(refusal({ decidedBy: 'master', upgradePlanId: null }));
+    expect(notifier.toasts()[0].message).toBe(
+      'Limite atteinte : Aventures actives en tant que MJ (1 au maximum).',
+    );
+  });
+
+  it('a_limit_without_max_omits_it', () => {
+    notifier.error(refusal({ max: undefined, upgradePlanId: null }));
+    expect(notifier.toasts()[0].message).toBe(
+      'Limite atteinte : Aventures actives en tant que MJ.',
+    );
+  });
+
+  it('a_refusal_is_wrapped_in_its_context', () => {
+    notifier.error(refusal({ upgradePlanId: null }), 'Création de l’aventure');
+    expect(notifier.toasts()[0].message).toBe(
+      'Création de l’aventure : Limite atteinte : Aventures actives en tant que MJ (1 au maximum).',
+    );
   });
 
   it('a_refusal_without_upgrade_has_no_action', () => {

@@ -1,9 +1,9 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { featureName, limitName, planName } from '../plans/plan-texts';
-import { ApiProblem, PlanRefusal } from './api-problem';
 import { Dictionary } from '../i18n/dictionary';
 import { I18n } from '../i18n/i18n.service';
+import { featureName, limitName, planName } from '../plans/plan-texts';
+import { ApiProblem, PlanRefusal } from './api-problem';
 
 export interface ToastAction {
   label: string;

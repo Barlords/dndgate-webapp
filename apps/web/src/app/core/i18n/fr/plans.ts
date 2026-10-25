@@ -44,8 +44,8 @@ export const plans = {
   limitReached: (limitLabel: string, max: number | undefined) =>
     max === undefined
       ? `Limite atteinte : ${limitLabel}.`
-      : `Limite atteinte : ${limitLabel} (${max} maximum avec ton offre).`,
-  featureMissing: (featureLabel: string) => `Ton offre n’inclut pas : ${featureLabel}.`,
+      : `Limite atteinte : ${limitLabel} (${max} au maximum).`,
+  featureMissing: (featureLabel: string) => `Cette fonction n’est pas incluse : ${featureLabel}.`,
   upgradeTo: (planName: string) => `L’offre ${planName} le permet.`,
   askMaster: (planName: string) =>
     `Demande à ton MJ : il lui faudrait l’offre ${planName} pour le permettre.`,

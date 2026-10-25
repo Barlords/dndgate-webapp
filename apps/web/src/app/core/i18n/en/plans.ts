@@ -46,8 +46,8 @@ export const plans: Dictionary['plans'] = {
   limitReached: (limitLabel, max) =>
     max === undefined
       ? `Limit reached: ${limitLabel}.`
-      : `Limit reached: ${limitLabel} (${max} at most with your plan).`,
-  featureMissing: (featureLabel) => `Your plan does not include: ${featureLabel}.`,
+      : `Limit reached: ${limitLabel} (${max} at most).`,
+  featureMissing: (featureLabel) => `Not included: ${featureLabel}.`,
   upgradeTo: (planName) => `The ${planName} plan allows it.`,
   askMaster: (planName) => `Ask your GM: they would need the ${planName} plan to allow it.`,
   seeOffers: 'See the plans',
