@@ -25,4 +25,11 @@ class ProductionConfigurationTest {
         Assertions.assertEquals("false", production().getProperty("springdoc.api-docs.enabled"));
     }
 
+    @Test
+    void the_stripe_keys_have_no_default_in_production() throws IOException {
+        // no ":" default: the API refuses to start in production without the keys
+        Assertions.assertEquals("${STRIPE_SECRET_KEY}", production().getProperty("stripe.secret-key"));
+        Assertions.assertEquals("${STRIPE_WEBHOOK_SECRET}", production().getProperty("stripe.webhook-secret"));
+    }
+
 }
