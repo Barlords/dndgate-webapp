@@ -3,7 +3,13 @@
 
 export interface AccountDto {
   email?: string;
+  founder?: boolean;
   id?: string;
   pendingEmail?: string;
+
+  /**
+   * dungeon-master, legend or null
+   */
+  planBadge?: ('dungeon-master' | 'legend' | null);
   pseudo?: string;
 }

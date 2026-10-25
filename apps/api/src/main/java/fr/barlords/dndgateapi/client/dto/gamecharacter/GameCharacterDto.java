@@ -18,7 +18,7 @@ public record GameCharacterDto(
         @Schema(nullable = true) String pictureUrl,
         UUID ownerId,
         /** Null for a character kept outside any adventure of the application. */
-        UUID adventureId,
+        @Schema(nullable = true) UUID adventureId,
         /** True for the character the owner currently plays in the adventure. */
         boolean active,
         /** True for a non-player character of the game master. */

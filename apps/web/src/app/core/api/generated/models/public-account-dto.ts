@@ -3,6 +3,12 @@
 
 export interface PublicAccountDto {
   anonymized?: boolean;
+  founder?: boolean;
   id?: string;
+
+  /**
+   * dungeon-master, legend or null
+   */
+  planBadge?: ('dungeon-master' | 'legend' | null);
   pseudo?: string;
 }

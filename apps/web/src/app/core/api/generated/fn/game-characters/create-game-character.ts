@@ -12,7 +12,7 @@ import { GameCharacterDto } from '../../models/game-character-dto';
 
 export interface CreateGameCharacter$Params {
       body?: {
-'picturePresentation': Blob;
+'picturePresentation'?: Blob;
 'createGameCharacterRequest': GameCharacterCreationRequest;
 }
 }

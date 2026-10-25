@@ -2696,7 +2696,9 @@ components:
           type: string
           format: uuid
         adventureId:
-          type: string
+          type:
+          - string
+          - "null"
           format: uuid
         active:
           type: boolean
@@ -3471,6 +3473,7 @@ components:
           enum:
           - dungeon-master
           - legend
+          - null
     SpellBookImportExportDto:
       type: object
       properties:
@@ -3566,6 +3569,10 @@ components:
           - string
           - "null"
           description: "dungeon-master, legend or null"
+          enum:
+          - dungeon-master
+          - legend
+          - null
     PlanPriceDto:
       type: object
       properties:
@@ -3688,6 +3695,7 @@ components:
           enum:
           - dungeon-master
           - legend
+          - null
     SubscriptionDto:
       type: object
       properties:

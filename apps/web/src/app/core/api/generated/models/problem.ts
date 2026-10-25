@@ -3,7 +3,7 @@
 
 
 /**
- * An error (RFC 9457 problem details). correlationId is the identifier to quote when reporting it.
+ * An error (RFC 9457 problem details). correlationId is the identifier to quote when reporting it. A refusal of the plan adds its own fields: type urn:dndgate:plan-limit-reached (409) gives limit, max, planId, upgradePlanId and decidedBy; type urn:dndgate:feature-not-included (403) gives feature, planId, upgradePlanId and decidedBy. Type urn:dndgate:subscription-sync-conflict (503) is a webhook to send again.
  */
 export interface Problem {
 
@@ -11,6 +11,11 @@ export interface Problem {
    * Same value as the X-Request-Id header.
    */
   correlationId?: string;
+
+  /**
+   * A refusal of the plan: account when the plan of the caller decided it, master when the plan of the game master of the adventure did.
+   */
+  decidedBy?: 'account' | 'master';
 
   /**
    * What went wrong, in English.
@@ -26,10 +31,35 @@ export interface Problem {
 }>;
 
   /**
+   * feature-not-included only: the key of the feature (video, ...).
+   */
+  feature?: string;
+
+  /**
    * The path of the request.
    */
   instance?: string;
+
+  /**
+   * plan-limit-reached only: the key of the limit (spellBooks, ...).
+   */
+  limit?: string;
+
+  /**
+   * plan-limit-reached only: the maximum of the plan.
+   */
+  max?: number;
+
+  /**
+   * A refusal of the plan: the plan that decided it (the plan of the game master when decidedBy is master).
+   */
+  planId?: string;
   status?: number;
   title?: string;
   type?: string;
+
+  /**
+   * A refusal of the plan: the lowest plan that would allow it, null when no plan does.
+   */
+  upgradePlanId?: (string | null);
 }

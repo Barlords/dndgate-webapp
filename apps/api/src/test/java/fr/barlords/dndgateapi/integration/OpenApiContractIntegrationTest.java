@@ -160,6 +160,13 @@ class OpenApiContractIntegrationTest extends ApiIntegrationTestSupport {
         return values;
     }
 
+    /** The values of an enum, a JSON null written "null". */
+    private static List<String> valuesOrNull(JsonNode array) {
+        List<String> values = new ArrayList<>();
+        array.forEach(value -> values.add(value.isNull() ? "null" : value.asString()));
+        return values;
+    }
+
     private static boolean mayBeNull(JsonNode property) {
         return texts(property.path("type")).contains("null");
     }
@@ -189,11 +196,15 @@ class OpenApiContractIntegrationTest extends ApiIntegrationTestSupport {
         for (String dto : List.of("AccountDto", "PublicAccountDto")) {
             JsonNode badge = schemas.get(dto).get("properties").get("planBadge");
             Assertions.assertTrue(mayBeNull(badge), dto + ".planBadge: null without a badge");
-            Assertions.assertEquals(List.of("dungeon-master", "legend"), texts(badge.get("enum")), dto + ".planBadge");
+            Assertions.assertEquals(List.of("dungeon-master", "legend", "null"), valuesOrNull(badge.get("enum")), dto + ".planBadge");
         }
+        JsonNode planBadge = schemas.get("PlanDto").get("properties").get("badge");
+        Assertions.assertTrue(mayBeNull(planBadge), "PlanDto.badge: null without a badge");
+        Assertions.assertEquals(List.of("dungeon-master", "legend", "null"), valuesOrNull(planBadge.get("enum")), "PlanDto.badge");
         JsonNode character = schemas.get("GameCharacterDto").get("properties");
         Assertions.assertEquals(List.of("PRIVATE", "PUBLIC"), texts(character.get("visibility").get("enum")));
         Assertions.assertTrue(mayBeNull(character.get("pictureUrl")), "the picture is optional");
+        Assertions.assertTrue(mayBeNull(character.get("adventureId")), "a character may live outside any adventure");
         Assertions.assertEquals(1, schemas.get("CheckoutSessionRequest").get("properties").get("planId")
                 .get("minLength").asInt());
     }

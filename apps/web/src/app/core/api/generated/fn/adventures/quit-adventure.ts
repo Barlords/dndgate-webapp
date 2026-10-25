@@ -8,15 +8,18 @@ import { StrictHttpResponse } from '../../strict-http-response';
 import { RequestBuilder } from '../../request-builder';
 
 import { AdventureDto } from '../../models/adventure-dto';
+import { QuitAdventureRequest } from '../../models/quit-adventure-request';
 
 export interface QuitAdventure$Params {
   id: string;
+      body?: QuitAdventureRequest
 }
 
 export function quitAdventure(http: HttpClient, rootUrl: string, params: QuitAdventure$Params, context?: HttpContext): Observable<StrictHttpResponse<AdventureDto>> {
   const rb = new RequestBuilder(rootUrl, quitAdventure.PATH, 'delete');
   if (params) {
     rb.path('id', params.id, {});
+    rb.body(params.body, 'application/json');
   }
 
   return http.request(
