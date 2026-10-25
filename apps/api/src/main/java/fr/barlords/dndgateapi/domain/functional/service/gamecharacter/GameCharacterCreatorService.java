@@ -12,6 +12,8 @@ import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterCreatorA
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
 import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
+import fr.barlords.dndgateapi.domain.functional.model.plan.PlanLimit;
+import fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,6 +35,8 @@ public class GameCharacterCreatorService implements GameCharacterCreatorApi {
     private final MinioSpi minioSpi;
 
     private final QuantityLimits limits;
+
+    private final EntitlementApi entitlementApi;
 
     private static final int MAX_PICTURE_BYTES = 5 * 1024 * 1024;
 
@@ -83,9 +87,7 @@ public class GameCharacterCreatorService implements GameCharacterCreatorApi {
 
     private void verifyLimit(UUID ownerId, UUID adventureId) {
         if (adventureId == null) {
-            if (spi.countByOwnerIdWithoutAdventure(ownerId) >= limits.charactersWithoutAdventurePerAccount()) {
-                throw QuantityLimitExceededException.charactersWithoutAdventure(limits.charactersWithoutAdventurePerAccount());
-            }
+            entitlementApi.verifyAccountLimit(ownerId, PlanLimit.CHARACTERS_WITHOUT_ADVENTURE, spi.countByOwnerIdWithoutAdventure(ownerId));
         } else if (spi.countByOwnerIdAndAdventureId(ownerId, adventureId) >= limits.charactersPerPlayerAndAdventure()) {
             throw QuantityLimitExceededException.characters(limits.charactersPerPlayerAndAdventure());
         }

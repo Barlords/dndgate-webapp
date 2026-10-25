@@ -11,22 +11,6 @@ public class QuantityLimitExceededException extends RuntimeException {
         return new QuantityLimitExceededException("A player can have at most " + max + " characters in an adventure");
     }
 
-    public static QuantityLimitExceededException charactersWithoutAdventure(int max) {
-        return new QuantityLimitExceededException("An account can have at most " + max + " characters outside any adventure");
-    }
-
-    public static QuantityLimitExceededException magicItems(int max) {
-        return new QuantityLimitExceededException("An account can have at most " + max + " magic items");
-    }
-
-    public static QuantityLimitExceededException activeAdventures(int max) {
-        return new QuantityLimitExceededException("An account can be game master of at most " + max + " active adventures");
-    }
-
-    public static QuantityLimitExceededException spellBooks(int max) {
-        return new QuantityLimitExceededException("An account can have at most " + max + " spell books");
-    }
-
     public static QuantityLimitExceededException spells(int max) {
         return new QuantityLimitExceededException("A spell book can hold at most " + max + " spells");
     }

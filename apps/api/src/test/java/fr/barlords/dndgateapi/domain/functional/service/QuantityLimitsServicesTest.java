@@ -10,24 +10,19 @@ import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.note.AdventureNote;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.note.HistoricalNote;
-import fr.barlords.dndgateapi.domain.functional.model.magicitem.MagicItem;
-import fr.barlords.dndgateapi.domain.functional.service.adventure.AdventureCreatorService;
 import fr.barlords.dndgateapi.domain.functional.service.adventure.AdventureOwnerVerifierService;
 import fr.barlords.dndgateapi.domain.functional.service.adventurenote.AdventureNoteCreatorService;
 import fr.barlords.dndgateapi.domain.functional.service.gamecharacter.GameCharacterCreatorService;
 import fr.barlords.dndgateapi.domain.functional.service.historicnote.HistoricalNoteCreatorService;
-import fr.barlords.dndgateapi.domain.functional.service.magicitem.MagicItemCreatorService;
 import fr.barlords.dndgateapi.domain.functional.service.message.MessageCreatorService;
-import fr.barlords.dndgateapi.domain.functional.service.spellbook.SpellBookCreatorService;
 import fr.barlords.dndgateapi.domain.functional.service.spellbook.SpellBookImporterService;
 import fr.barlords.dndgateapi.domain.functional.service.spellbook.SpellBookOwnerVerifierService;
 import fr.barlords.dndgateapi.domain.functional.service.spellbook.spell.SpellWriterService;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureAccessVerifierApi;
+import fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi;
 import fr.barlords.dndgateapi.domain.port.out.AdventureNotePersistenceSpi;
-import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.HistoricalNotePersistenceSpi;
-import fr.barlords.dndgateapi.domain.port.out.MagicItemPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MessagePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
 import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
@@ -53,7 +48,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/** Every cap of review v2 point 40, with small limits: the domain refuses, whatever the caller. */
+/** The technical ceilings that remain for everybody (the quotas by plan are in AccountPlanLimitsTest). */
 @ExtendWith(MockitoExtension.class)
 class QuantityLimitsServicesTest {
 
@@ -63,23 +58,17 @@ class QuantityLimitsServicesTest {
 
     private static final byte[] PNG = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3};
 
-    private static final QuantityLimits LIMITS = new QuantityLimits(2, 3, 4, 5, 6, 7, 9, 10, 8, WINDOW);
+    private static final QuantityLimits LIMITS = new QuantityLimits(2, 5, 6, 7, 8, WINDOW);
 
     private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
 
     private final Account account = Account.builder().pseudo("someone").email("someone@test.fr").build();
 
     @Mock
-    private AdventurePersistenceSpi adventureSpi;
-
-    @Mock
     private GameCharacterPersistenceSpi characterSpi;
 
     @Mock
     private SpellBookPersistenceSpi spellBookSpi;
-
-    @Mock
-    private MagicItemPersistenceSpi magicItemSpi;
 
     @Mock
     private AdventureNotePersistenceSpi adventureNoteSpi;
@@ -105,6 +94,9 @@ class QuantityLimitsServicesTest {
     @Mock
     private MinioSpi minioSpi;
 
+    @Mock
+    private EntitlementApi entitlement;
+
     private static Set<String> spells(int count) {
         return new HashSet<>(IntStream.range(0, count).mapToObj(i -> "spell-" + i).toList());
     }
@@ -114,7 +106,7 @@ class QuantityLimitsServicesTest {
     private GameCharacter createCharacter(Adventure adventure) {
         when(currentAccountService.getAccountById(account.getId())).thenReturn(account);
         when(accessVerifier.verifyParticipant(account.getId(), adventure.getId())).thenReturn(adventure);
-        return new GameCharacterCreatorService(characterSpi, accessVerifier, currentAccountService, minioSpi, LIMITS)
+        return new GameCharacterCreatorService(characterSpi, accessVerifier, currentAccountService, minioSpi, LIMITS, entitlement)
                 .create(account.getId(), adventure.getId(), GameCharacter.builder().name("Gandalf").build(), new ByteArrayInputStream(PNG));
     }
 
@@ -138,126 +130,10 @@ class QuantityLimitsServicesTest {
         verify(minioSpi, never()).uploadFile(any(), any(), any());
     }
 
-    // ---- characters outside any adventure: per account ----
-
-    private GameCharacter createCharacterWithoutAdventure() {
-        when(currentAccountService.getAccountById(account.getId())).thenReturn(account);
-        return new GameCharacterCreatorService(characterSpi, accessVerifier, currentAccountService, minioSpi, LIMITS)
-                .create(account.getId(), null, GameCharacter.builder().name("Gandalf").build(), new ByteArrayInputStream(PNG));
-    }
-
-    @Test
-    void an_account_below_the_limit_of_characters_outside_any_adventure_creates_one() {
-        when(characterSpi.countByOwnerIdWithoutAdventure(account.getId())).thenReturn(8L);
-        when(characterSpi.save(any(GameCharacter.class))).thenAnswer(i -> i.getArguments()[0]);
-
-        Assertions.assertNotNull(createCharacterWithoutAdventure());
-        verify(characterSpi, never()).countByOwnerIdAndAdventureId(any(), any());
-    }
-
-    @Test
-    void an_account_at_the_limit_of_characters_outside_any_adventure_creates_none_and_nothing_is_uploaded() throws Exception {
-        when(characterSpi.countByOwnerIdWithoutAdventure(account.getId())).thenReturn(9L);
-
-        QuantityLimitExceededException refused =
-                Assertions.assertThrows(QuantityLimitExceededException.class, this::createCharacterWithoutAdventure);
-
-        Assertions.assertEquals("An account can have at most 9 characters outside any adventure", refused.getMessage());
-        verify(characterSpi, never()).save(any());
-        verify(minioSpi, never()).uploadFile(any(), any(), any());
-    }
-
-    // ---- magic items per account ----
-
-    private MagicItem createMagicItem() {
-        when(currentAccountService.getAccountById(account.getId())).thenReturn(account);
-        return new MagicItemCreatorService(magicItemSpi, currentAccountService, LIMITS)
-                .create(account.getId(), MagicItem.builder().name("Ring").build());
-    }
-
-    @Test
-    void an_account_below_the_magic_item_limit_creates_one() {
-        when(magicItemSpi.countByOwnerId(account.getId())).thenReturn(9L);
-        when(magicItemSpi.save(any(MagicItem.class))).thenAnswer(i -> i.getArguments()[0]);
-
-        Assertions.assertEquals(account, createMagicItem().getOwner());
-    }
-
-    @Test
-    void an_account_at_the_magic_item_limit_creates_none() {
-        when(magicItemSpi.countByOwnerId(account.getId())).thenReturn(10L);
-
-        QuantityLimitExceededException refused = Assertions.assertThrows(QuantityLimitExceededException.class, this::createMagicItem);
-
-        Assertions.assertEquals("An account can have at most 10 magic items", refused.getMessage());
-        verify(magicItemSpi, never()).save(any());
-    }
-
-    // ---- active adventures per master ----
-
-    private Adventure createAdventure() {
-        when(currentAccountService.getAccountById(account.getId())).thenReturn(account);
-        return new AdventureCreatorService(adventureSpi, currentAccountService, LIMITS)
-                .create(account.getId(), Adventure.builder().name("Quest").build());
-    }
-
-    @Test
-    void a_master_below_the_active_adventure_limit_creates_one() {
-        when(adventureSpi.countActiveByOwnerId(account.getId())).thenReturn(2L);
-        when(adventureSpi.save(any(Adventure.class))).thenAnswer(i -> i.getArguments()[0]);
-
-        Assertions.assertNotNull(createAdventure());
-    }
-
-    @Test
-    void a_master_at_the_active_adventure_limit_creates_none() {
-        when(adventureSpi.countActiveByOwnerId(account.getId())).thenReturn(3L);
-
-        Assertions.assertThrows(QuantityLimitExceededException.class, this::createAdventure);
-
-        verify(adventureSpi, never()).save(any());
-    }
-
-    // ---- spell books per account ----
-
-    @Test
-    void an_account_below_the_spell_book_limit_creates_one() {
-        when(currentAccountService.getAccountById(account.getId())).thenReturn(account);
-        when(spellBookSpi.countByOwnerId(account.getId())).thenReturn(3L);
-        when(spellBookSpi.save(any(SpellBook.class))).thenAnswer(i -> i.getArguments()[0]);
-
-        Assertions.assertNotNull(new SpellBookCreatorService(spellBookSpi, currentAccountService, LIMITS)
-                .create(account.getId(), SpellBook.builder().name("Book").build()));
-    }
-
-    @Test
-    void an_account_at_the_spell_book_limit_creates_none() {
-        when(currentAccountService.getAccountById(account.getId())).thenReturn(account);
-        when(spellBookSpi.countByOwnerId(account.getId())).thenReturn(4L);
-
-        Assertions.assertThrows(QuantityLimitExceededException.class,
-                () -> new SpellBookCreatorService(spellBookSpi, currentAccountService, LIMITS)
-                        .create(account.getId(), SpellBook.builder().name("Book").build()));
-
-        verify(spellBookSpi, never()).save(any());
-    }
-
-    @Test
-    void an_import_counts_as_a_spell_book() {
-        when(currentAccountService.getAccountById(account.getId())).thenReturn(account);
-        when(spellBookSpi.countByOwnerId(account.getId())).thenReturn(4L);
-
-        Assertions.assertThrows(QuantityLimitExceededException.class,
-                () -> new SpellBookImporterService(spellBookSpi, currentAccountService, LIMITS)
-                        .importSpellBook(account.getId(), SpellBook.builder().name("Book").spellList(Set.of("a")).build()));
-
-        verify(spellBookSpi, never()).save(any());
-    }
-
     @Test
     void an_import_with_too_many_spells_is_refused_and_one_at_the_limit_is_kept() {
         when(currentAccountService.getAccountById(account.getId())).thenReturn(account);
-        SpellBookImporterService service = new SpellBookImporterService(spellBookSpi, currentAccountService, LIMITS);
+        SpellBookImporterService service = new SpellBookImporterService(spellBookSpi, currentAccountService, LIMITS, entitlement);
 
         Assertions.assertThrows(QuantityLimitExceededException.class,
                 () -> service.importSpellBook(account.getId(), SpellBook.builder().name("Book").spellList(spells(6)).build()));
@@ -378,10 +254,13 @@ class QuantityLimitsServicesTest {
 
     @Test
     void the_limits_must_be_positive() {
-        Assertions.assertThrows(IllegalArgumentException.class, () -> new QuantityLimits(0, 1, 1, 1, 1, 1, 1, 1, 1, WINDOW));
-        Assertions.assertThrows(IllegalArgumentException.class, () -> new QuantityLimits(1, 1, 1, 1, 1, 1, 0, 1, 1, WINDOW));
-        Assertions.assertThrows(IllegalArgumentException.class, () -> new QuantityLimits(1, 1, 1, 1, 1, 1, 1, 0, 1, WINDOW));
-        Assertions.assertThrows(IllegalArgumentException.class, () -> new QuantityLimits(1, 1, 1, 1, 1, 1, 1, 1, 1, Duration.ZERO));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new QuantityLimits(0, 1, 1, 1, 1, WINDOW));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new QuantityLimits(1, 0, 1, 1, 1, WINDOW));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new QuantityLimits(1, 1, 0, 1, 1, WINDOW));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new QuantityLimits(1, 1, 1, 0, 1, WINDOW));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new QuantityLimits(1, 1, 1, 1, 0, WINDOW));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new QuantityLimits(1, 1, 1, 1, 1, Duration.ZERO));
         Assertions.assertEquals(30, QuantityLimits.defaults().messagesPerWindow());
+        Assertions.assertEquals(1000, QuantityLimits.defaults().spellsPerSpellBook());
     }
 }

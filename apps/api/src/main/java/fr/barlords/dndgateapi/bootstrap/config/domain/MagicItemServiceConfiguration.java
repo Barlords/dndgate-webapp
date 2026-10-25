@@ -1,6 +1,6 @@
 package fr.barlords.dndgateapi.bootstrap.config.domain;
 
-import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
+import fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi;
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
 import fr.barlords.dndgateapi.domain.functional.service.magicitem.*;
 import fr.barlords.dndgateapi.domain.port.in.magicitem.MagicItemCreatorApi;
@@ -26,9 +26,9 @@ public class MagicItemServiceConfiguration {
     public MagicItemCreatorApi magicItemCreatorApi(
             MagicItemPersistenceSpi spi,
             CurrentAccountService currentAccountService,
-            QuantityLimits quantityLimits
+            EntitlementApi entitlementApi
     ) {
-        return new MagicItemCreatorService(spi, currentAccountService, quantityLimits);
+        return new MagicItemCreatorService(spi, currentAccountService, entitlementApi);
     }
 
     @Bean

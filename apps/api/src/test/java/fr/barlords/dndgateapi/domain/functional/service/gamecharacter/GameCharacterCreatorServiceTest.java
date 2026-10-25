@@ -8,6 +8,7 @@ import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureAccessVerifierApi;
+import fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi;
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
 import org.junit.jupiter.api.Assertions;
@@ -48,6 +49,9 @@ class GameCharacterCreatorServiceTest {
     @Mock
     private MinioSpi minioSpi;
 
+    @Mock
+    private EntitlementApi entitlement;
+
     private GameCharacterCreatorService service;
 
     private final Account player = Account.builder().pseudo("player").email("player@test.fr").build();
@@ -58,7 +62,7 @@ class GameCharacterCreatorServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new GameCharacterCreatorService(spi, adventureAccessVerifierApi, currentAccountService, minioSpi, QuantityLimits.defaults());
+        service = new GameCharacterCreatorService(spi, adventureAccessVerifierApi, currentAccountService, minioSpi, QuantityLimits.defaults(), entitlement);
         when(currentAccountService.getAccountById(player.getId())).thenReturn(player);
     }
 
