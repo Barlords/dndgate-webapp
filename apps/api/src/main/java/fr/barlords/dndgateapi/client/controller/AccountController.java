@@ -20,7 +20,9 @@ import fr.barlords.dndgateapi.client.service.ClientAddresses;
 import fr.barlords.dndgateapi.client.validator.UuidValidator;
 import fr.barlords.dndgateapi.domain.functional.exception.account.TokenNotValidException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.AccountNotFoundException;
+import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.port.in.account.*;
+import fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -56,11 +58,13 @@ public class AccountController {
 
     private final AccountSessionRevokerApi accountSessionRevokerApi;
 
+    private final EntitlementApi entitlementApi;
+
     @GetMapping("/me")
     @ResponseStatus(OK)
     public AccountDto getMyProfile() {
         return accountFinderApi.findById(authVerifierService.currentAccountId())
-                .map(AccountDtoMapper::toDto)
+                .map(account -> AccountDtoMapper.toDto(account, entitlementApi.badgeOf(account.getId())))
                 .orElseThrow(TokenNotValidException::new);
     }
 
@@ -68,7 +72,7 @@ public class AccountController {
     @ResponseStatus(OK)
     public PublicAccountDto getAccountById(@PathVariable String id) {
         return accountFinderApi.findById(UuidValidator.validate(id))
-                .map(AccountDtoMapper::toPublicDto)
+                .map(account -> AccountDtoMapper.toPublicDto(account, entitlementApi.badgeOf(account.getId())))
                 .orElseThrow(AccountNotFoundException::new);
     }
 
@@ -76,7 +80,7 @@ public class AccountController {
     @ResponseStatus(OK)
     public PublicAccountDto getAccountByPseudo(@PathVariable String pseudo) {
         return accountFinderApi.findByPseudo(pseudo)
-                .map(AccountDtoMapper::toPublicDto)
+                .map(account -> AccountDtoMapper.toPublicDto(account, entitlementApi.badgeOf(account.getId())))
                 .orElseThrow(AccountNotFoundException::new);
     }
 
@@ -94,14 +98,13 @@ public class AccountController {
     @PatchMapping
     @ResponseStatus(OK)
     public AccountDto patchAccount(@Valid @RequestBody AccountUpdateRequest request, HttpServletRequest httpRequest) {
-        return AccountDtoMapper.toDto(
-                accountUpdaterApi.update(
-                        authVerifierService.currentAccountId(),
-                        request.currentPassword(),
-                        AccountDtoMapper.toChanges(request),
-                        ClientAddresses.of(httpRequest)
-                )
+        Account updated = accountUpdaterApi.update(
+                authVerifierService.currentAccountId(),
+                request.currentPassword(),
+                AccountDtoMapper.toChanges(request),
+                ClientAddresses.of(httpRequest)
         );
+        return AccountDtoMapper.toDto(updated, entitlementApi.badgeOf(updated.getId()));
     }
 
     @DeleteMapping

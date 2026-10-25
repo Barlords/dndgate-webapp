@@ -47,6 +47,11 @@ public class Account {
     @With
     Instant pendingEmailExpiresAt;
 
+    /** Early supporter badge, granted by hand in the database; an anonymized account loses it. */
+    @Builder.Default
+    @With
+    boolean founder = false;
+
     /** Set when the account was anonymized: it keeps its id, but nothing identifies the person anymore. */
     @With
     Instant anonymizedAt;

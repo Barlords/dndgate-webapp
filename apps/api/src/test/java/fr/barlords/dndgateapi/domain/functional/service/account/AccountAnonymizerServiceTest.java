@@ -96,6 +96,7 @@ public class AccountAnonymizerServiceTest {
 
     private final Account account = Account.builder()
             .pseudo("gandalf").email("gandalf@middle.earth").password("hash").activated(true)
+            .founder(true)
             .build();
 
     @Mock
@@ -159,6 +160,13 @@ public class AccountAnonymizerServiceTest {
         Assertions.assertFalse(anonymous.isActivated());
         Assertions.assertEquals(NOW, anonymous.getAnonymizedAt());
         Assertions.assertTrue(anonymous.isAnonymized());
+    }
+
+    @Test
+    void the_founder_badge_is_removed() {
+        service.anonymize(account.getId(), "password", CLIENT);
+
+        Assertions.assertFalse(savedAccount().isFounder());
     }
 
     @Test

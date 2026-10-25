@@ -3122,6 +3122,10 @@ components:
           type: string
         pendingEmail:
           type: string
+        founder:
+          type: boolean
+        planBadge:
+          type: string
     SpellBookImportExportDto:
       type: object
       properties:
@@ -3287,6 +3291,10 @@ components:
           type: string
         anonymized:
           type: boolean
+        founder:
+          type: boolean
+        planBadge:
+          type: string
     ExplicitDeletionRequest:
       type: object
       properties:

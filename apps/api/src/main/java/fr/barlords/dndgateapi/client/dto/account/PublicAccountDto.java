@@ -9,5 +9,8 @@ import java.util.UUID;
 public record PublicAccountDto(
         UUID id,
         String pseudo,
-        boolean anonymized
+        boolean anonymized,
+        boolean founder,
+        /** {@code dungeon-master}, {@code legend} or null: the badge of the plan in force. */
+        String planBadge
 ) { }
