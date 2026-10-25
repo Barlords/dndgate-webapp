@@ -51,7 +51,7 @@ import { BillingInterval, PlanAction, PlanCard } from './plan-card';
                 [currency]="catalog.currency ?? 'EUR'"
                 [interval]="interval()"
                 [action]="actionFor(plan.id ?? '')"
-                [busy]="billing.busy()"
+                [busy]="billing.busy() && clicked() === plan.id"
                 (act)="act(plan.id ?? '')"
               />
             </li>
@@ -101,10 +101,13 @@ export class PlansPage {
   protected readonly interval = signal<BillingInterval>('monthly');
   protected readonly failure = signal<ApiProblem | null>(null);
   private readonly loaded = signal(false);
+  /** This visit's answer about the reader's offer has come (the service may still hold an older one). */
+  private readonly subscriptionLoaded = signal(false);
+  protected readonly clicked = signal<string | null>(null);
 
   /** The catalog, shown once the reader's own offer is known too when there is a reader. */
   protected readonly catalog = computed(() =>
-    this.loaded() && (!this.auth.isAuthenticated() || this.billing.subscription() !== null)
+    this.loaded() && (!this.auth.isAuthenticated() || this.subscriptionLoaded())
       ? this.plans.catalog()
       : null,
   );
@@ -116,6 +119,7 @@ export class PlansPage {
   protected load(): void {
     this.failure.set(null);
     this.loaded.set(false);
+    this.subscriptionLoaded.set(false);
     this.plans
       .load()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -127,7 +131,10 @@ export class PlansPage {
       this.billing
         .loadMine()
         .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe({ error: (error: unknown) => this.failure.set(toApiProblem(error)) });
+        .subscribe({
+          next: () => this.subscriptionLoaded.set(true),
+          error: (error: unknown) => this.failure.set(toApiProblem(error)),
+        });
     }
   }
 
@@ -147,6 +154,7 @@ export class PlansPage {
   }
 
   protected act(planId: string): void {
+    this.clicked.set(planId);
     if (this.actionFor(planId) === 'manage') {
       this.billing.openPortal();
     } else {

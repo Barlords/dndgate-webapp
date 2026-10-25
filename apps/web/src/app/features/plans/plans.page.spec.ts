@@ -2,11 +2,12 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { NEVER } from 'rxjs';
 import { provideRouter } from '@angular/router';
 import { provideApi } from '../../core/api/api.providers';
 import { SubscriptionDto } from '../../core/api/generated/models/subscription-dto';
 import { AuthService } from '../../core/auth/auth.service';
-import { REDIRECT } from '../../core/plans/billing.service';
+import { Billing, REDIRECT } from '../../core/plans/billing.service';
 import { PlansPage } from './plans.page';
 
 const LIMITS = { spellBooks: 2, messagesPerAdventure: 1000 };
@@ -59,7 +60,7 @@ describe('PlansPage', () => {
         { provide: REDIRECT, useValue: redirect },
         {
           provide: AuthService,
-          useValue: { account, isAuthenticated: () => account() !== null },
+          useValue: { account, isAuthenticated: () => account() !== null, sessionEnded: NEVER },
         },
       ],
     });
@@ -106,8 +107,8 @@ describe('PlansPage', () => {
     expect(plain(text(shown[1]))).toContain('Grimoires2');
     const chosen = shown.filter((card) => text(card).includes('Le plus choisi'));
     expect(chosen).toEqual([shown[2]]);
-    expect(text(shown[2])).toContain('MJ');
-    expect(text(shown[3])).toContain('Légende');
+    expect(text(shown[2].querySelector('.seal--badge')!)).toBe('MJ');
+    expect(text(shown[3].querySelector('.seal--badge')!)).toBe('Légende');
     expect((fixture.nativeElement as HTMLElement).querySelector('a[href="/terms"]')).not.toBeNull();
   });
 
@@ -139,7 +140,7 @@ describe('PlansPage', () => {
     const fixture = await open({ planId: 'adventurer', billingEnabled: true, status: null });
     const shown = cards(fixture);
     const current = shown[0].querySelector('button')!;
-    expect(text(current)).toBe('Votre offre');
+    expect(text(current)).toBe('Ton offre');
     expect(current.disabled).toBe(true);
 
     const yearly = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].find(
@@ -161,7 +162,7 @@ describe('PlansPage', () => {
   it('a_subscribed_reader_manages_in_the_portal', async () => {
     const fixture = await open({ planId: 'hero', billingEnabled: true, status: 'active' });
     const shown = cards(fixture);
-    expect(text(shown[1].querySelector('button')!)).toBe('Votre offre');
+    expect(text(shown[1].querySelector('button')!)).toBe('Ton offre');
     expect(shown[1].querySelector('button')!.disabled).toBe(true);
     for (const index of [0, 2, 3]) {
       expect(text(shown[index].querySelector('button')!)).toBe('Gérer mon abonnement');
@@ -177,7 +178,7 @@ describe('PlansPage', () => {
     const fixture = await open({ planId: 'adventurer', billingEnabled: false, status: null });
     const buttons = cards(fixture).map((card) => card.querySelector('button')!);
     expect(buttons.map(text)).toEqual([
-      'Votre offre',
+      'Ton offre',
       'Paiement indisponible',
       'Paiement indisponible',
       'Paiement indisponible',
@@ -197,6 +198,65 @@ describe('PlansPage', () => {
     expect(redirect).toHaveBeenCalledExactlyOnceWith('https://stripe.test/portal');
   });
 
+  it('a_stale_subscription_is_never_shown_while_the_reload_is_pending', async () => {
+    const first = await open({ planId: 'hero', billingEnabled: true, status: 'active' });
+    expect(cards(first)).toHaveLength(4);
+    first.destroy();
+
+    const second = TestBed.createComponent(PlansPage);
+    second.detectChanges();
+    // The plan of the previous visit is not shown: nothing but the loader until the new answer.
+    expect(TestBed.inject(Billing).subscription()).toBeNull();
+    expect(cards(second)).toHaveLength(0);
+    // The catalog is kept for the session: only the subscription is asked again.
+    backend
+      .expectOne((r) => r.url.endsWith('/accounts/me/subscription'))
+      .flush({ planId: 'legendary', billingEnabled: true, status: 'active' });
+    await settle(second);
+    expect(text(cards(second)[3].querySelector('button')!)).toBe('Ton offre');
+  });
+
+  it('the_spinner_is_only_on_the_clicked_card', async () => {
+    const fixture = await open({ planId: 'adventurer', billingEnabled: true, status: null });
+    cards(fixture)[1].querySelector('button')!.click();
+    await settle(fixture);
+    const busy = cards(fixture).map((card) => card.querySelector('dg-spinner') !== null);
+    expect(busy).toEqual([false, true, false, false]);
+    backend
+      .expectOne((r) => r.url.endsWith('/billing/checkout-session'))
+      .flush({ url: 'https://stripe.test/pay' });
+  });
+
+  it('a_logged_reader_whose_subscription_fails_to_load_sees_the_load_error', async () => {
+    localStorage.clear();
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideApi(),
+        provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: {
+            account: signal({ id: 'me', pseudo: 'Me' }),
+            isAuthenticated: () => true,
+            sessionEnded: NEVER,
+          },
+        },
+      ],
+    });
+    backend = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(PlansPage);
+    fixture.detectChanges();
+    backend.expectOne((r) => r.url.endsWith('/plans')).flush(CATALOG);
+    backend
+      .expectOne((r) => r.url.endsWith('/accounts/me/subscription'))
+      .flush('', { status: 500, statusText: 'x' });
+    await settle(fixture);
+    expect((fixture.nativeElement as HTMLElement).querySelector('[role="alert"]')).not.toBeNull();
+    expect(cards(fixture)).toHaveLength(0);
+  });
+
   it('a_failed_load_offers_a_retry', async () => {
     localStorage.clear();
     TestBed.configureTestingModule({
@@ -205,7 +265,10 @@ describe('PlansPage', () => {
         provideHttpClientTesting(),
         provideApi(),
         provideRouter([]),
-        { provide: AuthService, useValue: { account: signal(null), isAuthenticated: () => false } },
+        {
+          provide: AuthService,
+          useValue: { account: signal(null), isAuthenticated: () => false, sessionEnded: NEVER },
+        },
       ],
     });
     backend = TestBed.inject(HttpTestingController);

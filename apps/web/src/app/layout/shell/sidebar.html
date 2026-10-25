@@ -102,12 +102,12 @@
         class="sidebar__account"
         routerLinkActive="on"
         ariaCurrentWhenActive="page"
-        [attr.title]="collapsed() ? t().plans.page.crumb : null"
-        [attr.aria-label]="collapsed() ? t().plans.page.crumb : null"
+        [attr.title]="collapsed() ? t().plans.page.navLabel : null"
+        [attr.aria-label]="collapsed() ? t().plans.page.navLabel : null"
         (click)="linkFollowed()"
       >
         <dg-icon name="crown" />
-        <span class="sidebar__label">{{ t().plans.page.crumb }}</span>
+        <span class="sidebar__label">{{ t().plans.page.navLabel }}</span>
       </a>
     </div>
   </div>

@@ -1,7 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subject } from 'rxjs';
+import { AuthService } from '../auth/auth.service';
 import { provideApi } from '../api/api.providers';
 import { NotifierService } from '../errors/notifier.service';
 import { Billing, REDIRECT } from './billing.service';
@@ -11,15 +12,18 @@ describe('Billing', () => {
   let billing: Billing;
   let redirect: ReturnType<typeof vi.fn>;
   let notifier: NotifierService;
+  let sessionEnded: Subject<void>;
 
   beforeEach(() => {
     redirect = vi.fn();
+    sessionEnded = new Subject<void>();
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
         provideApi(),
         { provide: REDIRECT, useValue: redirect },
+        { provide: AuthService, useValue: { sessionEnded } },
       ],
     });
     backend = TestBed.inject(HttpTestingController);
@@ -40,6 +44,37 @@ describe('Billing', () => {
       .flush({ planId: 'hero', billingEnabled: true });
     expect((await loading).planId).toBe('hero');
     expect(billing.subscription()?.planId).toBe('hero');
+  });
+
+  it('a_reload_forgets_the_previous_answer_and_a_logout_clears_it', async () => {
+    const subscriptionCall = () =>
+      backend.expectOne((r) => r.url.endsWith('/accounts/me/subscription'));
+    const first = firstValueFrom(billing.loadMine());
+    subscriptionCall().flush({ planId: 'hero' });
+    await first;
+
+    const second = firstValueFrom(billing.loadMine());
+    expect(billing.subscription()).toBeNull();
+    subscriptionCall().flush({ planId: 'legendary' });
+    await second;
+    expect(billing.subscription()?.planId).toBe('legendary');
+
+    sessionEnded.next();
+    expect(billing.subscription()).toBeNull();
+  });
+
+  it('a_success_without_url_is_an_error_and_a_redirect_keeps_the_service_busy', () => {
+    billing.openPortal();
+    post('/billing/portal-session').flush({});
+    expect(redirect).not.toHaveBeenCalled();
+    expect(notifier.toasts()).toHaveLength(1);
+    expect(billing.busy()).toBe(false);
+
+    billing.openPortal();
+    post('/billing/portal-session').flush({ url: 'https://stripe.test/portal' });
+    expect(billing.busy()).toBe(true);
+    billing.openPortal();
+    backend.expectNone(() => true);
   });
 
   it('checkout_sends_the_reader_to_the_url_the_api_gives', () => {
@@ -88,6 +123,7 @@ describe('Billing', () => {
     billing.checkout('hero', 'monthly');
     billing.openPortal();
     post('/billing/checkout-session').flush({ url: 'https://stripe.test/pay' });
-    expect(billing.busy()).toBe(false);
+    // Still busy: the page is being left.
+    expect(billing.busy()).toBe(true);
   });
 });

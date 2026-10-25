@@ -52,8 +52,9 @@ export const plans: Dictionary['plans'] = {
   askMaster: (planName) => `Ask your GM: they would need the ${planName} plan to allow it.`,
   seeOffers: 'See the plans',
   billingUnavailable: 'Payment is not available at the moment.',
+  redirectMissing: 'The payment could not be opened. Try again in a moment.',
   page: {
-    crumb: 'Plans',
+    navLabel: 'Plans',
     title: 'The plans',
     intro: 'Pick the plan that suits your table. You can change or stop at any time.',
     billingPeriod: 'Billing period',

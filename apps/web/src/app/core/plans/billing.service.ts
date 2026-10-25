@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, InjectionToken, signal } from '@angular/core';
-import { Observable, switchMap, tap } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { defer, Observable, switchMap, tap } from 'rxjs';
 import { ApiConfiguration } from '../api/generated/api-configuration';
 import {
   createCheckoutSession,
@@ -9,6 +10,7 @@ import {
 } from '../api/generated/functions';
 import { RedirectDto } from '../api/generated/models/redirect-dto';
 import { SubscriptionDto } from '../api/generated/models/subscription-dto';
+import { AuthService } from '../auth/auth.service';
 import { toApiProblem } from '../errors/api-problem';
 import { NotifierService } from '../errors/notifier.service';
 import { I18n } from '../i18n/i18n.service';
@@ -28,6 +30,13 @@ export class Billing {
   private readonly redirect = inject(REDIRECT);
   private readonly t = inject(I18n).t;
 
+  constructor() {
+    // Another reader may sign in next: nothing of this one's offer may be shown to them.
+    inject(AuthService)
+      .sessionEnded.pipe(takeUntilDestroyed())
+      .subscribe(() => this.current.set(null));
+  }
+
   private readonly current = signal<SubscriptionDto | null>(null);
   /** What `GET /accounts/me/subscription` last answered: never the browser return of Checkout. */
   readonly subscription = this.current.asReadonly();
@@ -37,7 +46,11 @@ export class Billing {
   readonly busy = this.running.asReadonly();
 
   loadMine(): Observable<SubscriptionDto> {
-    return getMySubscription(this.http, this.rootUrl).pipe(
+    return defer(() => {
+      // A reload never shows the previous answer while the new one is pending.
+      this.current.set(null);
+      return getMySubscription(this.http, this.rootUrl);
+    }).pipe(
       switchMap((response) => [response.body]),
       tap((subscription) => this.current.set(subscription)),
     );
@@ -73,9 +86,12 @@ export class Billing {
     this.running.set(true);
     call.subscribe({
       next: (response) => {
-        this.running.set(false);
         if (response.body.url) {
+          // Stays busy: the page is about to be left, a second click must not open a second session.
           this.redirect(response.body.url);
+        } else {
+          this.running.set(false);
+          this.notifier.failure(this.t().plans.redirectMissing);
         }
       },
       error: (error: unknown) => {
