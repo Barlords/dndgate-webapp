@@ -64,6 +64,12 @@ public class MessageDatabaseAdapter implements MessagePersistenceSpi {
 
     @Override
     @Transactional
+    public int deleteOldestBeyond(UUID adventureId, int keep) {
+        return repository.deleteOldestBeyond(adventureId, keep);
+    }
+
+    @Override
+    @Transactional
     public List<Message> findBySenderId(UUID senderId) {
         return repository.findMessageEntitiesBySenderIdOrderBySendDate(senderId).stream().map(MessageEntityMapper::toDomain).toList();
     }

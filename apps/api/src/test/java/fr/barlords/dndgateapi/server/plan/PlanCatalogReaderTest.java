@@ -108,8 +108,8 @@ class PlanCatalogReaderTest {
         try (InputStream input = getClass().getResourceAsStream("/plans/test-plans.json")) {
             PlanCatalog catalog = reader.read(input);
             assertEquals("test-default", catalog.defaultPlan().id());
-            assertEquals(3, catalog.plans().size());
-            assertFalse(catalog.plans().get(1).has(Feature.VIDEO));
+            assertEquals(4, catalog.plans().size());
+            assertFalse(catalog.plans().get(2).has(Feature.VIDEO));
         }
     }
 

@@ -120,7 +120,7 @@ class QuantityLimitsServicesTest {
     private Message sendMessage() {
         UUID adventureId = UUID.randomUUID();
         when(accessVerifier.verifyParticipant(account.getId(), adventureId)).thenReturn(Adventure.builder().build());
-        return new MessageCreatorService(messageSpi, accessVerifier, clock, LIMITS)
+        return new MessageCreatorService(messageSpi, accessVerifier, entitlement, clock, LIMITS)
                 .create(account.getId(), Message.builder().adventureId(adventureId).content("hello").build());
     }
 
@@ -128,6 +128,16 @@ class QuantityLimitsServicesTest {
     void messages_below_the_rate_limit_are_saved_and_counted_over_the_last_window() {
         when(messageSpi.countBySenderIdSince(account.getId(), NOW.minus(WINDOW))).thenReturn(7L);
         when(messageSpi.save(any(Message.class))).thenAnswer(i -> i.getArguments()[0]);
+        java.util.Map<fr.barlords.dndgateapi.domain.functional.model.plan.PlanLimit, Integer> planLimits = new java.util.EnumMap<>(fr.barlords.dndgateapi.domain.functional.model.plan.PlanLimit.class);
+        java.util.Map<fr.barlords.dndgateapi.domain.functional.model.plan.Feature, Boolean> planFeatures = new java.util.EnumMap<>(fr.barlords.dndgateapi.domain.functional.model.plan.Feature.class);
+        for (fr.barlords.dndgateapi.domain.functional.model.plan.PlanLimit limit : fr.barlords.dndgateapi.domain.functional.model.plan.PlanLimit.values()) {
+            planLimits.put(limit, 10);
+        }
+        for (fr.barlords.dndgateapi.domain.functional.model.plan.Feature feature : fr.barlords.dndgateapi.domain.functional.model.plan.Feature.values()) {
+            planFeatures.put(feature, true);
+        }
+        when(entitlement.masterPlanOf(any(Adventure.class))).thenReturn(
+                new fr.barlords.dndgateapi.domain.functional.model.plan.Plan("p", false, java.util.Map.of(), planLimits, planFeatures, null));
 
         Assertions.assertNotNull(sendMessage());
     }

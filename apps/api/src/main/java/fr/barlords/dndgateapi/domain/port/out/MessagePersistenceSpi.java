@@ -18,6 +18,9 @@ public interface MessagePersistenceSpi extends PersistenceSpi<Message, UUID> {
     /** How many messages the adventure holds. */
     long countByAdventureId(UUID adventureId);
 
+    /** Deletes the oldest messages of the adventure, keeping the {@code keep} newest; returns how many were deleted. */
+    int deleteOldestBeyond(UUID adventureId, int keep);
+
     List<Message> findBySenderId(UUID senderId);
 
     void deleteByAdventureId(UUID adventureId);
