@@ -358,6 +358,22 @@ class BillingServiceTest {
         service.handleWebhook("payload", "sig");
 
         assertEquals("ghost", saved().getPlanId());
+        List<ILoggingEvent> errors = logsAt(Level.ERROR);
+        assertEquals(1, errors.size(), "reported once, when the sync records it");
+        String message = errors.getFirst().getFormattedMessage();
+        assertTrue(message.contains(CUSTOMER) && message.contains("ghost"), message);
+    }
+
+    @Test
+    void an_unknown_plan_of_a_subscription_that_grants_nothing_is_not_an_error() {
+        hasRow(row(null, null));
+        when(provider.parseWebhookEvent("payload", "sig")).thenReturn(new BillingEvent(UPDATED, CUSTOMER));
+        when(provider.findSubscriptions(CUSTOMER)).thenReturn(List.of(atStripe("sub_1", "ghost", SubscriptionStatus.CANCELED, -1)));
+
+        service.handleWebhook("payload", "sig");
+
+        assertEquals("ghost", saved().getPlanId());
+        assertTrue(logsAt(Level.ERROR).isEmpty());
     }
 
     @Test

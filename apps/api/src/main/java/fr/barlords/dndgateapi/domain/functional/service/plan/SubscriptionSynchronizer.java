@@ -90,6 +90,11 @@ public class SubscriptionSynchronizer {
         if (updated.equals(row)) {
             return true;
         }
+        if (current.status().grantsPlan() && catalog.find(current.planId()).isEmpty()) {
+            log.error("The Stripe customer {} has the subscription {} to the plan {}, unknown to the catalog: the "
+                    + "default plan applies until the product of Stripe or the catalog is fixed", customerId,
+                    current.id(), current.planId());
+        }
         return subscriptions.updateIfUnchanged(updated.withUpdatedAt(nextUpdatedAt(row)), row.getUpdatedAt());
     }
 

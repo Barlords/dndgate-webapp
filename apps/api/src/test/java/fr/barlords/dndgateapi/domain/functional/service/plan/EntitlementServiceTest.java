@@ -14,11 +14,16 @@ import fr.barlords.dndgateapi.domain.functional.model.plan.PlanPrice;
 import fr.barlords.dndgateapi.domain.functional.model.plan.Subscription;
 import fr.barlords.dndgateapi.domain.functional.model.plan.SubscriptionStatus;
 import fr.barlords.dndgateapi.domain.port.out.SubscriptionPersistenceSpi;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mockito;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.EnumMap;
@@ -108,10 +113,21 @@ class EntitlementServiceTest {
     }
 
     @Test
-    void an_unknown_plan_id_gives_the_default_plan() {
+    void an_unknown_plan_id_gives_the_default_plan_without_an_error_on_every_reading() {
         subscribe(account, "retired", SubscriptionStatus.ACTIVE);
+        ListAppender<ILoggingEvent> logs = new ListAppender<>();
+        logs.start();
+        Logger logger = (Logger) LoggerFactory.getLogger(EntitlementService.class);
+        logger.addAppender(logs);
+        try {
+            assertEquals("free", service.planOf(account).id());
+            assertEquals("free", service.planOf(account).id());
+        } finally {
+            logger.detachAppender(logs);
+        }
 
-        assertEquals("free", service.planOf(account).id());
+        // reported once by the sync that recorded it (SubscriptionSynchronizer), not at each reading
+        assertTrue(logs.list.stream().noneMatch(event -> event.getLevel().isGreaterOrEqual(Level.INFO)), logs.list.toString());
     }
 
     @Test

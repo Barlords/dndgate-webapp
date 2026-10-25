@@ -37,7 +37,8 @@ public class EntitlementService implements EntitlementApi {
         String planId = subscription.get().getPlanId();
         Optional<Plan> plan = catalog.find(planId);
         if (plan.isEmpty()) {
-            log.error("Account {} has a subscription to the unknown plan {}: the default plan applies", accountId, planId);
+            // reported as an error once, by the sync that recorded it (SubscriptionSynchronizer)
+            log.debug("Account {} has a subscription to the unknown plan {}: the default plan applies", accountId, planId);
             return catalog.defaultPlan();
         }
         return plan.get();
