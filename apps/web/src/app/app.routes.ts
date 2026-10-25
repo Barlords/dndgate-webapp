@@ -30,6 +30,10 @@ export const routes: Routes = [
       import('./features/account/confirm-email.page').then((m) => m.ConfirmEmailPage),
   },
   {
+    path: 'plans',
+    loadComponent: () => import('./features/plans/plans.page').then((m) => m.PlansPage),
+  },
+  {
     path: 'account',
     canActivate: [authGuard],
     loadComponent: () => import('./features/account/profile.page').then((m) => m.ProfilePage),

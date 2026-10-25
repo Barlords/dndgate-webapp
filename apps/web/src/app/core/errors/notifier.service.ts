@@ -89,6 +89,11 @@ export class NotifierService {
     );
   }
 
+  /** An error whose text the caller already knows (not derived from an HTTP status). */
+  failure(message: string): void {
+    this.push({ kind: 'error', message }, true);
+  }
+
   /** A plan refusal stays until dismissed: the reader has to see which plan would allow it. */
   private refusal(plan: PlanRefusal, context?: string): void {
     const t = this.t();

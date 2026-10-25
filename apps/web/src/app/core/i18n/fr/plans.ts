@@ -50,4 +50,22 @@ export const plans = {
   askMaster: (planName: string) =>
     `Demande à ton MJ : il lui faudrait l’offre ${planName} pour le permettre.`,
   seeOffers: 'Voir les offres',
+  billingUnavailable: 'Le paiement n’est pas disponible pour le moment.',
+  page: {
+    crumb: 'Offres',
+    title: 'Les offres',
+    intro: 'Choisis l’offre qui convient à ta table. Tu peux en changer ou t’arrêter à tout moment.',
+    billingPeriod: 'Période de facturation',
+    includedFeatures: 'Fonctions incluses',
+    limitsHeading: 'Limites',
+    signIn: 'Se connecter',
+    current: 'Votre offre',
+    choose: 'Choisir',
+    manage: 'Gérer mon abonnement',
+    unavailable: 'Paiement indisponible',
+    terms: 'Conditions générales',
+    context: 'Chargement des offres',
+    checkoutContext: 'Ouverture du paiement',
+    portalContext: 'Ouverture de la gestion de l’abonnement',
+  },
 };

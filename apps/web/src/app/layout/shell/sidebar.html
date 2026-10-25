@@ -97,6 +97,18 @@
           <span class="sidebar__label">{{ t().common.shell.signIn }}</span>
         </a>
       }
+      <a
+        routerLink="/plans"
+        class="sidebar__account"
+        routerLinkActive="on"
+        ariaCurrentWhenActive="page"
+        [attr.title]="collapsed() ? t().plans.page.crumb : null"
+        [attr.aria-label]="collapsed() ? t().plans.page.crumb : null"
+        (click)="linkFollowed()"
+      >
+        <dg-icon name="crown" />
+        <span class="sidebar__label">{{ t().plans.page.crumb }}</span>
+      </a>
     </div>
   </div>
 </aside>

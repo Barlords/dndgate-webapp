@@ -17,6 +17,7 @@ export type ButtonVariant = 'primary' | 'ghost' | 'danger';
       [class]="'dg-button dg-button--' + variant()"
       [disabled]="disabled() || loading()"
       [attr.aria-busy]="loading() || null"
+      [attr.aria-pressed]="pressed()"
     >
       @if (loading()) {
         <dg-spinner class="dg-button__spinner" label="" />
@@ -31,4 +32,6 @@ export class Button {
   readonly type = input<'button' | 'submit'>('button');
   readonly disabled = input(false);
   readonly loading = input(false);
+  /** For a toggle button: whether it is on. Left `null`, the button is not a toggle. */
+  readonly pressed = input<boolean | null>(null);
 }
