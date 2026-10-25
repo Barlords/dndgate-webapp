@@ -8,6 +8,7 @@ import fr.barlords.dndgateapi.domain.functional.model.plan.Feature;
 import fr.barlords.dndgateapi.domain.functional.model.plan.Plan;
 import fr.barlords.dndgateapi.domain.functional.model.plan.PlanBadge;
 import fr.barlords.dndgateapi.domain.functional.model.plan.PlanCatalog;
+import fr.barlords.dndgateapi.domain.functional.model.plan.PlanDecider;
 import fr.barlords.dndgateapi.domain.functional.model.plan.PlanLimit;
 import fr.barlords.dndgateapi.domain.functional.model.plan.PlanPrice;
 import fr.barlords.dndgateapi.domain.functional.model.plan.Subscription;
@@ -131,6 +132,7 @@ class EntitlementServiceTest {
         assertEquals(2, e.getMax());
         assertEquals("free", e.getPlanId());
         assertEquals("mid", e.getUpgradePlanId());
+        assertEquals(PlanDecider.ACCOUNT, e.getDecidedBy());
         service.verifyAccountLimit(account, PlanLimit.SPELL_BOOKS, 1);
     }
 
@@ -145,6 +147,7 @@ class EntitlementServiceTest {
         assertEquals("mid", e.getPlanId());
         assertEquals(5, e.getMax());
         assertNull(e.getUpgradePlanId());
+        assertEquals(PlanDecider.MASTER, e.getDecidedBy());
     }
 
     @Test
@@ -196,6 +199,12 @@ class EntitlementServiceTest {
         assertEquals(Feature.VIDEO, e.getFeature());
         assertEquals("free", e.getPlanId());
         assertEquals("top", e.getUpgradePlanId());
+        assertEquals(PlanDecider.ACCOUNT, e.getDecidedBy(), "without an adventure, no master decides");
+
+        subscribe(master, "top", SubscriptionStatus.ACTIVE);
+        assertEquals(PlanDecider.ACCOUNT, assertThrows(FeatureNotIncludedException.class,
+                () -> service.verifyFeature(account, adventureOf(master), Feature.PRIORITY_SUPPORT)).getDecidedBy(),
+                "an account feature is decided by the plan of the caller");
 
         subscribe(account, "top", SubscriptionStatus.ACTIVE);
         service.verifyFeature(account, null, Feature.PRIORITY_SUPPORT);
@@ -211,6 +220,7 @@ class EntitlementServiceTest {
 
         assertEquals("mid", e.getPlanId());
         assertEquals("top", e.getUpgradePlanId());
+        assertEquals(PlanDecider.MASTER, e.getDecidedBy());
     }
 
     @Test
@@ -223,6 +233,7 @@ class EntitlementServiceTest {
 
         assertEquals("free", e.getPlanId());
         assertEquals("mid", e.getUpgradePlanId());
+        assertEquals(PlanDecider.ACCOUNT, e.getDecidedBy());
     }
 
     @Test

@@ -114,6 +114,7 @@ class CharacterReserveIntegrationTest extends ApiIntegrationTestSupport {
         JsonNode problem = body(refused);
         Assertions.assertEquals("urn:dndgate:plan-limit-reached", problem.get("type").asString());
         Assertions.assertEquals("charactersWithoutAdventure", problem.get("limit").asString());
+        Assertions.assertEquals("account", problem.get("decidedBy").asString(), "the reserve follows the plan of the player");
         Assertions.assertEquals(adventureId.toString(),
                 body(call(HttpMethod.GET, "/game-characters/" + played, player.token(), null)).get("adventureId").asString());
     }
@@ -131,6 +132,8 @@ class CharacterReserveIntegrationTest extends ApiIntegrationTestSupport {
 
         Assertions.assertEquals(409, refused.getStatusCode().value(), refused.getBody());
         Assertions.assertEquals("charactersPerPlayerAndAdventure", body(refused).get("limit").asString());
+        Assertions.assertEquals("master", body(refused).get("decidedBy").asString());
+        Assertions.assertEquals("test-tight", body(refused).get("planId").asString(), "the plan of the master is named");
     }
 
     @Test

@@ -7,6 +7,7 @@ import fr.barlords.dndgateapi.domain.functional.exception.plan.PlanLimitReachedE
 import fr.barlords.dndgateapi.domain.functional.model.GameCharacter;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
+import fr.barlords.dndgateapi.domain.functional.model.plan.PlanDecider;
 import fr.barlords.dndgateapi.domain.functional.model.plan.PlanLimit;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureAccessVerifierApi;
 import fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi;
@@ -69,7 +70,7 @@ class GameCharacterMoverServiceTest {
     void moving_to_a_full_reserve_is_refused_and_changes_nothing() {
         GameCharacter inAdventure = character(adventure, true);
         when(spi.countByOwnerIdWithoutAdventure(player.getId())).thenReturn(3L);
-        doThrow(new PlanLimitReachedException(PlanLimit.CHARACTERS_WITHOUT_ADVENTURE, 3, "adventurer", "hero"))
+        doThrow(new PlanLimitReachedException(PlanLimit.CHARACTERS_WITHOUT_ADVENTURE, 3, "adventurer", "hero", PlanDecider.ACCOUNT))
                 .when(entitlement).verifyAccountLimit(player.getId(), PlanLimit.CHARACTERS_WITHOUT_ADVENTURE, 3L);
 
         PlanLimitReachedException refused = Assertions.assertThrows(PlanLimitReachedException.class,
@@ -106,7 +107,7 @@ class GameCharacterMoverServiceTest {
         GameCharacter inReserve = character(null, false);
         when(adventureAccessVerifierApi.verifyParticipant(player.getId(), adventure.getId())).thenReturn(adventure);
         when(spi.countByOwnerIdAndAdventureId(player.getId(), adventure.getId())).thenReturn(1L);
-        doThrow(new PlanLimitReachedException(PlanLimit.CHARACTERS_PER_PLAYER_AND_ADVENTURE, 1, "adventurer", "dungeon-master"))
+        doThrow(new PlanLimitReachedException(PlanLimit.CHARACTERS_PER_PLAYER_AND_ADVENTURE, 1, "adventurer", "dungeon-master", PlanDecider.MASTER))
                 .when(entitlement).verifyAdventureLimit(adventure, PlanLimit.CHARACTERS_PER_PLAYER_AND_ADVENTURE, 1L);
 
         Assertions.assertThrows(PlanLimitReachedException.class,

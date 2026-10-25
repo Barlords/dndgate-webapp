@@ -6,6 +6,7 @@ import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.note.AdventureNote;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.note.HistoricalNote;
+import fr.barlords.dndgateapi.domain.functional.model.plan.PlanDecider;
 import fr.barlords.dndgateapi.domain.functional.model.plan.PlanLimit;
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
 import fr.barlords.dndgateapi.domain.functional.service.adventure.AdventureOwnerVerifierService;
@@ -73,7 +74,7 @@ class AdventurePlanLimitsTest {
     private MinioSpi minioSpi;
 
     private void masterPlanRefuses(PlanLimit limit) {
-        doThrow(new PlanLimitReachedException(limit, 1, "test-tight", "test-paid"))
+        doThrow(new PlanLimitReachedException(limit, 1, "test-tight", "test-paid", PlanDecider.MASTER))
                 .when(entitlement).verifyAdventureLimit(adventure, limit, USED);
     }
 

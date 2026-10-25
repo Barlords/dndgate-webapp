@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record CheckoutSessionRequest(
-        @NotBlank @Size(max = 50) String planId,
+        @NotBlank @Size(min = 1, max = 50) String planId,
         @NotNull @Pattern(regexp = "monthly|yearly")
         @Schema(allowableValues = {"monthly", "yearly"}) String interval) {
 }

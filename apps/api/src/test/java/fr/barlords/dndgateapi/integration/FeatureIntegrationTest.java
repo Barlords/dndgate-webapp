@@ -20,7 +20,8 @@ class FeatureIntegrationTest extends ApiIntegrationTestSupport {
         return account;
     }
 
-    private void assertFeatureProblem(ResponseEntity<String> response, String feature, String planId, String upgradePlanId) {
+    private void assertFeatureProblem(ResponseEntity<String> response, String feature, String planId, String upgradePlanId,
+                                      String decidedBy) {
         Assertions.assertEquals(403, response.getStatusCode().value(), response.getBody());
         Assertions.assertTrue(response.getHeaders().getContentType().toString().contains("problem+json"));
         JsonNode problem = body(response);
@@ -28,6 +29,7 @@ class FeatureIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(feature, problem.get("feature").asString());
         Assertions.assertEquals(planId, problem.get("planId").asString());
         Assertions.assertEquals(upgradePlanId, problem.get("upgradePlanId").asString());
+        Assertions.assertEquals(decidedBy, problem.get("decidedBy").asString());
     }
 
     private ResponseEntity<String> offer(TestAccount account, UUID adventureId) {
@@ -52,7 +54,7 @@ class FeatureIntegrationTest extends ApiIntegrationTestSupport {
     void a_tight_account_sending_a_picture_gets_the_feature_problem() {
         TestAccount tight = accountOn("test-tight");
 
-        assertFeatureProblem(createCharacter(tight, null, "Pictured"), "characterPictures", "test-tight", "test-paid");
+        assertFeatureProblem(createCharacter(tight, null, "Pictured"), "characterPictures", "test-tight", "test-paid", "account");
 
         Assertions.assertEquals(0, jdbc.queryForObject("select count(*) from \"character\" where account_id = ?", Integer.class, tight.id()));
     }
@@ -76,11 +78,11 @@ class FeatureIntegrationTest extends ApiIntegrationTestSupport {
         UUID paidAdventure = createAdventure(paidMaster, "PUBLIC");
 
         // The master's plan is the one reported: the caller cannot unlock the video by upgrading
-        assertFeatureProblem(offer(tightMaster, tightAdventure), "video", "test-tight", "test-paid");
+        assertFeatureProblem(offer(tightMaster, tightAdventure), "video", "test-tight", "test-paid", "master");
         TestAccount paidPlayer = accountOn("test-paid");
         Assertions.assertEquals(200, call(HttpMethod.POST, "/adventures/" + tightAdventure + "/join", paidPlayer.token(), null)
                 .getStatusCode().value());
-        assertFeatureProblem(offer(paidPlayer, tightAdventure), "video", "test-tight", "test-paid");
+        assertFeatureProblem(offer(paidPlayer, tightAdventure), "video", "test-tight", "test-paid", "master");
 
         Assertions.assertEquals(204, offer(paidMaster, paidAdventure).getStatusCode().value());
     }

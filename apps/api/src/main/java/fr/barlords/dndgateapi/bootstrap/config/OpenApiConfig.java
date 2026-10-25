@@ -21,6 +21,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -110,18 +111,43 @@ public class OpenApiConfig {
 
     private static Schema<?> problemSchema() {
         return new ObjectSchema()
-                .description("An error (RFC 9457 problem details). correlationId is the identifier to quote when reporting it.")
+                .description("An error (RFC 9457 problem details). correlationId is the identifier to quote when reporting it. "
+                        + "A refusal of the plan adds its own fields: type urn:dndgate:plan-limit-reached (409) gives limit, "
+                        + "max, planId, upgradePlanId and decidedBy; type urn:dndgate:feature-not-included (403) gives "
+                        + "feature, planId, upgradePlanId and decidedBy. Type urn:dndgate:subscription-sync-conflict (503) "
+                        + "is a webhook to send again.")
                 .addProperty("type", new StringSchema().example("about:blank"))
                 .addProperty("title", new StringSchema().example("Not Found"))
                 .addProperty("status", new IntegerSchema().example(404))
                 .addProperty("detail", new StringSchema().description("What went wrong, in English."))
                 .addProperty("instance", new StringSchema().description("The path of the request."))
                 .addProperty("correlationId", new StringSchema().description("Same value as the X-Request-Id header."))
+                .addProperty("limit", new StringSchema()
+                        .description("plan-limit-reached only: the key of the limit (spellBooks, ...).")
+                        .example("spellBooks"))
+                .addProperty("max", new IntegerSchema().description("plan-limit-reached only: the maximum of the plan."))
+                .addProperty("feature", new StringSchema()
+                        .description("feature-not-included only: the key of the feature (video, ...).")
+                        .example("video"))
+                .addProperty("planId", new StringSchema().description("A refusal of the plan: the plan that decided it "
+                        + "(the plan of the game master when decidedBy is master)."))
+                .addProperty("upgradePlanId", nullableString(
+                        "A refusal of the plan: the lowest plan that would allow it, null when no plan does."))
+                .addProperty("decidedBy", new StringSchema()._enum(List.of("account", "master"))
+                        .description("A refusal of the plan: account when the plan of the caller decided it, master "
+                                + "when the plan of the game master of the adventure did."))
                 .addProperty("errors", new ArraySchema()
                         .description("Only for a request that is not valid: one entry per field.")
                         .items(new ObjectSchema()
                                 .addProperty("field", new StringSchema())
                                 .addProperty("message", new StringSchema())));
+    }
+
+    /** OpenAPI 3.1 says "may be null" with a second type. */
+    private static Schema<?> nullableString(String description) {
+        Schema<?> schema = new Schema<>().description(description);
+        schema.setTypes(new LinkedHashSet<>(List.of("string", "null")));
+        return schema;
     }
 
 }

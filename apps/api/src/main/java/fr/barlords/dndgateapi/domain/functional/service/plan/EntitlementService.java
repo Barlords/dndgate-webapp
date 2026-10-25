@@ -7,6 +7,7 @@ import fr.barlords.dndgateapi.domain.functional.model.plan.Feature;
 import fr.barlords.dndgateapi.domain.functional.model.plan.Plan;
 import fr.barlords.dndgateapi.domain.functional.model.plan.PlanBadge;
 import fr.barlords.dndgateapi.domain.functional.model.plan.PlanCatalog;
+import fr.barlords.dndgateapi.domain.functional.model.plan.PlanDecider;
 import fr.barlords.dndgateapi.domain.functional.model.plan.PlanLimit;
 import fr.barlords.dndgateapi.domain.functional.model.plan.Subscription;
 import fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi;
@@ -52,12 +53,12 @@ public class EntitlementService implements EntitlementApi {
 
     @Override
     public void verifyAccountLimit(UUID accountId, PlanLimit limit, long used) {
-        verifyLimit(planOf(accountId), limit, used);
+        verifyLimit(planOf(accountId), limit, used, PlanDecider.ACCOUNT);
     }
 
     @Override
     public void verifyAdventureLimit(Adventure adventure, PlanLimit limit, long used) {
-        verifyLimit(masterPlanOf(adventure), limit, used);
+        verifyLimit(masterPlanOf(adventure), limit, used, PlanDecider.MASTER);
     }
 
     @Override
@@ -74,11 +75,12 @@ public class EntitlementService implements EntitlementApi {
     public void verifyFeature(UUID accountId, Adventure adventureOrNull, Feature feature) {
         if (!allows(accountId, adventureOrNull, feature)) {
             // A master feature is unlocked by the plan of the game master, not by the one of the caller
-            Plan plan = feature.reach() == Feature.Reach.MASTER && adventureOrNull != null
-                    ? masterPlanOf(adventureOrNull)
-                    : planOf(accountId);
+            PlanDecider decidedBy = feature.reach() == Feature.Reach.MASTER && adventureOrNull != null
+                    ? PlanDecider.MASTER
+                    : PlanDecider.ACCOUNT;
+            Plan plan = decidedBy == PlanDecider.MASTER ? masterPlanOf(adventureOrNull) : planOf(accountId);
             String upgrade = catalog.lowestWith(plan, feature).map(Plan::id).orElse(null);
-            throw new FeatureNotIncludedException(feature, plan.id(), upgrade);
+            throw new FeatureNotIncludedException(feature, plan.id(), upgrade, decidedBy);
         }
     }
 
@@ -103,11 +105,11 @@ public class EntitlementService implements EntitlementApi {
         return master.has(Feature.EQUIPPED_TABLE) && master.has(feature);
     }
 
-    private void verifyLimit(Plan plan, PlanLimit limit, long used) {
+    private void verifyLimit(Plan plan, PlanLimit limit, long used, PlanDecider decidedBy) {
         int max = plan.limit(limit);
         if (used >= max) {
             String upgrade = catalog.lowestAbove(plan, limit).map(Plan::id).orElse(null);
-            throw new PlanLimitReachedException(limit, max, plan.id(), upgrade);
+            throw new PlanLimitReachedException(limit, max, plan.id(), upgrade, decidedBy);
         }
     }
 }

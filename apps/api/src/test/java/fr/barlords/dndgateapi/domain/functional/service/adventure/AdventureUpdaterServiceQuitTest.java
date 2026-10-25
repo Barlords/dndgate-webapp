@@ -17,6 +17,7 @@ import fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi;
 import fr.barlords.dndgateapi.domain.functional.exception.DeletionNotConfirmedException;
 import fr.barlords.dndgateapi.domain.functional.exception.plan.PlanLimitReachedException;
 import fr.barlords.dndgateapi.domain.functional.model.GameCharacter;
+import fr.barlords.dndgateapi.domain.functional.model.plan.PlanDecider;
 import fr.barlords.dndgateapi.domain.functional.model.plan.PlanLimit;
 import org.mockito.InOrder;
 import java.util.Map;
@@ -209,7 +210,7 @@ class AdventureUpdaterServiceQuitTest {
                 .thenReturn(List.of(characterOf(leaver, adventure, "A", null), characterOf(leaver, adventure, "B", null)));
         when(gameCharacters.countByOwnerIdWithoutAdventure(leaver.getId())).thenReturn(2L);
         // Two arrive in a reserve holding two: the plan allows 3, so the limit is met at used = 3
-        doThrow(new PlanLimitReachedException(PlanLimit.CHARACTERS_WITHOUT_ADVENTURE, 3, "adventurer", "hero"))
+        doThrow(new PlanLimitReachedException(PlanLimit.CHARACTERS_WITHOUT_ADVENTURE, 3, "adventurer", "hero", PlanDecider.ACCOUNT))
                 .when(entitlementApi).verifyAccountLimit(leaver.getId(), PlanLimit.CHARACTERS_WITHOUT_ADVENTURE, 3L);
 
         Assertions.assertThrows(PlanLimitReachedException.class,

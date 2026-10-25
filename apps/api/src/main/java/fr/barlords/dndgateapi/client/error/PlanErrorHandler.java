@@ -28,6 +28,7 @@ public class PlanErrorHandler {
         problem.setProperty("max", e.getMax());
         problem.setProperty("planId", e.getPlanId());
         problem.setProperty("upgradePlanId", e.getUpgradePlanId());
+        problem.setProperty("decidedBy", e.getDecidedBy().key());
         return problem;
     }
 
@@ -37,6 +38,7 @@ public class PlanErrorHandler {
         problem.setProperty("feature", e.getFeature().key());
         problem.setProperty("planId", e.getPlanId());
         problem.setProperty("upgradePlanId", e.getUpgradePlanId());
+        problem.setProperty("decidedBy", e.getDecidedBy().key());
         return problem;
     }
 

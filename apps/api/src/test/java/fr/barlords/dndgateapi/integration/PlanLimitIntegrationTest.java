@@ -11,6 +11,7 @@ import tools.jackson.databind.JsonNode;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /** The account quotas come from the plan: an account on the tight test plan (every limit 1) is refused its second item. */
@@ -22,7 +23,15 @@ class PlanLimitIntegrationTest extends ApiIntegrationTestSupport {
         return account;
     }
 
+    /** The limits of an adventure are decided by the plan of its master, the others by the plan of the caller. */
+    private static final Set<String> ADVENTURE_LIMITS = Set.of("masterNotesPerAdventure",
+            "historicalNotesPerAdventure", "charactersPerPlayerAndAdventure", "npcsPerAdventure", "messagesPerAdventure");
+
     private void assertPlanProblem(ResponseEntity<String> response, String limit) {
+        assertPlanProblem(response, limit, ADVENTURE_LIMITS.contains(limit) ? "master" : "account");
+    }
+
+    private void assertPlanProblem(ResponseEntity<String> response, String limit, String decidedBy) {
         Assertions.assertEquals(409, response.getStatusCode().value(), response.getBody());
         Assertions.assertTrue(response.getHeaders().getContentType().toString().contains("problem+json"));
         JsonNode problem = body(response);
@@ -31,6 +40,7 @@ class PlanLimitIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(1, problem.get("max").asInt());
         Assertions.assertEquals("test-tight", problem.get("planId").asString());
         Assertions.assertEquals("test-paid", problem.get("upgradePlanId").asString());
+        Assertions.assertEquals(decidedBy, problem.get("decidedBy").asString());
     }
 
     private ResponseEntity<String> createAdventureRaw(TestAccount owner) {
@@ -134,7 +144,7 @@ class PlanLimitIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount owner = tightAccount();
         Assertions.assertEquals(201, createMagicItem(owner).getStatusCode().value());
 
-        assertPlanProblem(createMagicItem(owner), "magicItems");
+        assertPlanProblem(createMagicItem(owner), "magicItems", "account");
     }
 
     // ---- adventure quotas: the plan of the game master applies, whoever writes ----
@@ -187,7 +197,7 @@ class PlanLimitIntegrationTest extends ApiIntegrationTestSupport {
         TestAccount player = playerOn("test-paid", adventureId);
         Assertions.assertEquals(201, createCharacter(player, adventureId, "One").getStatusCode().value());
 
-        assertPlanProblem(createCharacter(player, adventureId, "Two"), "charactersPerPlayerAndAdventure");
+        assertPlanProblem(createCharacter(player, adventureId, "Two"), "charactersPerPlayerAndAdventure", "master");
     }
 
     @Test

@@ -3,6 +3,7 @@ package fr.barlords.dndgateapi.domain.functional.service.gamecharacter;
 import fr.barlords.dndgateapi.domain.functional.exception.InvalidPictureException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureAccessDeniedException;
 import fr.barlords.dndgateapi.domain.functional.exception.plan.FeatureNotIncludedException;
+import fr.barlords.dndgateapi.domain.functional.model.plan.PlanDecider;
 import fr.barlords.dndgateapi.domain.functional.model.plan.Feature;
 import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
 import fr.barlords.dndgateapi.domain.functional.model.CharacterVisibility;
@@ -256,7 +257,7 @@ class GameCharacterCreatorServiceTest {
     @Test
     void a_picture_without_the_feature_is_refused_before_upload() throws Exception {
         playerIsParticipant();
-        doThrow(new FeatureNotIncludedException(Feature.CHARACTER_PICTURES, "free", "paid")).when(entitlement)
+        doThrow(new FeatureNotIncludedException(Feature.CHARACTER_PICTURES, "free", "paid", PlanDecider.ACCOUNT)).when(entitlement)
                 .verifyFeature(player.getId(), adventure, Feature.CHARACTER_PICTURES);
 
         Assertions.assertThrows(FeatureNotIncludedException.class, () -> create(PNG));

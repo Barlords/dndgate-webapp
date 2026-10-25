@@ -21,7 +21,7 @@ public interface GameCharacterDtoMapper {
                 domain.hasAdventure() ? domain.getAdventure().getId() : null,
                 domain.isActive(),
                 domain.isNpc(),
-                domain.getVisibility().name()
+                domain.getVisibility()
         );
     }
 

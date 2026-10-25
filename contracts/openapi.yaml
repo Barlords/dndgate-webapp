@@ -2499,8 +2499,12 @@ components:
   schemas:
     Problem:
       type: object
-      description: An error (RFC 9457 problem details). correlationId is the identifier
-        to quote when reporting it.
+      description: "An error (RFC 9457 problem details). correlationId is the identifier\
+        \ to quote when reporting it. A refusal of the plan adds its own fields: type\
+        \ urn:dndgate:plan-limit-reached (409) gives limit, max, planId, upgradePlanId\
+        \ and decidedBy; type urn:dndgate:feature-not-included (403) gives feature,\
+        \ planId, upgradePlanId and decidedBy. Type urn:dndgate:subscription-sync-conflict\
+        \ (503) is a webhook to send again."
       properties:
         type:
           type: string
@@ -2521,6 +2525,38 @@ components:
         correlationId:
           type: string
           description: Same value as the X-Request-Id header.
+        limit:
+          type: string
+          description: "plan-limit-reached only: the key of the limit (spellBooks,\
+            \ ...)."
+          example: spellBooks
+        max:
+          type: integer
+          format: int32
+          description: "plan-limit-reached only: the maximum of the plan."
+        feature:
+          type: string
+          description: "feature-not-included only: the key of the feature (video,\
+            \ ...)."
+          example: video
+        planId:
+          type: string
+          description: "A refusal of the plan: the plan that decided it (the plan\
+            \ of the game master when decidedBy is master)."
+        upgradePlanId:
+          type:
+          - string
+          - "null"
+          description: "A refusal of the plan: the lowest plan that would allow it,\
+            \ null when no plan does."
+        decidedBy:
+          type: string
+          description: "A refusal of the plan: account when the plan of the caller\
+            \ decided it, master when the plan of the game master of the adventure\
+            \ did."
+          enum:
+          - account
+          - master
         errors:
           type: array
           description: "Only for a request that is not valid: one entry per field."
@@ -2653,7 +2689,9 @@ components:
         background:
           type: string
         pictureUrl:
-          type: string
+          type:
+          - string
+          - "null"
         ownerId:
           type: string
           format: uuid
@@ -2666,6 +2704,9 @@ components:
           type: boolean
         visibility:
           type: string
+          enum:
+          - PRIVATE
+          - PUBLIC
     CharacterAdventureRequest:
       type: object
       properties:
@@ -3036,7 +3077,7 @@ components:
         planId:
           type: string
           maxLength: 50
-          minLength: 0
+          minLength: 1
         interval:
           type: string
           enum:
@@ -3423,7 +3464,13 @@ components:
         founder:
           type: boolean
         planBadge:
-          type: string
+          type:
+          - string
+          - "null"
+          description: "dungeon-master, legend or null"
+          enum:
+          - dungeon-master
+          - legend
     SpellBookImportExportDto:
       type: object
       properties:
@@ -3634,7 +3681,13 @@ components:
         founder:
           type: boolean
         planBadge:
-          type: string
+          type:
+          - string
+          - "null"
+          description: "dungeon-master, legend or null"
+          enum:
+          - dungeon-master
+          - legend
     SubscriptionDto:
       type: object
       properties:

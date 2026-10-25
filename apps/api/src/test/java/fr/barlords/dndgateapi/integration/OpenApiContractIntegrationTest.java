@@ -154,6 +154,50 @@ class OpenApiContractIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(new TreeSet<String>(), problems, "operations without the error response");
     }
 
+    private static List<String> texts(JsonNode array) {
+        List<String> values = new ArrayList<>();
+        array.forEach(value -> values.add(value.asString()));
+        return values;
+    }
+
+    private static boolean mayBeNull(JsonNode property) {
+        return texts(property.path("type")).contains("null");
+    }
+
+    @Test
+    void the_refusals_of_the_plan_are_described_in_the_problem() {
+        JsonNode problem = spec().get("components").get("schemas").get("Problem");
+        JsonNode properties = problem.get("properties");
+
+        for (String type : List.of("urn:dndgate:plan-limit-reached", "urn:dndgate:feature-not-included",
+                "urn:dndgate:subscription-sync-conflict")) {
+            Assertions.assertTrue(problem.get("description").asString().contains(type), type);
+        }
+        Assertions.assertEquals("string", properties.get("limit").get("type").asString());
+        Assertions.assertEquals("integer", properties.get("max").get("type").asString());
+        Assertions.assertEquals("string", properties.get("feature").get("type").asString());
+        Assertions.assertEquals("string", properties.get("planId").get("type").asString());
+        Assertions.assertTrue(mayBeNull(properties.get("upgradePlanId")), "no plan may allow it");
+        Assertions.assertEquals(List.of("account", "master"), texts(properties.get("decidedBy").get("enum")));
+        Assertions.assertFalse(problem.has("required"), "every field is optional");
+    }
+
+    @Test
+    void the_answers_say_which_values_and_which_nulls_they_hold() {
+        JsonNode schemas = spec().get("components").get("schemas");
+
+        for (String dto : List.of("AccountDto", "PublicAccountDto")) {
+            JsonNode badge = schemas.get(dto).get("properties").get("planBadge");
+            Assertions.assertTrue(mayBeNull(badge), dto + ".planBadge: null without a badge");
+            Assertions.assertEquals(List.of("dungeon-master", "legend"), texts(badge.get("enum")), dto + ".planBadge");
+        }
+        JsonNode character = schemas.get("GameCharacterDto").get("properties");
+        Assertions.assertEquals(List.of("PRIVATE", "PUBLIC"), texts(character.get("visibility").get("enum")));
+        Assertions.assertTrue(mayBeNull(character.get("pictureUrl")), "the picture is optional");
+        Assertions.assertEquals(1, schemas.get("CheckoutSessionRequest").get("properties").get("planId")
+                .get("minLength").asInt());
+    }
+
     @Test
     void no_two_routes_can_match_the_same_url() {
         JsonNode spec = spec();
