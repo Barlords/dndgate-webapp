@@ -61,7 +61,8 @@ public class OpenApiConfig {
     /** Adds the error answer to every operation, declares the answers as JSON, and frees the public routes from the token. */
     @Bean
     public OpenApiCustomizer errorsAndPublicRoutes() {
-        Set<String> publicPaths = Set.of(SecurityConfig.PUBLIC_POST_ROUTES);
+        Set<String> publicPosts = Set.of(SecurityConfig.PUBLIC_POST_ROUTES);
+        Set<String> publicGets = Set.of(SecurityConfig.PUBLIC_GET_ROUTES);
 
         return openApi -> openApi.getPaths().forEach((path, item) ->
                 item.readOperationsMap().forEach((method, operation) -> {
@@ -70,7 +71,7 @@ public class OpenApiConfig {
                         operation.setSummary(summaryOf(operation.getOperationId()));
                     }
                     operation.getResponses().addApiResponse("default", problemResponse());
-                    if (isPublic(method.name(), path, publicPaths)) {
+                    if (isPublic(method.name(), path, publicPosts, publicGets)) {
                         operation.setSecurity(List.of());
                     }
                 }));
@@ -95,8 +96,9 @@ public class OpenApiConfig {
         return Character.toUpperCase(words.charAt(0)) + words.substring(1);
     }
 
-    private static boolean isPublic(String method, String path, Set<String> publicPaths) {
-        return HttpMethod.POST.name().equals(method) && publicPaths.contains(path);
+    private static boolean isPublic(String method, String path, Set<String> publicPosts, Set<String> publicGets) {
+        return (HttpMethod.POST.name().equals(method) && publicPosts.contains(path))
+                || (HttpMethod.GET.name().equals(method) && publicGets.contains(path));
     }
 
     private static ApiResponse problemResponse() {

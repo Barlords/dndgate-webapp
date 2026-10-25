@@ -1,7 +1,12 @@
 package fr.barlords.dndgateapi.client.error;
 
 import fr.barlords.dndgateapi.domain.functional.exception.plan.FeatureNotIncludedException;
+import fr.barlords.dndgateapi.domain.functional.exception.plan.InvalidWebhookSignatureException;
+import fr.barlords.dndgateapi.domain.functional.exception.plan.NoBillingAccountException;
+import fr.barlords.dndgateapi.domain.functional.exception.plan.PaymentProviderUnavailableException;
 import fr.barlords.dndgateapi.domain.functional.exception.plan.PlanLimitReachedException;
+import fr.barlords.dndgateapi.domain.functional.exception.plan.PlanNotPurchasableException;
+import fr.barlords.dndgateapi.domain.functional.exception.plan.SubscriptionAlreadyActiveException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -17,8 +22,7 @@ public class PlanErrorHandler {
 
     @ExceptionHandler(PlanLimitReachedException.class)
     public ProblemDetail handlePlanLimitReachedException(PlanLimitReachedException e) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
-        problem.setType(URI.create("urn:dndgate:plan-limit-reached"));
+        ProblemDetail problem = problem(HttpStatus.CONFLICT, e.getMessage(), "urn:dndgate:plan-limit-reached");
         problem.setProperty("limit", e.getLimit().key());
         problem.setProperty("max", e.getMax());
         problem.setProperty("planId", e.getPlanId());
@@ -28,12 +32,46 @@ public class PlanErrorHandler {
 
     @ExceptionHandler(FeatureNotIncludedException.class)
     public ProblemDetail handleFeatureNotIncludedException(FeatureNotIncludedException e) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.getMessage());
-        problem.setType(URI.create("urn:dndgate:feature-not-included"));
+        ProblemDetail problem = problem(HttpStatus.FORBIDDEN, e.getMessage(), "urn:dndgate:feature-not-included");
         problem.setProperty("feature", e.getFeature().key());
         problem.setProperty("planId", e.getPlanId());
         problem.setProperty("upgradePlanId", e.getUpgradePlanId());
         return problem;
     }
 
+    /** The cause (billing off, a failing Stripe call) is logged by the adapter, not sent. */
+    @ExceptionHandler(PaymentProviderUnavailableException.class)
+    public ProblemDetail handlePaymentProviderUnavailableException() {
+        return problem(HttpStatus.SERVICE_UNAVAILABLE, "Billing is not available at the moment",
+                "urn:dndgate:payment-provider-unavailable");
+    }
+
+    @ExceptionHandler(InvalidWebhookSignatureException.class)
+    public ProblemDetail handleInvalidWebhookSignatureException() {
+        return problem(HttpStatus.BAD_REQUEST, "The webhook signature is missing or does not match",
+                "urn:dndgate:invalid-webhook-signature");
+    }
+
+    @ExceptionHandler(SubscriptionAlreadyActiveException.class)
+    public ProblemDetail handleSubscriptionAlreadyActiveException(SubscriptionAlreadyActiveException e) {
+        return problem(HttpStatus.CONFLICT, e.getMessage(), "urn:dndgate:subscription-already-active");
+    }
+
+    @ExceptionHandler(NoBillingAccountException.class)
+    public ProblemDetail handleNoBillingAccountException(NoBillingAccountException e) {
+        return problem(HttpStatus.CONFLICT, e.getMessage(), "urn:dndgate:no-billing-account");
+    }
+
+    @ExceptionHandler(PlanNotPurchasableException.class)
+    public ProblemDetail handlePlanNotPurchasableException(PlanNotPurchasableException e) {
+        ProblemDetail problem = problem(HttpStatus.BAD_REQUEST, e.getMessage(), "urn:dndgate:plan-not-purchasable");
+        problem.setProperty("planId", e.getPlanId());
+        return problem;
+    }
+
+    private static ProblemDetail problem(HttpStatus status, String detail, String type) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
+        problem.setType(URI.create(type));
+        return problem;
+    }
 }

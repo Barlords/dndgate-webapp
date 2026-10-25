@@ -15,6 +15,9 @@ import fr.barlords.dndgateapi.client.dto.account.AccountLogRequest;
 import fr.barlords.dndgateapi.client.dto.account.SignupAcceptedDto;
 import fr.barlords.dndgateapi.client.mapper.AuthDtoMapper;
 import fr.barlords.dndgateapi.client.mapper.AccountDtoMapper;
+import fr.barlords.dndgateapi.client.dto.plan.SubscriptionDto;
+import fr.barlords.dndgateapi.client.mapper.PlanDtoMapper;
+import fr.barlords.dndgateapi.domain.port.in.plan.BillingApi;
 import fr.barlords.dndgateapi.client.service.AuthVerifierService;
 import fr.barlords.dndgateapi.client.service.ClientAddresses;
 import fr.barlords.dndgateapi.client.validator.UuidValidator;
@@ -60,12 +63,23 @@ public class AccountController {
 
     private final EntitlementApi entitlementApi;
 
+    private final BillingApi billingApi;
+
     @GetMapping("/me")
     @ResponseStatus(OK)
     public AccountDto getMyProfile() {
         return accountFinderApi.findById(authVerifierService.currentAccountId())
                 .map(account -> AccountDtoMapper.toDto(account, entitlementApi.badgeOf(account.getId())))
                 .orElseThrow(TokenNotValidException::new);
+    }
+
+    @GetMapping("/me/subscription")
+    @ResponseStatus(OK)
+    @Operation(summary = "Get my subscription",
+            description = "The plan in force, the subscription as Stripe last described it, and how much of each "
+                    + "account limit is used.")
+    public SubscriptionDto getMySubscription() {
+        return PlanDtoMapper.toDto(billingApi.mine(authVerifierService.currentAccountId()));
     }
 
     @GetMapping("/id/{id}")

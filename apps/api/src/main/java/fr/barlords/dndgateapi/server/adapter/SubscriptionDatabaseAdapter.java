@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
@@ -50,6 +51,13 @@ public class SubscriptionDatabaseAdapter implements SubscriptionPersistenceSpi {
     public Subscription save(Subscription subscription) {
         SubscriptionEntity saved = repository.saveAndFlush(SubscriptionEntityMapper.fromDomain(subscription));
         return SubscriptionEntityMapper.toDomain(saved);
+    }
+
+    @Override
+    @Transactional
+    public Subscription createCustomerIfAbsent(UUID accountId, String stripeCustomerId, Instant now) {
+        repository.insertCustomerIfAbsent(accountId, stripeCustomerId, now);
+        return repository.findById(accountId).map(SubscriptionEntityMapper::toDomain).orElseThrow();
     }
 
     @Override

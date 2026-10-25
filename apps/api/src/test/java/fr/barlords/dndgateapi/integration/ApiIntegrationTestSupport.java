@@ -3,6 +3,7 @@ package fr.barlords.dndgateapi.integration;
 import fr.barlords.dndgateapi.bootstrap.DndGateApiApplication;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
 import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
+import fr.barlords.dndgateapi.domain.port.out.PaymentProviderSpi;
 import org.junit.jupiter.api.Assertions;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
@@ -72,6 +73,13 @@ abstract class ApiIntegrationTestSupport {
 
     @MockitoBean
     MinioSpi minioSpi;
+
+    /**
+     * Never Stripe in these tests. Unstubbed, the mock says billing is disabled (isEnabled false) and finds nothing,
+     * like the application without a Stripe key; the billing tests stub what they need (reset after each test).
+     */
+    @MockitoBean
+    PaymentProviderSpi paymentProviderSpi;
 
     @LocalServerPort
     int port;

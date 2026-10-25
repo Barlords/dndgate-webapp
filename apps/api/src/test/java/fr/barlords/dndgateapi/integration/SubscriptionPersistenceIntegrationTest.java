@@ -65,6 +65,29 @@ class SubscriptionPersistenceIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     @Test
+    void a_customer_is_recorded_only_when_the_account_has_no_row() {
+        TestAccount account = registerAndLogin();
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+
+        Subscription first = subscriptions.createCustomerIfAbsent(account.id(), "cus_first_" + account.id(), now);
+        Assertions.assertEquals("cus_first_" + account.id(), first.getStripeCustomerId());
+        Assertions.assertEquals(account.id(), first.getAccountId());
+        Assertions.assertNull(first.getStatus());
+        Assertions.assertEquals(now, first.getUpdatedAt());
+
+        // a second (concurrent) first checkout keeps the row that is there
+        Subscription second = subscriptions.createCustomerIfAbsent(account.id(), "cus_second_" + account.id(), now);
+        Assertions.assertEquals("cus_first_" + account.id(), second.getStripeCustomerId());
+
+        subscribe(account, "test-paid");
+        Subscription kept = subscriptions.createCustomerIfAbsent(account.id(), "cus_third_" + account.id(), now);
+        Assertions.assertEquals(SubscriptionStatus.ACTIVE, kept.getStatus());
+        Assertions.assertEquals("test-paid", kept.getPlanId());
+        Assertions.assertEquals(1, jdbc.queryForObject(
+                "select count(*) from subscription where account_id = ?", Integer.class, account.id()));
+    }
+
+    @Test
     void the_test_helper_replaces_the_subscription_of_the_account() {
         TestAccount account = registerAndLogin();
 
