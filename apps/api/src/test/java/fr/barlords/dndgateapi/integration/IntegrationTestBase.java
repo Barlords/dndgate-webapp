@@ -56,7 +56,10 @@ abstract class IntegrationTestBase {
 
     // One container shared by every test class: the Spring context is cached across classes
     // and must keep pointing to a database that stays alive.
-    static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
+    // Every cached context keeps its own pool open (10 connections each): the default 100 clients are not enough
+    // for all the contexts of the suite.
+    static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine")
+            .withCommand("postgres", "-c", "fsync=off", "-c", "max_connections=300");
 
     static {
         postgres.start();

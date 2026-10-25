@@ -23,7 +23,9 @@ import java.util.UUID;
  */
 @TestPropertySource(properties = {
         "stripe.secret-key=sk_test_signed_webhook",
-        "stripe.webhook-secret=" + SignedStripeWebhookIntegrationTest.WEBHOOK_SECRET})
+        "stripe.webhook-secret=" + SignedStripeWebhookIntegrationTest.WEBHOOK_SECRET,
+        // one more cached context for the suite: it keeps few connections
+        "spring.datasource.hikari.maximum-pool-size=3"})
 class SignedStripeWebhookIntegrationTest extends IntegrationTestBase {
 
     static final String WEBHOOK_SECRET = "whsec_signed_webhook_test";
