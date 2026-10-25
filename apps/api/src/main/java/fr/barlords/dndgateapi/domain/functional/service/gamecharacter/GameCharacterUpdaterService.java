@@ -2,6 +2,8 @@ package fr.barlords.dndgateapi.domain.functional.service.gamecharacter;
 
 import java.util.Objects;
 
+import fr.barlords.dndgateapi.domain.functional.exception.gamecharacter.GameCharacterPlacementException;
+import fr.barlords.dndgateapi.domain.functional.model.CharacterVisibility;
 import fr.barlords.dndgateapi.domain.functional.model.GameCharacter;
 import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterUpdaterApi;
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
@@ -30,5 +32,15 @@ public class GameCharacterUpdaterService implements GameCharacterUpdaterApi {
                 .withBackground(Objects.requireNonNullElse(gameCharacter.getBackground(), previousGameCharacter.getBackground()));
 
         return spi.save(patchedGameCharacter);
+    }
+
+    @Override
+    public GameCharacter setVisibility(UUID accountId, UUID characterId, CharacterVisibility visibility) {
+        GameCharacter character = gameCharacterOwnerVerifierService.verify(accountId, characterId);
+        if (!character.isNpc()) {
+            throw new GameCharacterPlacementException(GameCharacterPlacementException.NOT_AN_NPC);
+        }
+
+        return spi.save(character.withVisibility(visibility));
     }
 }

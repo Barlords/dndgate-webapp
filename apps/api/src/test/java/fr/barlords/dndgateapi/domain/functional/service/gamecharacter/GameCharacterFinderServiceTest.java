@@ -3,6 +3,7 @@ package fr.barlords.dndgateapi.domain.functional.service.gamecharacter;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureAccessDeniedException;
 import fr.barlords.dndgateapi.domain.functional.exception.gamecharacter.GameCharacterNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.exception.gamecharacter.GameCharacterOwnerException;
+import fr.barlords.dndgateapi.domain.functional.model.CharacterVisibility;
 import fr.barlords.dndgateapi.domain.functional.model.GameCharacter;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
@@ -103,5 +104,65 @@ class GameCharacterFinderServiceTest {
 
         Assertions.assertThrows(GameCharacterNotFoundException.class, () -> service.findPicture(owner.getId(), alone.getId()));
         verify(minioSpi, never()).downloadFile(any());
+    }
+
+    // ---- non-player characters of the game master ----
+
+    private final Account master = Account.builder().pseudo("master").email("master@test.fr").build();
+
+    private final Adventure mastered = Adventure.builder().name("Quest").ownerId(master.getId()).build();
+
+    private GameCharacter storedNpc(CharacterVisibility visibility) {
+        GameCharacter npc = GameCharacter.builder().owner(master).adventure(mastered).name("Innkeeper")
+                .npc(true).visibility(visibility).build();
+        when(spi.findById(npc.getId())).thenReturn(Optional.of(npc));
+        return npc;
+    }
+
+    @Test
+    void the_master_reads_a_private_npc() {
+        GameCharacter npc = storedNpc(CharacterVisibility.PRIVATE);
+
+        Assertions.assertEquals(Optional.of(npc), service.findById(master.getId(), npc.getId()));
+    }
+
+    @Test
+    void a_player_never_reads_a_private_npc_by_id_or_by_picture_and_learns_nothing_of_it() {
+        GameCharacter npc = storedNpc(CharacterVisibility.PRIVATE);
+
+        Assertions.assertEquals(Optional.empty(), service.findById(other.getId(), npc.getId()));
+        Assertions.assertThrows(GameCharacterNotFoundException.class, () -> service.findPicture(other.getId(), npc.getId()));
+        verify(adventureAccessVerifierApi, never()).verifyParticipant(any(), any());
+    }
+
+    @Test
+    void a_participant_reads_a_public_npc() {
+        GameCharacter npc = storedNpc(CharacterVisibility.PUBLIC);
+        when(adventureAccessVerifierApi.verifyParticipant(other.getId(), mastered.getId())).thenReturn(mastered);
+
+        Assertions.assertEquals(Optional.of(npc), service.findById(other.getId(), npc.getId()));
+    }
+
+    @Test
+    void the_private_npcs_are_listed_for_the_current_master_only() {
+        when(adventureAccessVerifierApi.verifyParticipant(master.getId(), mastered.getId())).thenReturn(mastered);
+        when(adventureAccessVerifierApi.verifyParticipant(other.getId(), mastered.getId())).thenReturn(mastered);
+        GameCharacter npc = GameCharacter.builder().owner(master).adventure(mastered).name("Innkeeper")
+                .npc(true).visibility(CharacterVisibility.PRIVATE).build();
+        when(spi.findVisibleByAdventureId(mastered.getId(), true)).thenReturn(java.util.List.of(npc));
+        when(spi.findVisibleByAdventureId(mastered.getId(), false)).thenReturn(java.util.List.of());
+
+        Assertions.assertEquals(java.util.List.of(npc), service.findByAdventureId(master.getId(), mastered.getId()));
+        Assertions.assertEquals(java.util.List.of(), service.findByAdventureId(other.getId(), mastered.getId()));
+    }
+
+    @Test
+    void a_vacant_seat_gives_nobody_the_private_npcs() {
+        Adventure vacant = mastered.withMasterVacantSince(java.time.Instant.now());
+        GameCharacter npc = GameCharacter.builder().owner(master).adventure(vacant).name("Innkeeper")
+                .npc(true).visibility(CharacterVisibility.PRIVATE).build();
+        when(spi.findById(npc.getId())).thenReturn(Optional.of(npc));
+
+        Assertions.assertEquals(Optional.empty(), service.findById(master.getId(), npc.getId()));
     }
 }

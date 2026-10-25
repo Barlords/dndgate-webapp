@@ -103,8 +103,9 @@ class FeatureIntegrationTest extends ApiIntegrationTestSupport {
         JsonNode limits = entitlements.get("limits");
         Assertions.assertEquals(Set.of("charactersPerPlayerAndAdventure", "npcsPerAdventure", "messagesPerAdventure",
                 "masterNotesPerAdventure", "historicalNotesPerAdventure"), keys(limits));
-        assertUsage(limits, "charactersPerPlayerAndAdventure", 1, 1);
-        assertUsage(limits, "npcsPerAdventure", 0, 1);
+        assertUsage(limits, "charactersPerPlayerAndAdventure", 0, 1);
+        // What the master creates in their own adventure is a non-player character, not a character they play
+        assertUsage(limits, "npcsPerAdventure", 1, 1);
         assertUsage(limits, "messagesPerAdventure", 1, 1);
         assertUsage(limits, "masterNotesPerAdventure", 1, 1);
         assertUsage(limits, "historicalNotesPerAdventure", 0, 1);

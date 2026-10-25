@@ -45,12 +45,31 @@ public class GameCharacter {
     @With
     boolean active;
 
+    /** A character of the game master of the adventure: never played, never moved, owned by whoever created it. */
+    @Builder.Default
+    @With
+    boolean npc = false;
+
+    /** Only meaningful for a non-player character: a private one is read by the current game master alone. */
+    @Builder.Default
+    @With
+    CharacterVisibility visibility = CharacterVisibility.PUBLIC;
+
     /** Version read from the storage, null while the character has never been saved: it detects concurrent changes. */
     @With
     Long version;
 
     public boolean isMyOwner(Account account) {
         return account.getId().equals(this.owner.getId());
+    }
+
+    public boolean isPrivateNpc() {
+        return npc && visibility == CharacterVisibility.PRIVATE;
+    }
+
+    /** A non-player character is managed by the current game master of its adventure, whoever owns it. */
+    public boolean isManagedBy(UUID accountId) {
+        return hasAdventure() && adventure.isMaster(accountId);
     }
 
     public boolean hasAdventure() {

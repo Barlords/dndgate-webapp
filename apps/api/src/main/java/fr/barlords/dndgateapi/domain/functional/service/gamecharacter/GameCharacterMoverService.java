@@ -26,7 +26,7 @@ public class GameCharacterMoverService implements GameCharacterMoverApi {
 
     @Override
     public GameCharacter moveToReserve(UUID accountId, UUID characterId) {
-        GameCharacter character = ownerVerifier.verify(accountId, characterId);
+        GameCharacter character = verifyMovable(accountId, characterId);
         if (!character.hasAdventure()) {
             return character;
         }
@@ -38,7 +38,7 @@ public class GameCharacterMoverService implements GameCharacterMoverApi {
 
     @Override
     public GameCharacter moveToAdventure(UUID accountId, UUID characterId, UUID adventureId) {
-        GameCharacter character = ownerVerifier.verify(accountId, characterId);
+        GameCharacter character = verifyMovable(accountId, characterId);
         if (character.hasAdventure()) {
             throw new GameCharacterPlacementException(GameCharacterPlacementException.NOT_IN_RESERVE);
         }
@@ -57,7 +57,7 @@ public class GameCharacterMoverService implements GameCharacterMoverApi {
 
     @Override
     public GameCharacter activate(UUID accountId, UUID adventureId, UUID characterId) {
-        GameCharacter character = ownerVerifier.verify(accountId, characterId);
+        GameCharacter character = verifyMovable(accountId, characterId);
         if (!character.hasAdventure() || !adventureId.equals(character.getAdventure().getId())) {
             throw new GameCharacterPlacementException(GameCharacterPlacementException.NOT_IN_ADVENTURE);
         }
@@ -69,6 +69,14 @@ public class GameCharacterMoverService implements GameCharacterMoverApi {
         spi.findActive(accountId, adventureId).ifPresent(previous -> spi.save(previous.withActive(false)));
 
         return spi.save(character.withActive(true));
+    }
+
+    private GameCharacter verifyMovable(UUID accountId, UUID characterId) {
+        GameCharacter character = ownerVerifier.verify(accountId, characterId);
+        if (character.isNpc()) {
+            throw new GameCharacterPlacementException(GameCharacterPlacementException.NPC_CANNOT_MOVE);
+        }
+        return character;
     }
 
 }

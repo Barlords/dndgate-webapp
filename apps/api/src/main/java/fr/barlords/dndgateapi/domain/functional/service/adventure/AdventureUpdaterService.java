@@ -227,7 +227,8 @@ public class AdventureUpdaterService implements AdventureUpdaterApi {
         }
 
         List<GameCharacter> mine = gameCharacters.findByAdventureId(adventureId).stream()
-                .filter(character -> account.getId().equals(character.getOwner().getId()))
+                // The non-player characters of a former game master stay with the adventure
+                .filter(character -> !character.isNpc() && account.getId().equals(character.getOwner().getId()))
                 .toList();
         Map<UUID, GameCharacter> byId = mine.stream().collect(Collectors.toMap(GameCharacter::getId, Function.identity()));
 

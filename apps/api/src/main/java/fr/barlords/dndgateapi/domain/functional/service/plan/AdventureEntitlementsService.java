@@ -48,8 +48,7 @@ public class AdventureEntitlementsService implements AdventureEntitlementsApi {
             case MESSAGES_PER_ADVENTURE -> messages.countByAdventureId(adventureId);
             case MASTER_NOTES_PER_ADVENTURE -> adventureNotes.countByAdventureId(adventureId);
             case HISTORICAL_NOTES_PER_ADVENTURE -> historicalNotes.countByAdventureId(adventureId);
-            // Non-player characters arrive with their own task: nothing is used until then
-            case NPCS_PER_ADVENTURE -> 0;
+            case NPCS_PER_ADVENTURE -> gameCharacters.countNpcsByAdventureId(adventureId);
             default -> throw new IllegalStateException("Not an adventure limit: " + limit);
         };
     }

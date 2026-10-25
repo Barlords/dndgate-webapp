@@ -7,6 +7,10 @@ public class GameCharacterPlacementException extends RuntimeException {
 
     public static final String NOT_IN_ADVENTURE = "The character is not in this adventure";
 
+    public static final String NPC_CANNOT_MOVE = "A non-player character stays in its adventure";
+
+    public static final String NOT_AN_NPC = "Only a non-player character has a visibility";
+
     public GameCharacterPlacementException(String message) {
         super(message);
     }

@@ -19,6 +19,14 @@ public class GameCharacterOwnerVerifierService {
         GameCharacter gameCharacter = spi.findById(gameCharacterId)
                 .orElseThrow(GameCharacterNotFoundException::new);
 
+        if (gameCharacter.isNpc()) {
+            // Managed by the current game master, whoever created it; a private one is not even known to the others
+            if (gameCharacter.isManagedBy(accountId)) {
+                return gameCharacter;
+            }
+            throw gameCharacter.isPrivateNpc() ? new GameCharacterNotFoundException() : new GameCharacterOwnerException();
+        }
+
         if (!accountId.equals(gameCharacter.getOwner().getId())) {
             throw new GameCharacterOwnerException();
         }

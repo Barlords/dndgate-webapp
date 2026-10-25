@@ -1,5 +1,6 @@
 package fr.barlords.dndgateapi.server.entity;
 
+import fr.barlords.dndgateapi.domain.functional.model.CharacterVisibility;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -48,6 +49,13 @@ public class GameCharacterEntity implements Serializable {
 
     @Column(name = "active", nullable = false)
     private boolean active;
+
+    @Column(name = "npc", nullable = false)
+    private boolean npc;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "visibility", nullable = false, length = 20)
+    private CharacterVisibility visibility;
 
     @Version
     @Column(name = "version", nullable = false)

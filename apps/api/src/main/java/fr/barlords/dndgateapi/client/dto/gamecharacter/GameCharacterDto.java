@@ -18,6 +18,10 @@ public record GameCharacterDto(
         /** Null for a character kept outside any adventure of the application. */
         UUID adventureId,
         /** True for the character the owner currently plays in the adventure. */
-        boolean active
+        boolean active,
+        /** True for a non-player character of the game master. */
+        boolean npc,
+        /** PRIVATE (only the game master reads it) or PUBLIC. */
+        String visibility
 ) {
 }

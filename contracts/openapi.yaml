@@ -234,6 +234,37 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /game-characters/{id}/visibility:
+    put:
+      tags:
+      - Game characters
+      summary: Set game character visibility
+      operationId: setGameCharacterVisibility
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CharacterVisibilityRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameCharacterDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /game-characters/{id}/adventure:
     put:
       tags:
@@ -2472,14 +2503,16 @@ components:
           items:
             type: string
             format: date
-    CharacterAdventureRequest:
+    CharacterVisibilityRequest:
       type: object
       properties:
-        adventureId:
+        visibility:
           type: string
-          format: uuid
+          enum:
+          - PRIVATE
+          - PUBLIC
       required:
-      - adventureId
+      - visibility
     GameCharacterDto:
       type: object
       properties:
@@ -2506,6 +2539,18 @@ components:
           format: uuid
         active:
           type: boolean
+        npc:
+          type: boolean
+        visibility:
+          type: string
+    CharacterAdventureRequest:
+      type: object
+      properties:
+        adventureId:
+          type: string
+          format: uuid
+      required:
+      - adventureId
     AdventureSetVisibilityRequest:
       type: object
       properties:

@@ -25,6 +25,7 @@ import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterFinderAp
 import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterMoverApi;
 import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterUpdaterApi;
 import fr.barlords.dndgateapi.client.dto.gamecharacter.CharacterAdventureRequest;
+import fr.barlords.dndgateapi.client.dto.gamecharacter.CharacterVisibilityRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -153,6 +154,21 @@ public class GameCharacterController {
                         authVerifierService.currentAccountId(),
                         UuidValidator.validate(id),
                         request.adventureId()
+                )
+        );
+    }
+
+
+    @PutMapping("/{id}/visibility")
+    @ResponseStatus(OK)
+    public GameCharacterDto setGameCharacterVisibility(
+            @PathVariable String id,
+            @Valid @RequestBody CharacterVisibilityRequest request) {
+        return GameCharacterDtoMapper.toDto(
+                gameCharacterUpdaterApi.setVisibility(
+                        authVerifierService.currentAccountId(),
+                        UuidValidator.validate(id),
+                        request.visibility()
                 )
         );
     }
