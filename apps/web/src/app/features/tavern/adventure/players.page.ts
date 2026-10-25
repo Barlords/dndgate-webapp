@@ -30,12 +30,21 @@ import { FormField } from '../../../shared/ui/form-field/form-field';
 import { StarRating } from '../../../shared/ui/star-rating/star-rating';
 import { AdventureContext } from './adventure-context.service';
 import { I18n } from '../../../core/i18n/i18n.service';
+import { AccountBadges } from '../../../shared/ui/account-badges/account-badges';
 
 /** « Joueurs »: the master, then the players; the master of a new adventure can invite more. */
 @Component({
   selector: 'dg-adventure-players-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet, RouterLink, ReactiveFormsModule, Button, FormField, StarRating],
+  imports: [
+    NgTemplateOutlet,
+    RouterLink,
+    ReactiveFormsModule,
+    Button,
+    FormField,
+    StarRating,
+    AccountBadges,
+  ],
   styleUrl: '../tavern-page.scss',
   styles: `
     .people {
@@ -80,6 +89,7 @@ import { I18n } from '../../../core/i18n/i18n.service';
           {{ t().tavern.players.noMaster }}
         } @else {
           <a [routerLink]="['/players', a.creatorId]">{{ pseudo(a.creatorId!) }}</a>
+          <dg-account-badges [accountId]="a.creatorId" />
           <ng-container *ngTemplateOutlet="ratingTpl; context: { id: a.creatorId }" />
         }
       </li>
@@ -87,6 +97,7 @@ import { I18n } from '../../../core/i18n/i18n.service';
         <li>
           <span class="role">{{ t().tavern.roles.player }}</span>
           <a [routerLink]="['/players', id]">{{ pseudo(id) }}</a>
+          <dg-account-badges [accountId]="id" />
           <ng-container *ngTemplateOutlet="ratingTpl; context: { id }" />
         </li>
       } @empty {

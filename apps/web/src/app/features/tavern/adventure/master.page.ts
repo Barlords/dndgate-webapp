@@ -34,6 +34,7 @@ import { Loading } from '../../../shared/ui/loading/loading';
 import { isClosed, Status } from '../adventure-status';
 import { AdventureContext } from './adventure-context.service';
 import { I18n } from '../../../core/i18n/i18n.service';
+import { AccountBadges } from '../../../shared/ui/account-badges/account-badges';
 
 const DATE_TIME: Intl.DateTimeFormatOptions = { dateStyle: 'long', timeStyle: 'short' };
 
@@ -46,7 +47,7 @@ type ClaimState = 'idle' | 'loading' | 'ready' | 'failed';
 @Component({
   selector: 'dg-master-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LoadError, Button, Loading],
+  imports: [LoadError, Button, Loading, AccountBadges],
   styleUrl: '../tavern-page.scss',
   styles: `
     h2 {
@@ -154,7 +155,10 @@ type ClaimState = 'idle' | 'loading' | 'ready' | 'failed';
                 <ul class="voters">
                   @for (voter of open.voters ?? []; track voter.accountId) {
                     <li>
-                      <span>{{ pseudo(voter.accountId!) }}</span>
+                      <span
+                        >{{ pseudo(voter.accountId!)
+                        }}<dg-account-badges [accountId]="voter.accountId"
+                      /></span>
                       <span>{{ answer(voter.approved) }}</span>
                     </li>
                   }

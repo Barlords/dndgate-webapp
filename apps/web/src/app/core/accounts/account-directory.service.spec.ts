@@ -33,6 +33,39 @@ describe('AccountDirectory', () => {
     expect(directory.pseudo('7')).toBe(directory.pseudo('7'));
   });
 
+  it('badges follow the public account', () => {
+    const both = directory.badges('11');
+    const none = directory.badges('12');
+    expect(both()).toEqual([]);
+    backend
+      .expectOne((r) => r.url.endsWith('/accounts/id/11'))
+      .flush({ id: '11', pseudo: 'Mystra', founder: true, planBadge: 'legend' });
+    backend
+      .expectOne((r) => r.url.endsWith('/accounts/id/12'))
+      .flush({ id: '12', pseudo: 'Pippin', founder: false, planBadge: null });
+    expect(both()).toEqual(['founder', 'legend']);
+    expect(none()).toEqual([]);
+    expect(directory.badges('11')).toBe(both);
+  });
+
+  it('badges stay empty when the account cannot be read', () => {
+    const badges = directory.badges('13');
+    backend
+      .expectOne((r) => r.url.endsWith('/accounts/id/13'))
+      .flush({}, { status: 500, statusText: 'Server Error' });
+    expect(badges()).toEqual([]);
+  });
+
+  it('the same request serves pseudo and badges', () => {
+    const pseudo = directory.pseudo('14');
+    const badges = directory.badges('14');
+    backend
+      .expectOne((r) => r.url.endsWith('/accounts/id/14'))
+      .flush({ id: '14', pseudo: 'Elminster', planBadge: 'dungeon-master' });
+    expect(pseudo()).toBe('Elminster');
+    expect(badges()).toEqual(['dungeon-master']);
+  });
+
   it('directory names anonymized accounts', () => {
     const pseudo = directory.pseudo('9');
     expect(pseudo()).toBe('…');

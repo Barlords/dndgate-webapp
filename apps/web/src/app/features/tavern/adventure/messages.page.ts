@@ -37,6 +37,7 @@ import { FormField } from '../../../shared/ui/form-field/form-field';
 import { Loading } from '../../../shared/ui/loading/loading';
 import { AdventureContext } from './adventure-context.service';
 import { I18n } from '../../../core/i18n/i18n.service';
+import { AccountBadges } from '../../../shared/ui/account-badges/account-badges';
 
 export const MESSAGES_PAGE_SIZE = 20;
 export const MESSAGE_MAX = 5000;
@@ -77,7 +78,7 @@ function byDate(a: MessageDto, b: MessageDto): number {
 @Component({
   selector: 'dg-messages-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LoadError, ReactiveFormsModule, Button, FormField, Loading],
+  imports: [LoadError, ReactiveFormsModule, Button, FormField, Loading, AccountBadges],
   styleUrl: '../tavern-page.scss',
   styles: `
     .connection {
@@ -228,7 +229,10 @@ function byDate(a: MessageDto, b: MessageDto): number {
               @for (message of messages(); track message.id) {
                 <li class="message" [class.mine]="message.senderId === me()">
                   <p class="meta">
-                    <span class="sender">{{ pseudo(message.senderId) }}</span>
+                    <span class="sender"
+                      >{{ pseudo(message.senderId)
+                      }}<dg-account-badges [accountId]="message.senderId"
+                    /></span>
                     <time [attr.datetime]="message.sendDate">{{ time(message.sendDate) }}</time>
                   </p>
                   <p class="content">{{ message.content }}</p>

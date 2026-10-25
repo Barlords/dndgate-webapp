@@ -22,6 +22,7 @@ import { Loading } from '../../../../shared/ui/loading/loading';
 import { AdventureContext } from '../adventure-context.service';
 import { CharacterPortrait } from './character-portrait';
 import { I18n } from '../../../../core/i18n/i18n.service';
+import { AccountBadges } from '../../../../shared/ui/account-badges/account-badges';
 
 type ListState = 'loading' | 'ready' | 'failed';
 
@@ -29,7 +30,7 @@ type ListState = 'loading' | 'ready' | 'failed';
 @Component({
   selector: 'dg-character-list-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LoadError, RouterLink, Button, Loading, CharacterPortrait],
+  imports: [LoadError, RouterLink, Button, Loading, CharacterPortrait, AccountBadges],
   styleUrl: '../../tavern-page.scss',
   styles: `
     .head {
@@ -130,7 +131,10 @@ type ListState = 'loading' | 'ready' | 'failed';
                   />
                   <span class="name">{{ character.name }}</span>
                   <p class="kind">{{ character.race }} · {{ character.martialClass }}</p>
-                  <p class="owner">{{ pseudo(character.ownerId!) }}</p>
+                  <p class="owner">
+                    {{ pseudo(character.ownerId!)
+                    }}<dg-account-badges [accountId]="character.ownerId" />
+                  </p>
                 </a>
               </li>
             }

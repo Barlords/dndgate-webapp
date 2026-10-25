@@ -30,6 +30,7 @@ import { AdventureForm, AdventureValue } from '../adventure-form';
 import { allowedTransitions, isClosed, Status } from '../adventure-status';
 import { AdventureContext } from './adventure-context.service';
 import { I18n } from '../../../core/i18n/i18n.service';
+import { AccountBadges } from '../../../shared/ui/account-badges/account-badges';
 
 function toValue(adventure: AdventureDto): AdventureValue {
   return {
@@ -46,7 +47,7 @@ function toValue(adventure: AdventureDto): AdventureValue {
 @Component({
   selector: 'dg-adventure-overview-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, Button, AdventureForm],
+  imports: [RouterLink, Button, AdventureForm, AccountBadges],
   styleUrl: '../tavern-page.scss',
   styles: `
     h2 {
@@ -108,6 +109,7 @@ function toValue(adventure: AdventureDto): AdventureValue {
           {{ t().tavern.overview.noMaster }}
         } @else {
           <a [routerLink]="['/players', a.creatorId]">{{ masterName() }}</a>
+          <dg-account-badges [accountId]="adventure().creatorId" />
         }
       </dd>
       <dt>{{ t().tavern.overview.players }}</dt>

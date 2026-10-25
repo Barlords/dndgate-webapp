@@ -30,6 +30,7 @@ import { Loading } from '../../../../shared/ui/loading/loading';
 import { AdventureContext } from '../adventure-context.service';
 import { CharacterPortrait } from './character-portrait';
 import { I18n } from '../../../../core/i18n/i18n.service';
+import { AccountBadges } from '../../../../shared/ui/account-badges/account-badges';
 
 type DetailState = 'loading' | 'ready' | 'missing' | 'failed';
 
@@ -40,7 +41,7 @@ type DetailState = 'loading' | 'ready' | 'missing' | 'failed';
 @Component({
   selector: 'dg-character-detail-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LoadError, RouterLink, Button, Loading, CharacterPortrait],
+  imports: [LoadError, RouterLink, Button, Loading, CharacterPortrait, AccountBadges],
   styleUrl: '../../tavern-page.scss',
   styles: `
     .sheet {
@@ -99,7 +100,9 @@ type DetailState = 'loading' | 'ready' | 'missing' | 'failed';
           <dg-character-portrait [characterId]="c.id!" [name]="c.name ?? ''" />
           <div class="identity">
             <h1>{{ c.name }}</h1>
-            <p class="owner">{{ pseudo(c.ownerId!) }}</p>
+            <p class="owner">
+              {{ pseudo(c.ownerId!) }}<dg-account-badges [accountId]="c.ownerId" />
+            </p>
             @if (!inAdventure) {
               <p class="adventure">
                 @if (c.adventureId) {
