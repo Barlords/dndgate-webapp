@@ -205,6 +205,14 @@ abstract class ApiIntegrationTestSupport {
                 .retrieve().toEntity(String.class);
     }
 
+    /** Gives the account an active subscription to the plan, replacing any previous subscription row. */
+    void subscribe(TestAccount account, String planId) {
+        jdbc.update("insert into subscription (account_id, stripe_customer_id, plan_id, status, cancel_at_period_end, updated_at) "
+                + "values (?, ?, ?, 'ACTIVE', false, now()) "
+                + "on conflict (account_id) do update set plan_id = excluded.plan_id, status = 'ACTIVE', updated_at = now()",
+                account.id(), "cus_test_" + account.id(), planId);
+    }
+
     UUID createAdventure(TestAccount owner, String visibility) {
         ResponseEntity<String> response = call(HttpMethod.POST, "/adventures", owner.token(), Map.of(
                 "name", "Quest", "description", "A quest", "maxPlayer", 4,
