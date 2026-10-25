@@ -2,19 +2,26 @@ package fr.barlords.dndgateapi.server.adapter;
 
 import com.sun.net.httpserver.HttpServer;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-/** A local stand-in for the Stripe API: answers canned JSON by method and path, and records what it receives. */
+/**
+ * A local stand-in for the Stripe API: answers canned JSON by method and path, and records what it receives. Also
+ * signs webhook payloads the way Stripe does.
+ */
 public final class FakeStripeServer implements AutoCloseable {
 
     public record Call(String method, String path, String query, String body) {
@@ -91,6 +98,25 @@ public final class FakeStripeServer implements AutoCloseable {
     public FakeStripeServer fail(String method, String path, int status, String json) {
         stubs.computeIfAbsent(method + " " + path, key -> new CopyOnWriteArrayList<>()).add(new Stub(status, json));
         return this;
+    }
+
+    /** Forgets every answer and every call: a server shared by several tests starts each one empty. */
+    public void reset() {
+        stubs.clear();
+        served.clear();
+        calls.clear();
+    }
+
+    /** The {@code Stripe-Signature} header Stripe would send with this payload, signed at {@code timestamp}. */
+    public static String signature(String payload, String secret, long timestamp) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] digest = mac.doFinal((timestamp + "." + payload).getBytes(StandardCharsets.UTF_8));
+            return "t=" + timestamp + ",v1=" + HexFormat.of().formatHex(digest);
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     public String baseUrl() {

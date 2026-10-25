@@ -11,13 +11,9 @@ import fr.barlords.dndgateapi.domain.functional.model.plan.SubscriptionStatus;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -48,11 +44,8 @@ class StripePaymentAdapterTest {
         return new StripePaymentAdapter(client, webhookSecret, TERMS, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
-    private static String sign(String payload, String secret, long timestamp) throws Exception {
-        Mac mac = Mac.getInstance("HmacSHA256");
-        mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-        String hex = HexFormat.of().formatHex(mac.doFinal((timestamp + "." + payload).getBytes(StandardCharsets.UTF_8)));
-        return "t=" + timestamp + ",v1=" + hex;
+    private static String sign(String payload, String secret, long timestamp) {
+        return FakeStripeServer.signature(payload, secret, timestamp);
     }
 
     @Test
