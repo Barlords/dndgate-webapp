@@ -39,9 +39,10 @@ public interface GameCharacterRepository extends JpaRepository<GameCharacterEnti
 
     long countByAdventure_IdAndNpcTrue(UUID adventureId);
 
-    // The non-player characters stay: they belong to the adventure and go with it
+    // The non-player characters stay: they belong to the adventure and go with it.
+    // "versioned" raises the version of each character moved: a change read before the move answers a conflict
     @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query("update GameCharacterEntity e set e.adventure = null, e.active = false where e.adventure.id = :adventureId and e.npc = false")
+    @Query("update versioned GameCharacterEntity e set e.adventure = null, e.active = false where e.adventure.id = :adventureId and e.npc = false")
     void moveToReserveByAdventureId(@Param("adventureId") UUID adventureId);
 
     long countByOwner_IdAndAdventure_IdAndNpcFalse(UUID ownerId, UUID adventureId);
