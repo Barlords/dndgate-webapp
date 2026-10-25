@@ -60,4 +60,40 @@ class StripeConfigTest {
                 .run(context -> assertTrue(context.getBean(PaymentProviderSpi.class).isEnabled()));
     }
 
+    private ApplicationContextRunner production() {
+        return new ApplicationContextRunner()
+                .withInitializer(new ConfigDataApplicationContextInitializer())
+                .withUserConfiguration(StripeConfig.class)
+                .withBean(Clock.class, Clock::systemUTC)
+                .withPropertyValues("spring.profiles.active=prod", "app.web-base-url=https://web.example");
+    }
+
+    @Test
+    void in_production_a_blank_key_or_webhook_secret_stops_the_start() {
+        production().withPropertyValues("stripe.secret-key=", "stripe.webhook-secret=whsec_1").run(context -> {
+            assertNotNull(context.getStartupFailure(), "a production without billing does not start");
+            assertTrue(rootCause(context.getStartupFailure()) instanceof IllegalStateException);
+            assertTrue(rootCause(context.getStartupFailure()).getMessage().contains("stripe.secret-key"));
+        });
+        production().withPropertyValues("stripe.secret-key=sk_live_1", "stripe.webhook-secret= ").run(context -> {
+            assertNotNull(context.getStartupFailure());
+            assertTrue(rootCause(context.getStartupFailure()).getMessage().contains("stripe.webhook-secret"));
+        });
+        production().withPropertyValues("stripe.secret-key=sk_live_1", "stripe.webhook-secret=whsec_1")
+                .run(context -> assertTrue(context.getBean(PaymentProviderSpi.class).isEnabled()));
+    }
+
+    @Test
+    void outside_production_a_blank_webhook_secret_keeps_the_start() {
+        runner().withPropertyValues("stripe.secret-key=sk_test_1", "stripe.webhook-secret=")
+                .run(context -> assertTrue(context.getBean(PaymentProviderSpi.class).isEnabled()));
+    }
+
+    private static Throwable rootCause(Throwable failure) {
+        Throwable cause = failure;
+        while (cause.getCause() != null) {
+            cause = cause.getCause();
+        }
+        return cause;
+    }
 }
