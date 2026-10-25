@@ -12,7 +12,9 @@ import fr.barlords.dndgateapi.domain.port.in.account.AccountFinderApi;
 import fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
+import fr.barlords.dndgateapi.bootstrap.config.RetryingTransaction;
 import fr.barlords.dndgateapi.bootstrap.config.TransactionalAdventureDeleter;
+import fr.barlords.dndgateapi.bootstrap.config.TransactionalAdventureQuitter;
 import fr.barlords.dndgateapi.domain.port.out.AvailabilityPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MasterClaimPersistenceSpi;
@@ -24,7 +26,7 @@ import fr.barlords.dndgateapi.domain.functional.model.adventure.InvitationLimits
 import fr.barlords.dndgateapi.domain.port.in.adventure.InvitationLogCleanerApi;
 import fr.barlords.dndgateapi.domain.port.out.InvitationLogSpi;
 import org.springframework.beans.factory.annotation.Value;
-import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
+import fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -46,9 +48,9 @@ public class AdventureServiceConfiguration {
     public AdventureCreatorApi adventureCreatorApi(
             AdventurePersistenceSpi spi,
             CurrentAccountService currentAccountService,
-            QuantityLimits quantityLimits
+            EntitlementApi entitlementApi
     ) {
-        return new AdventureCreatorService(spi, currentAccountService, quantityLimits);
+        return new AdventureCreatorService(spi, currentAccountService, entitlementApi);
     }
 
     @Bean
@@ -94,10 +96,16 @@ public class AdventureServiceConfiguration {
             InvitationLogSpi invitationLog,
             Clock clock,
             InvitationLimits invitationLimits,
-            AccessRevocationSpi accessRevocation
+            AccessRevocationSpi accessRevocation,
+            GameCharacterPersistenceSpi gameCharacters,
+            MinioSpi minioSpi,
+            AuditSpi audit,
+            EntitlementApi entitlementApi,
+            RetryingTransaction transaction
     ) {
-        return new AdventureUpdaterService(spi, adventureFinderApi, currentAccountService, adventureOwnerVerifierService,
-                accountFinderApi, emailingSpi, invitationLog, clock, invitationLimits, accessRevocation);
+        return new TransactionalAdventureQuitter(new AdventureUpdaterService(spi, adventureFinderApi, currentAccountService,
+                adventureOwnerVerifierService, accountFinderApi, emailingSpi, invitationLog, clock, invitationLimits,
+                accessRevocation, gameCharacters, minioSpi, audit, entitlementApi), transaction);
     }
 
     @Bean

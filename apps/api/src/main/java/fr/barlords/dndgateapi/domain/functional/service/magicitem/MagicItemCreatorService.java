@@ -1,12 +1,12 @@
 package fr.barlords.dndgateapi.domain.functional.service.magicitem;
 
-import fr.barlords.dndgateapi.domain.functional.exception.QuantityLimitExceededException;
-import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
+import fr.barlords.dndgateapi.domain.functional.model.plan.PlanLimit;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.functional.model.magicitem.MagicItem;
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
 import fr.barlords.dndgateapi.domain.port.in.magicitem.MagicItemCreatorApi;
 import fr.barlords.dndgateapi.domain.port.out.MagicItemPersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi;
 import lombok.RequiredArgsConstructor;
 
 import java.util.UUID;
@@ -18,15 +18,13 @@ public class MagicItemCreatorService implements MagicItemCreatorApi {
 
     private final CurrentAccountService currentAccountService;
 
-    private final QuantityLimits limits;
+    private final EntitlementApi entitlementApi;
 
     @Override
     public MagicItem create(UUID accountId, MagicItem magicItem) {
         Account account = currentAccountService.getAccountById(accountId);
 
-        if (spi.countByOwnerId(account.getId()) >= limits.magicItemsPerAccount()) {
-            throw QuantityLimitExceededException.magicItems(limits.magicItemsPerAccount());
-        }
+        entitlementApi.verifyAccountLimit(account.getId(), PlanLimit.MAGIC_ITEMS, spi.countByOwnerId(account.getId()));
 
         return spi.save(magicItem.withOwner(account));
     }

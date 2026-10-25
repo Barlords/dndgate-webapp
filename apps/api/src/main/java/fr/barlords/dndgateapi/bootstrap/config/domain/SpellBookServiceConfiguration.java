@@ -13,6 +13,7 @@ import fr.barlords.dndgateapi.domain.port.in.spellbook.spell.SpellDeleterApi;
 import fr.barlords.dndgateapi.domain.port.in.spellbook.spell.SpellWriterApi;
 import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
 import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
+import fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -23,9 +24,9 @@ public class SpellBookServiceConfiguration {
     public SpellBookCreatorApi spellBookCreatorApi(
             SpellBookPersistenceSpi spi,
             CurrentAccountService currentAccountService,
-            QuantityLimits quantityLimits
+            EntitlementApi entitlementApi
     ) {
-        return new SpellBookCreatorService(spi, currentAccountService, quantityLimits);
+        return new SpellBookCreatorService(spi, currentAccountService, entitlementApi);
     }
 
     @Bean
@@ -56,9 +57,10 @@ public class SpellBookServiceConfiguration {
     public SpellBookImporterApi spellBookImporterApi(
             SpellBookPersistenceSpi spi,
             CurrentAccountService currentAccountService,
-            QuantityLimits quantityLimits
+            QuantityLimits quantityLimits,
+            EntitlementApi entitlementApi
     ) {
-        return new SpellBookImporterService(spi, currentAccountService, quantityLimits);
+        return new SpellBookImporterService(spi, currentAccountService, quantityLimits, entitlementApi);
     }
 
     @Bean

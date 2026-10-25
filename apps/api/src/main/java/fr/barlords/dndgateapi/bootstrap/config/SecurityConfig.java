@@ -46,7 +46,11 @@ public class SecurityConfig {
 
     /** The routes that work without a token. The OpenAPI contract is written from this list: one place to change. */
     static final String[] PUBLIC_POST_ROUTES = {"/accounts", "/accounts/login", "/accounts/refresh",
-            "/accounts/verify", "/accounts/verification-email", "/accounts/email/confirm"};
+            "/accounts/verify", "/accounts/verification-email", "/accounts/email/confirm",
+            // called by Stripe, authenticated by its signature
+            "/billing/stripe-webhook"};
+
+    static final String[] PUBLIC_GET_ROUTES = {"/plans"};
 
     private static final int MIN_SECRET_LENGTH = 32;
 
@@ -77,6 +81,7 @@ public class SecurityConfig {
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST, PUBLIC_POST_ROUTES).permitAll()
+                        .requestMatchers(HttpMethod.GET, PUBLIC_GET_ROUTES).permitAll()
                         // the contract (only served outside production, see springdoc.api-docs.enabled)
                         .requestMatchers(HttpMethod.GET, "/v3/api-docs", "/v3/api-docs.yaml").permitAll()
                         // WebSockets are authenticated at the STOMP level (WebSocketSecurityInterceptor)

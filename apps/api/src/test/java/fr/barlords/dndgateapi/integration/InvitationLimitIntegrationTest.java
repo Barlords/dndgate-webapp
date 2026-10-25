@@ -30,6 +30,7 @@ import java.util.UUID;
                 "security.rate-limit.register.max=1000000",
                 "security.rate-limit.verify.max=1000000",
                 "security.rate-limit.resend.max=1000000",
+                "plans.file=classpath:plans/test-plans.json",
                 "invitation.rate-limit.sender.max=3",
                 "invitation.rate-limit.sender.window=PT1H",
                 "invitation.rate-limit.recipient.window=PT24H"})

@@ -178,7 +178,9 @@ class DeletionConfirmationIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(0, count("select count(*) from propositions where planning_id = ?", planningId));
         Assertions.assertEquals(0, count("select count(*) from availability where planning_id = ?", planningId));
         Assertions.assertEquals(0, count("select count(*) from availability_dates where availability_id = ?", voteId));
-        Mockito.verify(minioSpi).deleteAfterCommit(picturePath);
+        // The character belongs to its owner: it is in the reserve of the player, picture included
+        Assertions.assertEquals(1, count("select count(*) from \"character\" where picture_path = ? and adventure_id is null", picturePath));
+        Mockito.verify(minioSpi, Mockito.never()).deleteAfterCommit(picturePath);
 
         // the accounts themselves are untouched
         Assertions.assertEquals(200, call(HttpMethod.GET, "/accounts/me", player.token(), null).getStatusCode().value());

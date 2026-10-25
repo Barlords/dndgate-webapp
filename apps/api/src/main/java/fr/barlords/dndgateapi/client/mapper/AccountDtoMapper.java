@@ -7,7 +7,10 @@ import fr.barlords.dndgateapi.client.dto.account.PublicAccountDto;
 import fr.barlords.dndgateapi.client.dto.account.AccountDto;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 
+import fr.barlords.dndgateapi.domain.functional.model.plan.PlanBadge;
+
 import java.util.Locale;
+import java.util.Optional;
 
 
 public interface AccountDtoMapper {
@@ -17,20 +20,24 @@ public interface AccountDtoMapper {
         return email.trim().toLowerCase(Locale.ROOT);
     }
 
-    static AccountDto toDto(Account domain) {
+    static AccountDto toDto(Account domain, Optional<PlanBadge> badge) {
         return new AccountDto(
                 domain.getId(),
                 domain.getEmail(),
                 domain.getPseudo(),
-                domain.getPendingEmail()
+                domain.getPendingEmail(),
+                domain.isFounder(),
+                badge.map(PlanBadge::key).orElse(null)
         );
     }
 
-    static PublicAccountDto toPublicDto(Account domain) {
+    static PublicAccountDto toPublicDto(Account domain, Optional<PlanBadge> badge) {
         return new PublicAccountDto(
                 domain.getId(),
                 domain.getPseudo(),
-                domain.isAnonymized()
+                domain.isAnonymized(),
+                domain.isFounder(),
+                badge.map(PlanBadge::key).orElse(null)
         );
     }
 

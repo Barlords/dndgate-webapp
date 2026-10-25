@@ -15,12 +15,17 @@ import fr.barlords.dndgateapi.client.dto.account.AccountLogRequest;
 import fr.barlords.dndgateapi.client.dto.account.SignupAcceptedDto;
 import fr.barlords.dndgateapi.client.mapper.AuthDtoMapper;
 import fr.barlords.dndgateapi.client.mapper.AccountDtoMapper;
+import fr.barlords.dndgateapi.client.dto.plan.SubscriptionDto;
+import fr.barlords.dndgateapi.client.mapper.PlanDtoMapper;
+import fr.barlords.dndgateapi.domain.port.in.plan.BillingApi;
 import fr.barlords.dndgateapi.client.service.AuthVerifierService;
 import fr.barlords.dndgateapi.client.service.ClientAddresses;
 import fr.barlords.dndgateapi.client.validator.UuidValidator;
 import fr.barlords.dndgateapi.domain.functional.exception.account.TokenNotValidException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.AccountNotFoundException;
+import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.port.in.account.*;
+import fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -56,19 +61,32 @@ public class AccountController {
 
     private final AccountSessionRevokerApi accountSessionRevokerApi;
 
+    private final EntitlementApi entitlementApi;
+
+    private final BillingApi billingApi;
+
     @GetMapping("/me")
     @ResponseStatus(OK)
     public AccountDto getMyProfile() {
         return accountFinderApi.findById(authVerifierService.currentAccountId())
-                .map(AccountDtoMapper::toDto)
+                .map(account -> AccountDtoMapper.toDto(account, entitlementApi.badgeOf(account.getId())))
                 .orElseThrow(TokenNotValidException::new);
+    }
+
+    @GetMapping("/me/subscription")
+    @ResponseStatus(OK)
+    @Operation(summary = "Get my subscription",
+            description = "The plan in force, the subscription as Stripe last described it, and how much of each "
+                    + "account limit is used.")
+    public SubscriptionDto getMySubscription() {
+        return PlanDtoMapper.toDto(billingApi.mine(authVerifierService.currentAccountId()));
     }
 
     @GetMapping("/id/{id}")
     @ResponseStatus(OK)
     public PublicAccountDto getAccountById(@PathVariable String id) {
         return accountFinderApi.findById(UuidValidator.validate(id))
-                .map(AccountDtoMapper::toPublicDto)
+                .map(account -> AccountDtoMapper.toPublicDto(account, entitlementApi.badgeOf(account.getId())))
                 .orElseThrow(AccountNotFoundException::new);
     }
 
@@ -76,7 +94,7 @@ public class AccountController {
     @ResponseStatus(OK)
     public PublicAccountDto getAccountByPseudo(@PathVariable String pseudo) {
         return accountFinderApi.findByPseudo(pseudo)
-                .map(AccountDtoMapper::toPublicDto)
+                .map(account -> AccountDtoMapper.toPublicDto(account, entitlementApi.badgeOf(account.getId())))
                 .orElseThrow(AccountNotFoundException::new);
     }
 
@@ -94,14 +112,13 @@ public class AccountController {
     @PatchMapping
     @ResponseStatus(OK)
     public AccountDto patchAccount(@Valid @RequestBody AccountUpdateRequest request, HttpServletRequest httpRequest) {
-        return AccountDtoMapper.toDto(
-                accountUpdaterApi.update(
-                        authVerifierService.currentAccountId(),
-                        request.currentPassword(),
-                        AccountDtoMapper.toChanges(request),
-                        ClientAddresses.of(httpRequest)
-                )
+        Account updated = accountUpdaterApi.update(
+                authVerifierService.currentAccountId(),
+                request.currentPassword(),
+                AccountDtoMapper.toChanges(request),
+                ClientAddresses.of(httpRequest)
         );
+        return AccountDtoMapper.toDto(updated, entitlementApi.badgeOf(updated.getId()));
     }
 
     @DeleteMapping

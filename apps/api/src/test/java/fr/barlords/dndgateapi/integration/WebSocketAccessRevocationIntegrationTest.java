@@ -329,7 +329,7 @@ class WebSocketAccessRevocationIntegrationTest extends ApiIntegrationTestSupport
         Inbox playerChat = chat(connect(player), adventureId);
 
         Assertions.assertThrows(IllegalStateException.class, () -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            adventureUpdater.quitAdventure(adventureId, player.id());
+            adventureUpdater.quitAdventure(adventureId, player.id(), java.util.Map.of());
             throw new IllegalStateException("something fails before the commit");
         }));
 

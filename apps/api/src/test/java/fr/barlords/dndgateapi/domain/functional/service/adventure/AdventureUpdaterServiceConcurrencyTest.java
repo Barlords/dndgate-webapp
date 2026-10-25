@@ -64,7 +64,11 @@ class AdventureUpdaterServiceConcurrencyTest {
                 adventureOwnerVerifierService, accountFinderApi, emailingSpi,
                 org.mockito.Mockito.mock(fr.barlords.dndgateapi.domain.port.out.InvitationLogSpi.class), java.time.Clock.systemUTC(),
                 new fr.barlords.dndgateapi.domain.functional.model.adventure.InvitationLimits(20, java.time.Duration.ofHours(1), java.time.Duration.ofHours(24)),
-                org.mockito.Mockito.mock(fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi.class));
+                org.mockito.Mockito.mock(fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi.class),
+                org.mockito.Mockito.mock(fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi.class),
+                org.mockito.Mockito.mock(fr.barlords.dndgateapi.domain.port.out.MinioSpi.class),
+                org.mockito.Mockito.mock(fr.barlords.dndgateapi.domain.port.out.AuditSpi.class),
+                org.mockito.Mockito.mock(fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi.class));
         lenient().when(currentAccountService.getAccountById(candidate.getId())).thenReturn(candidate);
     }
 
@@ -124,20 +128,6 @@ class AdventureUpdaterServiceConcurrencyTest {
         Assertions.assertThrows(AdventureConcurrentModificationException.class,
                 () -> service.joinAdventure(adventure.getId(), candidate.getId()));
         verify(spi, times(10)).save(any());
-    }
-
-    @Test
-    void quitting_is_replayed_too() {
-        Adventure stale = adventure(4, candidate.getId());
-        Adventure fresh = stale.withPlayers(List.of(candidate.getId(), other));
-        when(adventureFinderApi.findById(stale.getId())).thenReturn(Optional.of(stale), Optional.of(fresh));
-        when(spi.save(any(Adventure.class)))
-                .thenThrow(new AdventureConcurrentModificationException(null))
-                .thenAnswer(i -> i.getArguments()[0]);
-
-        Adventure left = service.quitAdventure(stale.getId(), candidate.getId());
-
-        Assertions.assertEquals(List.of(other), left.getPlayers(), "the other player is not lost");
     }
 
     @Test

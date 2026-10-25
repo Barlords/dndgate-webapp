@@ -15,6 +15,7 @@ public interface AccountEntityMapper {
                 .pendingEmail(entity.getPendingEmail())
                 .pendingEmailCode(entity.getPendingEmailCode())
                 .pendingEmailExpiresAt(entity.getPendingEmailExpiresAt())
+                .founder(entity.isFounder())
                 .anonymizedAt(entity.getAnonymizedAt())
                 .version(entity.getVersion())
                 .build();
@@ -30,6 +31,7 @@ public interface AccountEntityMapper {
                 .pendingEmail(domain.getPendingEmail())
                 .pendingEmailCode(domain.getPendingEmailCode())
                 .pendingEmailExpiresAt(domain.getPendingEmailExpiresAt())
+                .founder(domain.isFounder())
                 .anonymizedAt(domain.getAnonymizedAt())
                 .version(domain.getVersion())
                 .build();

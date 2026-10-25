@@ -4,7 +4,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import fr.barlords.dndgateapi.client.WebRTCMessage;
 import fr.barlords.dndgateapi.client.service.AuthVerifierService;
 import fr.barlords.dndgateapi.client.validator.UuidValidator;
+import fr.barlords.dndgateapi.domain.functional.model.plan.Feature;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureAccessVerifierApi;
+import fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -28,6 +30,8 @@ public class WebRTCController {
 
     private final AdventureAccessVerifierApi adventureAccessVerifierApi;
 
+    private final EntitlementApi entitlementApi;
+
     @PostMapping("/offer")
     @ResponseStatus(NO_CONTENT)
     public void sendOffer(@Valid @RequestBody WebRTCMessage offer) {
@@ -48,10 +52,12 @@ public class WebRTCController {
 
     private void broadcast(WebRTCMessage message) {
         var adventureId = UuidValidator.validate(message.getAdventureId());
-        adventureAccessVerifierApi.verifyParticipant(authVerifierService.currentAccountId(), adventureId);
+        var accountId = authVerifierService.currentAccountId();
+        var adventure = adventureAccessVerifierApi.verifyParticipant(accountId, adventureId);
+        entitlementApi.verifyFeature(accountId, adventure, Feature.VIDEO);
 
         // The sender is the authenticated caller, never the value provided by the client
-        message.setAccountId(authVerifierService.currentAccountId().toString());
+        message.setAccountId(accountId.toString());
 
         messagingTemplate.convertAndSend("/topic/adventure/webrtc/" + adventureId, message);
     }

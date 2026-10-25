@@ -8,6 +8,7 @@ import java.nio.ByteBuffer;
 import fr.barlords.dndgateapi.domain.functional.exception.gamecharacter.GameCharacterNotFoundException;
 import fr.barlords.dndgateapi.domain.functional.exception.gamecharacter.GameCharacterOwnerException;
 import fr.barlords.dndgateapi.domain.functional.model.GameCharacter;
+import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureAccessVerifierApi;
 import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterFinderApi;
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
@@ -30,7 +31,7 @@ public class GameCharacterFinderService implements GameCharacterFinderApi {
 
     @Override
     public Optional<GameCharacter> findById(UUID accountId, UUID id) {
-        return spi.findById(id).map(character -> {
+        return spi.findById(id).filter(character -> !hidden(accountId, character)).map(character -> {
             if (!accountId.equals(character.getOwner().getId())) {
                 // Outside any adventure, nobody but the owner takes part in the character's story
                 if (!character.hasAdventure()) {
@@ -40,6 +41,11 @@ public class GameCharacterFinderService implements GameCharacterFinderApi {
             }
             return character;
         });
+    }
+
+    /** A private non-player character does not exist for anybody but the current game master of its adventure. */
+    private static boolean hidden(UUID accountId, GameCharacter character) {
+        return character.isPrivateNpc() && !character.isManagedBy(accountId);
     }
 
     @Override
@@ -53,9 +59,9 @@ public class GameCharacterFinderService implements GameCharacterFinderApi {
 
     @Override
     public List<GameCharacter> findByAdventureId(UUID accountId, UUID adventureId) {
-        adventureAccessVerifierApi.verifyParticipant(accountId, adventureId);
+        Adventure adventure = adventureAccessVerifierApi.verifyParticipant(accountId, adventureId);
 
-        return spi.findByAdventureId(adventureId);
+        return spi.findVisibleByAdventureId(adventureId, adventure.isMaster(accountId));
     }
 
     @Override

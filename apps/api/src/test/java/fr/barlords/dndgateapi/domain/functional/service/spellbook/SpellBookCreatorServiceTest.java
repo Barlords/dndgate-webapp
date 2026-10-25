@@ -1,10 +1,10 @@
 package fr.barlords.dndgateapi.domain.functional.service.spellbook;
 
 import fr.barlords.dndgateapi.domain.functional.exception.account.TokenNotValidException;
-import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
 import fr.barlords.dndgateapi.domain.functional.model.SpellBook;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
+import fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi;
 import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,13 +29,16 @@ class SpellBookCreatorServiceTest {
     @Mock
     private CurrentAccountService currentAccountService;
 
+    @Mock
+    private EntitlementApi entitlement;
+
     private SpellBookCreatorService service;
 
     private final Account wizard = Account.builder().pseudo("wizard").email("wizard@test.fr").build();
 
     @BeforeEach
     void setUp() {
-        service = new SpellBookCreatorService(spi, currentAccountService, QuantityLimits.defaults());
+        service = new SpellBookCreatorService(spi, currentAccountService, entitlement);
     }
 
     @Test

@@ -7,6 +7,8 @@ import fr.barlords.dndgateapi.domain.functional.service.adventure.master.MasterT
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
 import fr.barlords.dndgateapi.domain.functional.service.account.*;
 import fr.barlords.dndgateapi.domain.port.in.account.*;
+import fr.barlords.dndgateapi.domain.port.in.plan.BillingApi;
+import fr.barlords.dndgateapi.domain.port.out.SubscriptionPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.AccessRevocationSpi;
 import fr.barlords.dndgateapi.domain.port.out.AccessTokenSpi;
 import fr.barlords.dndgateapi.domain.port.out.EmailingSpi;
@@ -105,12 +107,14 @@ public class AccountServiceConfiguration {
             Clock clock,
             AuditSpi audit,
             LoginFailureSpi loginFailures,
+            BillingApi billingApi,
+            SubscriptionPersistenceSpi subscriptions,
             PlatformTransactionManager transactionManager
     ) {
         return new TransactionalAccountAnonymizer(new AccountAnonymizerService(
                 accounts, adventures, masterClaims, spellBooks, magicItems, gameCharacters, minioSpi, passwordHasher, opaqueTokenSpi,
                 accountPasswordVerifierService,
-                accountSessionRevokerApi, masterTransferNotifier, clock, audit, loginFailures), transactionManager);
+                accountSessionRevokerApi, masterTransferNotifier, clock, audit, loginFailures, billingApi, subscriptions), transactionManager);
     }
 
     @Bean

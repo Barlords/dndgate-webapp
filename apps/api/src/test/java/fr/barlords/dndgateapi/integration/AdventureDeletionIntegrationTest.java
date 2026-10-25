@@ -1,7 +1,11 @@
 package fr.barlords.dndgateapi.integration;
 
+import fr.barlords.dndgateapi.domain.functional.exception.ConcurrentUpdateException;
+import fr.barlords.dndgateapi.domain.functional.model.GameCharacter;
+import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 
@@ -12,6 +16,9 @@ import java.util.UUID;
  * deletion has to remove every kind of child itself, or the database refuses it.
  */
 class AdventureDeletionIntegrationTest extends ApiIntegrationTestSupport {
+
+    @Autowired
+    GameCharacterPersistenceSpi gameCharacters;
 
     private int count(String table, UUID adventureId) {
         return jdbc.queryForObject("select count(*) from " + table + " where adventure_id = ?", Integer.class, adventureId);
@@ -60,5 +67,57 @@ class AdventureDeletionIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(0, jdbc.queryForObject("select count(*) from availability where id = ?", Integer.class, availabilityId));
         Assertions.assertEquals(0, jdbc.queryForObject("select count(*) from availability_dates where availability_id = ?", Integer.class, availabilityId));
         Assertions.assertEquals(0, jdbc.queryForObject("select count(*) from propositions where planning_id = ?", Integer.class, planningId));
+        Assertions.assertEquals(1, jdbc.queryForObject("select count(*) from \"character\" where account_id = ? and adventure_id is null",
+                Integer.class, player.id()), "the character of the player survives in their reserve");
+    }
+
+    @Test
+    void deleting_an_adventure_moves_player_characters_to_their_reserve_even_when_full() {
+        TestAccount master = registerAndLogin();
+        TestAccount player = registerAndLogin();
+        subscribe(player, "test-tight");
+        UUID adventureId = createAdventure(master, "PUBLIC");
+        Assertions.assertEquals(200, call(HttpMethod.POST, "/adventures/" + adventureId + "/join", player.token(), null)
+                .getStatusCode().value());
+        String waiting = body(createCharacterWithoutPicture(player, null, "Waiting")).get("id").asString();
+        String played = body(createCharacter(player, adventureId, "Gandalf")).get("id").asString();
+        String picture = jdbc.queryForObject("select picture_path from \"character\" where id = ?", String.class, UUID.fromString(played));
+        Assertions.assertNotNull(picture);
+
+        ResponseEntity<String> deleted = call(HttpMethod.DELETE, "/adventures/" + adventureId, master.token(),
+                java.util.Map.of("confirmation", "Quest"));
+
+        Assertions.assertEquals(204, deleted.getStatusCode().value(), deleted.getBody());
+        Assertions.assertEquals(2, jdbc.queryForObject("select count(*) from \"character\" where account_id = ? and adventure_id is null",
+                Integer.class, player.id()), "the reserve exceeds its quota, nothing is lost");
+        Assertions.assertEquals(picture, jdbc.queryForObject("select picture_path from \"character\" where id = ?", String.class,
+                UUID.fromString(played)));
+        Assertions.assertEquals(0, jdbc.queryForObject("select count(*) from \"character\" where id in (?, ?) and active",
+                Integer.class, UUID.fromString(waiting), UUID.fromString(played)));
+    }
+
+    @Test
+    void a_character_read_before_its_adventure_is_deleted_is_not_written_back_into_it() {
+        TestAccount master = registerAndLogin();
+        TestAccount player = registerAndLogin();
+        UUID adventureId = createAdventure(master, "PUBLIC");
+        Assertions.assertEquals(200, call(HttpMethod.POST, "/adventures/" + adventureId + "/join", player.token(), null)
+                .getStatusCode().value());
+        UUID played = UUID.fromString(body(createCharacterWithoutPicture(player, adventureId, "Gandalf")).get("id").asString());
+        // what a PATCH or an activation of the character has read when the deletion commits
+        GameCharacter stale = gameCharacters.findById(played).orElseThrow();
+        long version = jdbc.queryForObject("select version from \"character\" where id = ?", Long.class, played);
+
+        Assertions.assertEquals(204, call(HttpMethod.DELETE, "/adventures/" + adventureId, master.token(),
+                java.util.Map.of("confirmation", "Quest")).getStatusCode().value());
+
+        Assertions.assertEquals(version + 1, jdbc.queryForObject("select version from \"character\" where id = ?",
+                Long.class, played), "the move to the reserve is a change of the character");
+        // a concurrent change (409), not a write pointing at the deleted adventure (a foreign key error, 500)
+        Assertions.assertThrows(ConcurrentUpdateException.class, () -> gameCharacters.save(stale.withName("Renamed")));
+        Assertions.assertEquals("Gandalf", jdbc.queryForObject("select name from \"character\" where id = ?",
+                String.class, played));
+        Assertions.assertNull(jdbc.queryForObject("select adventure_id from \"character\" where id = ?",
+                UUID.class, played));
     }
 }

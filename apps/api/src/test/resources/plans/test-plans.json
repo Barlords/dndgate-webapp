@@ -1,0 +1,17 @@
+{
+  "currency": "EUR",
+  "defaultPlan": "test-default",
+  "plans": [
+    {"id": "test-default", "highlighted": false, "prices": {}, "limits": {"activeAdventuresAsMaster": 1000, "charactersWithoutAdventure": 1000, "spellBooks": 1000, "magicItems": 1000, "masterNotesPerAdventure": 1000, "historicalNotesPerAdventure": 1000, "charactersPerPlayerAndAdventure": 1000, "npcsPerAdventure": 1000, "messagesPerAdventure": 1000}, "features": {"characterPictures": true, "video": true, "equippedTable": true, "earlyAccess": true, "prioritySupport": true}, "badge": null},
+    {"id": "test-chat", "highlighted": false,
+     "prices": {"monthly": {"amount": 200, "stripeLookupKey": "test_chat_monthly"}},
+     "limits": {"activeAdventuresAsMaster": 1000, "charactersWithoutAdventure": 1000, "spellBooks": 1000, "magicItems": 1000, "masterNotesPerAdventure": 1000, "historicalNotesPerAdventure": 1000, "charactersPerPlayerAndAdventure": 1000, "npcsPerAdventure": 1000, "messagesPerAdventure": 3}, "features": {"characterPictures": true, "video": true, "equippedTable": true, "earlyAccess": true, "prioritySupport": true}, "badge": null},
+    {"id": "test-tight", "highlighted": false,
+     "prices": {"monthly": {"amount": 100, "stripeLookupKey": "test_tight_monthly"}},
+     "limits": {"activeAdventuresAsMaster": 1, "charactersWithoutAdventure": 1, "spellBooks": 1, "magicItems": 1, "masterNotesPerAdventure": 1, "historicalNotesPerAdventure": 1, "charactersPerPlayerAndAdventure": 1, "npcsPerAdventure": 1, "messagesPerAdventure": 1}, "features": {"characterPictures": false, "video": false, "equippedTable": false, "earlyAccess": false, "prioritySupport": false}, "badge": null},
+    {"id": "test-paid", "highlighted": false,
+     "prices": {"monthly": {"amount": 500, "stripeLookupKey": "test_paid_monthly"},
+                "yearly": {"amount": 5000, "stripeLookupKey": "test_paid_yearly"}},
+     "limits": {"activeAdventuresAsMaster": 1000, "charactersWithoutAdventure": 1000, "spellBooks": 1000, "magicItems": 1000, "masterNotesPerAdventure": 1000, "historicalNotesPerAdventure": 1000, "charactersPerPlayerAndAdventure": 1000, "npcsPerAdventure": 1000, "messagesPerAdventure": 1000}, "features": {"characterPictures": true, "video": true, "equippedTable": true, "earlyAccess": true, "prioritySupport": true}, "badge": "legend"}
+  ]
+}

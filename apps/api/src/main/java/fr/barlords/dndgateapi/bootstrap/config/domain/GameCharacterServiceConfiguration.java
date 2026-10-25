@@ -7,11 +7,13 @@ import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureFinderApi;
 import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterCreatorApi;
 import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterDeleterApi;
 import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterFinderApi;
+import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterMoverApi;
 import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterUpdaterApi;
+import fr.barlords.dndgateapi.bootstrap.config.TransactionalGameCharacterMover;
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureAccessVerifierApi;
-import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
+import fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -31,9 +33,9 @@ public class GameCharacterServiceConfiguration {
             AdventureAccessVerifierApi adventureAccessVerifierApi,
             CurrentAccountService currentAccountService,
             MinioSpi minioSpi,
-            QuantityLimits quantityLimits
+            EntitlementApi entitlementApi
     ) {
-        return new GameCharacterCreatorService(spi, adventureAccessVerifierApi, currentAccountService, minioSpi, quantityLimits);
+        return new GameCharacterCreatorService(spi, adventureAccessVerifierApi, currentAccountService, minioSpi, entitlementApi);
     }
 
     @Bean
@@ -51,6 +53,17 @@ public class GameCharacterServiceConfiguration {
             GameCharacterOwnerVerifierService gameCharacterOwnerVerifierService
     ) {
         return new GameCharacterUpdaterService(spi, gameCharacterOwnerVerifierService);
+    }
+
+    @Bean
+    public GameCharacterMoverApi gameCharacterMoverApi(
+            GameCharacterPersistenceSpi spi,
+            GameCharacterOwnerVerifierService gameCharacterOwnerVerifierService,
+            AdventureAccessVerifierApi adventureAccessVerifierApi,
+            EntitlementApi entitlementApi
+    ) {
+        return new TransactionalGameCharacterMover(new GameCharacterMoverService(
+                spi, gameCharacterOwnerVerifierService, adventureAccessVerifierApi, entitlementApi));
     }
 
     @Bean

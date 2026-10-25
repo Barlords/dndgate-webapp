@@ -25,6 +25,8 @@ public interface MessageRepository extends JpaRepository<MessageEntity, UUID> {
 
     Page<MessageEntity> findByAdventureId(UUID adventureId, Pageable pageable);
 
+    long countByAdventureId(UUID adventureId);
+
     List<MessageEntity> findMessageEntitiesBySenderIdOrderBySendDate(UUID senderId);
 
 
@@ -32,6 +34,10 @@ public interface MessageRepository extends JpaRepository<MessageEntity, UUID> {
     @Query("delete from MessageEntity m where m.adventureId = :adventureId")
     void deleteByAdventureId(@Param("adventureId") UUID adventureId);
 
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "delete from message where id in (select id from message where adventure_id = :adventureId "
+            + "order by send_date desc, id desc offset :keep)", nativeQuery = true)
+    int deleteOldestBeyond(@Param("adventureId") UUID adventureId, @Param("keep") int keep);
 
     @Query("select count(m) from MessageEntity m where m.senderId = :senderId and m.sendDate > :since")
     long countBySenderIdSince(@Param("senderId") UUID senderId, @Param("since") Instant since);

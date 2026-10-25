@@ -40,6 +40,9 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
       WEB_BASE_URL: ${WEB_BASE_URL:?WEB_BASE_URL is required}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?STRIPE_SECRET_KEY is required}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:?STRIPE_WEBHOOK_SECRET is required}
+      PLANS_FILE: ${PLANS_FILE:-classpath:plans/plans.json}
     # Le reverse proxy est sur la machine : l'API n'écoute pas sur les autres interfaces.
     # Le port de gestion (4001 : sondes et métriques) n'est JAMAIS publié ; un collecteur le lit par le réseau interne.
     ports:

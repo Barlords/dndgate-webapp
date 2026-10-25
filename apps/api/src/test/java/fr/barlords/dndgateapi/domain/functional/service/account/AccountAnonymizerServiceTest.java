@@ -26,6 +26,11 @@ import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MagicItemPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
+import fr.barlords.dndgateapi.domain.port.out.SubscriptionPersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.in.plan.BillingApi;
+import fr.barlords.dndgateapi.domain.functional.exception.plan.PaymentProviderUnavailableException;
+import org.mockito.InOrder;
+import org.mockito.Mockito;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -96,6 +101,7 @@ public class AccountAnonymizerServiceTest {
 
     private final Account account = Account.builder()
             .pseudo("gandalf").email("gandalf@middle.earth").password("hash").activated(true)
+            .founder(true)
             .build();
 
     @Mock
@@ -104,11 +110,17 @@ public class AccountAnonymizerServiceTest {
     @Mock
     private LoginFailureSpi loginFailures;
 
+    @Mock
+    private BillingApi billing;
+
+    @Mock
+    private SubscriptionPersistenceSpi subscriptions;
+
     @BeforeEach
     void setUp() {
         service = new AccountAnonymizerService(accounts, adventures, masterClaims, spellBooks, magicItems, gameCharacters, minio,
                 passwordHasher, opaqueTokens,
-                passwordVerifier, sessionRevoker, notifier, Clock.fixed(NOW, ZoneOffset.UTC), audit, loginFailures);
+                passwordVerifier, sessionRevoker, notifier, Clock.fixed(NOW, ZoneOffset.UTC), audit, loginFailures, billing, subscriptions);
         lenient().when(accounts.findById(account.getId())).thenReturn(Optional.of(account));
         lenient().when(opaqueTokens.generate()).thenReturn("random-secret");
         lenient().when(passwordHasher.hash("random-secret")).thenReturn("unusable-hash");
@@ -146,6 +158,40 @@ public class AccountAnonymizerServiceTest {
     }
 
     @Test
+    void the_subscription_is_cancelled_at_the_provider_before_anything_is_written() {
+        service.anonymize(account.getId(), "password", CLIENT);
+
+        InOrder order = Mockito.inOrder(passwordVerifier, billing, adventures, accounts, subscriptions);
+        order.verify(passwordVerifier).verify(any(), any(), any(), any());
+        order.verify(billing).cancelForAnonymizedAccount(account.getId());
+        order.verify(adventures).findAllByCreatorId(account.getId());
+        order.verify(subscriptions).deleteByAccountId(account.getId());
+        order.verify(accounts).save(any(Account.class));
+    }
+
+    @Test
+    void a_provider_failure_stops_the_anonymization_before_any_write() {
+        doThrow(new PaymentProviderUnavailableException("down")).when(billing).cancelForAnonymizedAccount(account.getId());
+
+        Assertions.assertThrows(PaymentProviderUnavailableException.class,
+                () -> service.anonymize(account.getId(), "password", CLIENT));
+
+        verify(accounts, never()).save(any());
+        verify(subscriptions, never()).deleteByAccountId(any());
+    }
+
+    @Test
+    void an_already_anonymized_account_calls_no_provider() {
+        Account anonymous = account.withAnonymizedAt(NOW);
+        when(accounts.findById(account.getId())).thenReturn(Optional.of(anonymous));
+
+        service.anonymize(account.getId(), "password", CLIENT);
+
+        verify(billing, never()).cancelForAnonymizedAccount(any());
+        verify(subscriptions, never()).deleteByAccountId(any());
+    }
+
+    @Test
     void nothing_that_identifies_the_person_is_kept() {
         service.anonymize(account.getId(), "password", CLIENT);
 
@@ -159,6 +205,13 @@ public class AccountAnonymizerServiceTest {
         Assertions.assertFalse(anonymous.isActivated());
         Assertions.assertEquals(NOW, anonymous.getAnonymizedAt());
         Assertions.assertTrue(anonymous.isAnonymized());
+    }
+
+    @Test
+    void the_founder_badge_is_removed() {
+        service.anonymize(account.getId(), "password", CLIENT);
+
+        Assertions.assertFalse(savedAccount().isFounder());
     }
 
     @Test
@@ -223,6 +276,8 @@ public class AccountAnonymizerServiceTest {
 
         Assertions.assertThrows(WrongPasswordException.class, () -> service.anonymize(account.getId(), "wrong", CLIENT));
 
+        verify(billing, never()).cancelForAnonymizedAccount(any());
+        verify(subscriptions, never()).deleteByAccountId(any());
         verify(accounts, never()).save(any());
         verify(adventures, never()).save(any());
         verify(spellBooks, never()).deleteById(any());

@@ -45,6 +45,9 @@ public class AccountEntity implements Serializable {
     @Column(name = "pending_email_expires_at")
     private Instant pendingEmailExpiresAt;
 
+    @Column(name = "founder", nullable = false)
+    private boolean founder;
+
     @Column(name = "anonymized_at")
     private Instant anonymizedAt;
 

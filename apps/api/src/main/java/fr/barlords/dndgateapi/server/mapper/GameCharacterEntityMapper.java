@@ -16,6 +16,9 @@ public interface GameCharacterEntityMapper {
                 .personality(entity.getPersonality())
                 .background(entity.getBackground())
                 .picturePath(entity.getPicturePath())
+                .active(entity.isActive())
+                .npc(entity.isNpc())
+                .visibility(entity.getVisibility())
                 .version(entity.getVersion())
                 .build();
     }
@@ -31,6 +34,9 @@ public interface GameCharacterEntityMapper {
                 .personality(domain.getPersonality())
                 .background(domain.getBackground())
                 .picturePath(domain.getPicturePath())
+                .active(domain.isActive())
+                .npc(domain.isNpc())
+                .visibility(domain.getVisibility())
                 .version(domain.getVersion())
                 .build();
     }

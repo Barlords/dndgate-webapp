@@ -63,6 +63,10 @@ public class AdventureDeleterService implements AdventureDeleterApi {
             throw new AdventureInProgressException();
         }
 
+        // The characters of the players belong to their owners: they go back to the reserve, whatever its quota
+        gameCharacters.moveToReserveByAdventureId(id);
+
+        // Only what is still in the adventure is deleted with it, so that is all that loses its picture
         List<String> pictures = gameCharacters.findByAdventureId(id).stream()
                 .map(GameCharacter::getPicturePath)
                 .filter(Objects::nonNull)

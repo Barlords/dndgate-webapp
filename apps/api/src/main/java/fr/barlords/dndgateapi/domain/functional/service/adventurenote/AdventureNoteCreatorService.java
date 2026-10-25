@@ -1,12 +1,12 @@
 package fr.barlords.dndgateapi.domain.functional.service.adventurenote;
 
-import fr.barlords.dndgateapi.domain.functional.exception.QuantityLimitExceededException;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.note.AdventureNote;
 import fr.barlords.dndgateapi.domain.functional.service.adventure.AdventureOwnerVerifierService;
 import fr.barlords.dndgateapi.domain.port.in.adventurenote.AdventureNoteCreatorApi;
 import fr.barlords.dndgateapi.domain.port.out.AdventureNotePersistenceSpi;
-import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
+import fr.barlords.dndgateapi.domain.functional.model.plan.PlanLimit;
+import fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -20,15 +20,13 @@ public class AdventureNoteCreatorService implements AdventureNoteCreatorApi {
 
     private final AdventureOwnerVerifierService adventureOwnerVerifierService;
 
-    private final QuantityLimits limits;
+    private final EntitlementApi entitlementApi;
 
     @Override
     public AdventureNote create(UUID accountId, UUID adventureId, AdventureNote adventureNote) {
         Adventure adventure = adventureOwnerVerifierService.verify(accountId, adventureId);
 
-        if (spi.countByAdventureId(adventureId) >= limits.adventureNotesPerAdventure()) {
-            throw QuantityLimitExceededException.adventureNotes(limits.adventureNotesPerAdventure());
-        }
+        entitlementApi.verifyAdventureLimit(adventure, PlanLimit.MASTER_NOTES_PER_ADVENTURE, spi.countByAdventureId(adventureId));
 
         return spi.save(adventureNote.withAdventure(adventure));
     }

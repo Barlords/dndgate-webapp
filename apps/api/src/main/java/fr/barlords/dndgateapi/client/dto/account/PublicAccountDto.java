@@ -1,5 +1,7 @@
 package fr.barlords.dndgateapi.client.dto.account;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.util.UUID;
 
 /**
@@ -9,5 +11,9 @@ import java.util.UUID;
 public record PublicAccountDto(
         UUID id,
         String pseudo,
-        boolean anonymized
+        boolean anonymized,
+        boolean founder,
+        /** {@code dungeon-master}, {@code legend} or null: the badge of the plan in force. */
+        @Schema(nullable = true, allowableValues = {"dungeon-master", "legend"},
+                description = "dungeon-master, legend or null") String planBadge
 ) { }

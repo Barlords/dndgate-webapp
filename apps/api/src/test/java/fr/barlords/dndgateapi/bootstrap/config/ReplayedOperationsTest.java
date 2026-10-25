@@ -1,6 +1,11 @@
 package fr.barlords.dndgateapi.bootstrap.config;
 
 import fr.barlords.dndgateapi.domain.functional.exception.ConcurrentUpdateException;
+import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureConcurrentModificationException;
+import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
+import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureStatus;
+import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureVisibility;
+import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureUpdaterApi;
 import fr.barlords.dndgateapi.domain.functional.model.SpellBook;
 import fr.barlords.dndgateapi.domain.functional.model.Upserted;
 import fr.barlords.dndgateapi.domain.functional.model.planning.Availability;
@@ -11,11 +16,14 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.SimpleTransactionStatus;
 
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -140,5 +148,42 @@ class ReplayedOperationsTest {
         Planning planning = Planning.builder().build();
         Assertions.assertThrows(ConcurrentUpdateException.class, () -> updater.createOrUpdate(accountId, planning));
         Assertions.assertEquals(1, calls.get());
+    }
+
+    // ---- leaving an adventure ----
+
+    @Test
+    void leaving_an_adventure_met_by_a_concurrent_change_is_replayed_from_a_fresh_attempt() {
+        AdventureUpdaterApi updater = mock(AdventureUpdaterApi.class);
+        UUID adventureId = UUID.randomUUID();
+        Adventure left = Adventure.builder().build();
+        when(updater.quitAdventure(adventureId, accountId, Map.of()))
+                .thenThrow(new AdventureConcurrentModificationException(null))
+                .thenReturn(left);
+
+        Assertions.assertSame(left, new TransactionalAdventureQuitter(updater, transaction).quitAdventure(adventureId, accountId, Map.of()));
+        verify(updater, times(2)).quitAdventure(adventureId, accountId, Map.of());
+    }
+
+    @Test
+    void the_other_operations_of_the_adventure_updater_pass_through_untouched() {
+        AdventureUpdaterApi updater = mock(AdventureUpdaterApi.class);
+        TransactionalAdventureQuitter quitter = new TransactionalAdventureQuitter(updater, transaction);
+        UUID id = UUID.randomUUID();
+        Adventure adventure = Adventure.builder().build();
+
+        quitter.update(accountId, adventure);
+        quitter.updateVisibility(accountId, id, AdventureVisibility.PRIVATE);
+        quitter.updateStatus(accountId, id, AdventureStatus.ONGOING);
+        quitter.joinAdventure(id, accountId);
+        quitter.joinAdventureByCode(accountId, "code");
+        quitter.sendInvitationCode(accountId, id, "pseudo");
+
+        verify(updater).update(accountId, adventure);
+        verify(updater).updateVisibility(accountId, id, AdventureVisibility.PRIVATE);
+        verify(updater).updateStatus(accountId, id, AdventureStatus.ONGOING);
+        verify(updater).joinAdventure(id, accountId);
+        verify(updater).joinAdventureByCode(accountId, "code");
+        verify(updater).sendInvitationCode(accountId, id, "pseudo");
     }
 }

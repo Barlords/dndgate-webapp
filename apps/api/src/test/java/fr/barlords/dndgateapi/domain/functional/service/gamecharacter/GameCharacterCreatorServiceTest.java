@@ -2,12 +2,18 @@ package fr.barlords.dndgateapi.domain.functional.service.gamecharacter;
 
 import fr.barlords.dndgateapi.domain.functional.exception.InvalidPictureException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.AdventureAccessDeniedException;
+import fr.barlords.dndgateapi.domain.functional.exception.plan.FeatureNotIncludedException;
+import fr.barlords.dndgateapi.domain.functional.model.plan.PlanDecider;
+import fr.barlords.dndgateapi.domain.functional.model.plan.Feature;
 import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
+import fr.barlords.dndgateapi.domain.functional.model.CharacterVisibility;
 import fr.barlords.dndgateapi.domain.functional.model.GameCharacter;
+import fr.barlords.dndgateapi.domain.functional.model.plan.PlanLimit;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
 import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureAccessVerifierApi;
+import fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi;
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
 import org.junit.jupiter.api.Assertions;
@@ -23,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -48,6 +55,9 @@ class GameCharacterCreatorServiceTest {
     @Mock
     private MinioSpi minioSpi;
 
+    @Mock
+    private EntitlementApi entitlement;
+
     private GameCharacterCreatorService service;
 
     private final Account player = Account.builder().pseudo("player").email("player@test.fr").build();
@@ -58,7 +68,7 @@ class GameCharacterCreatorServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new GameCharacterCreatorService(spi, adventureAccessVerifierApi, currentAccountService, minioSpi, QuantityLimits.defaults());
+        service = new GameCharacterCreatorService(spi, adventureAccessVerifierApi, currentAccountService, minioSpi, entitlement);
         when(currentAccountService.getAccountById(player.getId())).thenReturn(player);
     }
 
@@ -93,6 +103,25 @@ class GameCharacterCreatorServiceTest {
         Assertions.assertNull(created.getAdventure());
         Assertions.assertFalse(created.hasAdventure());
         verify(adventureAccessVerifierApi, never()).verifyParticipant(any(), any());
+    }
+
+    @Test
+    void the_first_character_of_a_player_in_an_adventure_is_created_active_and_the_next_ones_are_not() {
+        playerIsParticipant();
+        when(spi.save(any(GameCharacter.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        Assertions.assertTrue(create(PNG).isActive());
+
+        when(spi.findActive(player.getId(), adventure.getId())).thenReturn(java.util.Optional.of(draft));
+
+        Assertions.assertFalse(create(PNG).isActive());
+    }
+
+    @Test
+    void a_character_of_the_reserve_is_never_active() {
+        when(spi.save(any(GameCharacter.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        Assertions.assertFalse(service.create(player.getId(), null, draft, new ByteArrayInputStream(PNG)).isActive());
     }
 
     @Test
@@ -210,5 +239,97 @@ class GameCharacterCreatorServiceTest {
         IllegalStateException thrown = Assertions.assertThrows(IllegalStateException.class, () -> create(PNG));
 
         Assertions.assertSame(failure, thrown);
+    }
+
+    @Test
+    void a_character_without_picture_is_saved_without_upload() throws Exception {
+        playerIsParticipant();
+        when(spi.save(any(GameCharacter.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        GameCharacter created = service.create(player.getId(), adventure.getId(), draft, null);
+
+        Assertions.assertNull(created.getPicturePath());
+        Assertions.assertEquals(player, created.getOwner());
+        verify(minioSpi, never()).uploadFile(any(), any(), any());
+        verify(entitlement, never()).verifyFeature(any(), any(), any());
+    }
+
+    @Test
+    void a_picture_without_the_feature_is_refused_before_upload() throws Exception {
+        playerIsParticipant();
+        doThrow(new FeatureNotIncludedException(Feature.CHARACTER_PICTURES, "free", "paid", PlanDecider.ACCOUNT)).when(entitlement)
+                .verifyFeature(player.getId(), adventure, Feature.CHARACTER_PICTURES);
+
+        Assertions.assertThrows(FeatureNotIncludedException.class, () -> create(PNG));
+
+        verify(minioSpi, never()).uploadFile(any(), any(), any());
+        verify(spi, never()).save(any());
+    }
+
+    @Test
+    void a_free_player_sends_a_picture_in_an_equipped_table() throws Exception {
+        playerIsParticipant();
+        // The entitlements decide whether the picture is shared by the master's plan: the creator just asks for the adventure
+        when(spi.save(any(GameCharacter.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        GameCharacter created = create(PNG);
+
+        verify(entitlement).verifyFeature(player.getId(), adventure, Feature.CHARACTER_PICTURES);
+        verify(minioSpi).uploadFile(eq("image/png"), any(), eq(created.getPicturePath()));
+    }
+
+    // ---- non-player characters of the game master ----
+
+    private final Adventure mastered = Adventure.builder().name("Quest").ownerId(player.getId()).build();
+
+    private void playerIsMaster() {
+        when(adventureAccessVerifierApi.verifyParticipant(player.getId(), mastered.getId())).thenReturn(mastered);
+        when(spi.save(any(GameCharacter.class))).thenAnswer(i -> i.getArguments()[0]);
+    }
+
+    @Test
+    void a_master_creates_a_private_npc_that_is_never_active() {
+        playerIsMaster();
+
+        GameCharacter created = service.create(player.getId(), mastered.getId(), draft, null);
+
+        Assertions.assertTrue(created.isNpc());
+        Assertions.assertEquals(CharacterVisibility.PRIVATE, created.getVisibility());
+        Assertions.assertFalse(created.isActive());
+        Assertions.assertEquals(player, created.getOwner());
+        verify(spi, never()).findActive(any(), any());
+    }
+
+    @Test
+    void the_npc_limit_comes_from_the_master_plan_and_the_player_limit_is_not_asked() {
+        playerIsMaster();
+        when(spi.countNpcsByAdventureId(mastered.getId())).thenReturn(4L);
+
+        service.create(player.getId(), mastered.getId(), draft, null);
+
+        verify(entitlement).verifyAdventureLimit(mastered, PlanLimit.NPCS_PER_ADVENTURE, 4L);
+        verify(entitlement, never()).verifyAdventureLimit(any(), eq(PlanLimit.CHARACTERS_PER_PLAYER_AND_ADVENTURE), anyLong());
+    }
+
+    @Test
+    void a_full_npc_quota_creates_nothing() {
+        when(adventureAccessVerifierApi.verifyParticipant(player.getId(), mastered.getId())).thenReturn(mastered);
+        doThrow(new IllegalStateException("full")).when(entitlement).verifyAdventureLimit(mastered, PlanLimit.NPCS_PER_ADVENTURE, 0L);
+
+        Assertions.assertThrows(IllegalStateException.class, () -> service.create(player.getId(), mastered.getId(), draft, null));
+
+        verify(spi, never()).save(any());
+    }
+
+    @Test
+    void a_player_creates_a_player_character_and_not_an_npc() {
+        playerIsParticipant();
+        when(spi.save(any(GameCharacter.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        GameCharacter created = service.create(player.getId(), adventure.getId(), draft, null);
+
+        Assertions.assertFalse(created.isNpc());
+        Assertions.assertEquals(CharacterVisibility.PUBLIC, created.getVisibility());
+        verify(entitlement).verifyAdventureLimit(eq(adventure), eq(PlanLimit.CHARACTERS_PER_PLAYER_AND_ADVENTURE), anyLong());
     }
 }

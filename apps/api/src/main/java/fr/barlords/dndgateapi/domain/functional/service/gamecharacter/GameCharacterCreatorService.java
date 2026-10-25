@@ -1,7 +1,7 @@
 package fr.barlords.dndgateapi.domain.functional.service.gamecharacter;
 
-import fr.barlords.dndgateapi.domain.functional.exception.QuantityLimitExceededException;
 import fr.barlords.dndgateapi.domain.functional.exception.InvalidPictureException;
+import fr.barlords.dndgateapi.domain.functional.model.CharacterVisibility;
 import fr.barlords.dndgateapi.domain.functional.model.PictureFormat;
 import fr.barlords.dndgateapi.domain.functional.model.GameCharacter;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
@@ -11,7 +11,9 @@ import fr.barlords.dndgateapi.domain.port.in.adventure.AdventureAccessVerifierAp
 import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterCreatorApi;
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
-import fr.barlords.dndgateapi.domain.functional.model.QuantityLimits;
+import fr.barlords.dndgateapi.domain.functional.model.plan.Feature;
+import fr.barlords.dndgateapi.domain.functional.model.plan.PlanLimit;
+import fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -32,7 +34,7 @@ public class GameCharacterCreatorService implements GameCharacterCreatorApi {
 
     private final MinioSpi minioSpi;
 
-    private final QuantityLimits limits;
+    private final EntitlementApi entitlementApi;
 
     private static final int MAX_PICTURE_BYTES = 5 * 1024 * 1024;
 
@@ -55,7 +57,21 @@ public class GameCharacterCreatorService implements GameCharacterCreatorApi {
         Adventure adventure = adventureId == null ? null : adventureAccessVerifierApi.verifyParticipant(accountId, adventureId);
 
         // Checked before the picture is read and stored: a refused character must not leave a file behind
-        verifyLimit(account.getId(), adventureId);
+        // The game master of an adventure does not play: what they create there is a non-player character, private at first
+        boolean npc = adventure != null && adventure.isMaster(account.getId());
+        verifyLimit(account.getId(), adventure, npc);
+
+        // The first character of a player in an adventure is the one they play
+        gameCharacter = npc
+                ? gameCharacter.withNpc(true).withVisibility(CharacterVisibility.PRIVATE).withActive(false)
+                : gameCharacter.withActive(adventure != null && spi.findActive(account.getId(), adventure.getId()).isEmpty());
+
+        if (pictureInputStream == null) {
+            return spi.save(gameCharacter.withOwner(account).withAdventure(adventure));
+        }
+
+        // Checked before the picture is read: a refused picture is never stored
+        entitlementApi.verifyFeature(account.getId(), adventure, Feature.CHARACTER_PICTURES);
 
         // The format is recognised by the content of the file: what the client declares is not trusted
         byte[] picture = readPicture(pictureInputStream);
@@ -81,13 +97,14 @@ public class GameCharacterCreatorService implements GameCharacterCreatorApi {
         }
     }
 
-    private void verifyLimit(UUID ownerId, UUID adventureId) {
-        if (adventureId == null) {
-            if (spi.countByOwnerIdWithoutAdventure(ownerId) >= limits.charactersWithoutAdventurePerAccount()) {
-                throw QuantityLimitExceededException.charactersWithoutAdventure(limits.charactersWithoutAdventurePerAccount());
-            }
-        } else if (spi.countByOwnerIdAndAdventureId(ownerId, adventureId) >= limits.charactersPerPlayerAndAdventure()) {
-            throw QuantityLimitExceededException.characters(limits.charactersPerPlayerAndAdventure());
+    private void verifyLimit(UUID ownerId, Adventure adventure, boolean npc) {
+        if (npc) {
+            entitlementApi.verifyAdventureLimit(adventure, PlanLimit.NPCS_PER_ADVENTURE, spi.countNpcsByAdventureId(adventure.getId()));
+        } else if (adventure == null) {
+            entitlementApi.verifyAccountLimit(ownerId, PlanLimit.CHARACTERS_WITHOUT_ADVENTURE, spi.countByOwnerIdWithoutAdventure(ownerId));
+        } else {
+            entitlementApi.verifyAdventureLimit(adventure, PlanLimit.CHARACTERS_PER_PLAYER_AND_ADVENTURE,
+                    spi.countByOwnerIdAndAdventureId(ownerId, adventure.getId()));
         }
     }
 

@@ -234,6 +234,92 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /game-characters/{id}/visibility:
+    put:
+      tags:
+      - Game characters
+      summary: Set game character visibility
+      operationId: setGameCharacterVisibility
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CharacterVisibilityRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameCharacterDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /game-characters/{id}/adventure:
+    put:
+      tags:
+      - Game characters
+      summary: Move game character to adventure
+      operationId: moveGameCharacterToAdventure
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CharacterAdventureRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameCharacterDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      tags:
+      - Game characters
+      summary: Move game character to reserve
+      operationId: moveGameCharacterToReserve
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameCharacterDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /adventures/{id}/visibility:
     put:
       tags:
@@ -290,6 +376,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AdventureDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /adventures/{id}/players/me/active-character:
+    put:
+      tags:
+      - Adventures
+      summary: Set active character
+      operationId: setActiveCharacter
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActiveCharacterRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameCharacterDto"
         default:
           description: "The error, in the same shape whatever produced it (RFC 9457)."
           content:
@@ -699,7 +816,6 @@ paths:
                   $ref: "#/components/schemas/GameCharacterCreationRequest"
               required:
               - createGameCharacterRequest
-              - picturePresentation
       responses:
         "201":
           description: Created
@@ -707,6 +823,87 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GameCharacterDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /billing/stripe-webhook:
+    post:
+      tags:
+      - Billing
+      summary: Receive a Stripe event
+      description: "Called by Stripe only, authenticated by the Stripe-Signature header\
+        \ (no token). 400 when the signature is missing or wrong."
+      operationId: receiveStripeEvent
+      parameters:
+      - name: Stripe-Signature
+        in: header
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+        required: true
+      responses:
+        "200":
+          description: OK
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+      security: []
+  /billing/portal-session:
+    post:
+      tags:
+      - Billing
+      summary: Open the Stripe customer portal
+      description: "The URL of the Stripe page where the subscription is changed or\
+        \ cancelled and the invoices are read. 409 when the account never went to\
+        \ the checkout, 503 when billing is off."
+      operationId: createPortalSession
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RedirectDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /billing/checkout-session:
+    post:
+      tags:
+      - Billing
+      summary: Open a Stripe checkout
+      description: "The URL of the Stripe page where the plan is paid. The plan only\
+        \ applies once Stripe has notified the API: read GET /accounts/me/subscription\
+        \ again on the return page. 409 when a subscription is ongoing (it is changed\
+        \ in the portal), 503 when billing is off."
+      operationId: createCheckoutSession
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckoutSessionRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RedirectDto"
         default:
           description: "The error, in the same shape whatever produced it (RFC 9457)."
           content:
@@ -1885,6 +2082,27 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /plans:
+    get:
+      tags:
+      - Plans
+      summary: Get the plans
+      description: "The offers, their prices in cents, limits and features. Public."
+      operationId: getPlans
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanCatalogDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+      security: []
   /planning/{planningId}/availability:
     get:
       tags:
@@ -2004,6 +2222,31 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/GameCharacterDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /adventures/{id}/entitlements:
+    get:
+      tags:
+      - Adventures
+      summary: Get adventure entitlements
+      operationId: getAdventureEntitlements
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdventureEntitlementsDto"
         default:
           description: "The error, in the same shape whatever produced it (RFC 9457)."
           content:
@@ -2150,6 +2393,27 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /accounts/me/subscription:
+    get:
+      tags:
+      - Accounts
+      summary: Get my subscription
+      description: "The plan in force, the subscription as Stripe last described it,\
+        \ and how much of each account limit is used."
+      operationId: getMySubscription
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /accounts/id/{id}:
     get:
       tags:
@@ -2213,6 +2477,11 @@ paths:
         required: true
         schema:
           type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuitAdventureRequest"
       responses:
         "200":
           description: OK
@@ -2230,8 +2499,12 @@ components:
   schemas:
     Problem:
       type: object
-      description: An error (RFC 9457 problem details). correlationId is the identifier
-        to quote when reporting it.
+      description: "An error (RFC 9457 problem details). correlationId is the identifier\
+        \ to quote when reporting it. A refusal of the plan adds its own fields: type\
+        \ urn:dndgate:plan-limit-reached (409) gives limit, max, planId, upgradePlanId\
+        \ and decidedBy; type urn:dndgate:feature-not-included (403) gives feature,\
+        \ planId, upgradePlanId and decidedBy. Type urn:dndgate:subscription-sync-conflict\
+        \ (503) is a webhook to send again."
       properties:
         type:
           type: string
@@ -2252,6 +2525,38 @@ components:
         correlationId:
           type: string
           description: Same value as the X-Request-Id header.
+        limit:
+          type: string
+          description: "plan-limit-reached only: the key of the limit (spellBooks,\
+            \ ...)."
+          example: spellBooks
+        max:
+          type: integer
+          format: int32
+          description: "plan-limit-reached only: the maximum of the plan."
+        feature:
+          type: string
+          description: "feature-not-included only: the key of the feature (video,\
+            \ ...)."
+          example: video
+        planId:
+          type: string
+          description: "A refusal of the plan: the plan that decided it (the plan\
+            \ of the game master when decidedBy is master)."
+        upgradePlanId:
+          type:
+          - string
+          - "null"
+          description: "A refusal of the plan: the lowest plan that would allow it,\
+            \ null when no plan does."
+        decidedBy:
+          type: string
+          description: "A refusal of the plan: account when the plan of the caller\
+            \ decided it, master when the plan of the game master of the adventure\
+            \ did."
+          enum:
+          - account
+          - master
         errors:
           type: array
           description: "Only for a request that is not valid: one entry per field."
@@ -2357,6 +2662,59 @@ components:
           items:
             type: string
             format: date
+    CharacterVisibilityRequest:
+      type: object
+      properties:
+        visibility:
+          type: string
+          enum:
+          - PRIVATE
+          - PUBLIC
+      required:
+      - visibility
+    GameCharacterDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        race:
+          type: string
+        martialClass:
+          type: string
+        personality:
+          type: string
+        background:
+          type: string
+        pictureUrl:
+          type:
+          - string
+          - "null"
+        ownerId:
+          type: string
+          format: uuid
+        adventureId:
+          type: string
+          format: uuid
+        active:
+          type: boolean
+        npc:
+          type: boolean
+        visibility:
+          type: string
+          enum:
+          - PRIVATE
+          - PUBLIC
+    CharacterAdventureRequest:
+      type: object
+      properties:
+        adventureId:
+          type: string
+          format: uuid
+      required:
+      - adventureId
     AdventureSetVisibilityRequest:
       type: object
       properties:
@@ -2418,6 +2776,14 @@ components:
           - FINISH
       required:
       - status
+    ActiveCharacterRequest:
+      type: object
+      properties:
+        characterId:
+          type: string
+          format: uuid
+      required:
+      - characterId
     MasterVoteRequest:
       type: object
       properties:
@@ -2700,30 +3066,27 @@ components:
       - name
       - personality
       - race
-    GameCharacterDto:
+    RedirectDto:
       type: object
       properties:
-        id:
+        url:
           type: string
-          format: uuid
-        name:
+    CheckoutSessionRequest:
+      type: object
+      properties:
+        planId:
           type: string
-        race:
+          maxLength: 50
+          minLength: 1
+        interval:
           type: string
-        martialClass:
-          type: string
-        personality:
-          type: string
-        background:
-          type: string
-        pictureUrl:
-          type: string
-        ownerId:
-          type: string
-          format: uuid
-        adventureId:
-          type: string
-          format: uuid
+          enum:
+          - monthly
+          - yearly
+          pattern: monthly|yearly
+      required:
+      - interval
+      - planId
     AdventureCreationRequest:
       type: object
       properties:
@@ -3098,6 +3461,16 @@ components:
           type: string
         pendingEmail:
           type: string
+        founder:
+          type: boolean
+        planBadge:
+          type:
+          - string
+          - "null"
+          description: "dungeon-master, legend or null"
+          enum:
+          - dungeon-master
+          - legend
     SpellBookImportExportDto:
       type: object
       properties:
@@ -3157,6 +3530,48 @@ components:
       required:
       - average
       - count
+    PlanCatalogDto:
+      type: object
+      properties:
+        currency:
+          type: string
+        defaultPlan:
+          type: string
+        plans:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanDto"
+    PlanDto:
+      type: object
+      properties:
+        id:
+          type: string
+        highlighted:
+          type: boolean
+        prices:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/PlanPriceDto"
+        limits:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int32
+        features:
+          type: object
+          additionalProperties:
+            type: boolean
+        badge:
+          type:
+          - string
+          - "null"
+          description: "dungeon-master, legend or null"
+    PlanPriceDto:
+      type: object
+      properties:
+        amount:
+          type: integer
+          format: int32
     PageDtoMessageDto:
       type: object
       properties:
@@ -3214,6 +3629,26 @@ components:
         totalPages:
           type: integer
           format: int32
+    AdventureEntitlementsDto:
+      type: object
+      properties:
+        features:
+          type: array
+          items:
+            type: string
+        limits:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/LimitUsageDto"
+    LimitUsageDto:
+      type: object
+      properties:
+        used:
+          type: integer
+          format: int64
+        max:
+          type: integer
+          format: int32
     PageDtoAdventureNoteDto:
       type: object
       properties:
@@ -3243,6 +3678,45 @@ components:
           type: string
         anonymized:
           type: boolean
+        founder:
+          type: boolean
+        planBadge:
+          type:
+          - string
+          - "null"
+          description: "dungeon-master, legend or null"
+          enum:
+          - dungeon-master
+          - legend
+    SubscriptionDto:
+      type: object
+      properties:
+        planId:
+          type: string
+        interval:
+          type:
+          - string
+          - "null"
+          description: monthly or yearly
+        status:
+          type:
+          - string
+          - "null"
+          description: "active, trialing, past_due (the plan applies), canceled, unpaid,\
+            \ incomplete, incomplete_expired or paused (it does not)"
+        currentPeriodEnd:
+          type:
+          - string
+          - "null"
+          format: date-time
+        cancelAtPeriodEnd:
+          type: boolean
+        billingEnabled:
+          type: boolean
+        usage:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/LimitUsageDto"
     ExplicitDeletionRequest:
       type: object
       properties:
@@ -3250,6 +3724,28 @@ components:
           type: boolean
       required:
       - confirm
+    CharacterDeletion:
+      type: object
+      properties:
+        characterId:
+          type: string
+          format: uuid
+        confirmation:
+          type: string
+          maxLength: 300
+          minLength: 0
+      required:
+      - characterId
+      - confirmation
+    QuitAdventureRequest:
+      type: object
+      properties:
+        deletions:
+          type: array
+          items:
+            $ref: "#/components/schemas/CharacterDeletion"
+          maxItems: 10
+          minItems: 0
   securitySchemes:
     bearerAuth:
       type: http

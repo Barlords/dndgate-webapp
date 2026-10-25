@@ -45,7 +45,8 @@ class BroadcastPayloadTest {
     @Test
     void a_webrtc_signal_is_broadcast_as_a_webrtc_message_stamped_with_the_caller() {
         Mockito.when(auth.currentAccountId()).thenReturn(accountId);
-        var controller = new WebRTCController(template, auth, Mockito.mock(AdventureAccessVerifierApi.class));
+        var controller = new WebRTCController(template, auth, Mockito.mock(AdventureAccessVerifierApi.class),
+                Mockito.mock(fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi.class));
         WebRTCMessage signal = new WebRTCMessage();
         signal.setType("offer");
         signal.setContent("sdp");

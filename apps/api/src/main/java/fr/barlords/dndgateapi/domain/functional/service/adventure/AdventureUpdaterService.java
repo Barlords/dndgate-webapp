@@ -14,7 +14,15 @@ import fr.barlords.dndgateapi.domain.functional.exception.adventure.MaxPlayerBel
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.PlayerNotInAdventureException;
 import fr.barlords.dndgateapi.domain.functional.exception.adventure.PlayersAlreadyInAdventureException;
 import fr.barlords.dndgateapi.domain.functional.exception.account.AccountNotFoundException;
+import fr.barlords.dndgateapi.domain.functional.exception.DeletionNotConfirmedException;
+import fr.barlords.dndgateapi.domain.functional.model.GameCharacter;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.Adventure;
+import fr.barlords.dndgateapi.domain.functional.model.plan.PlanLimit;
+import fr.barlords.dndgateapi.domain.functional.service.DeletionConfirmation;
+import fr.barlords.dndgateapi.domain.port.in.plan.EntitlementApi;
+import fr.barlords.dndgateapi.domain.port.out.AuditSpi;
+import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureStatus;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.AdventureVisibility;
 import fr.barlords.dndgateapi.domain.functional.model.adventure.InvitationLimits;
@@ -32,6 +40,9 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -60,6 +71,14 @@ public class AdventureUpdaterService implements AdventureUpdaterApi {
     private final InvitationLimits invitationLimits;
 
     private final AccessRevocationSpi accessRevocation;
+
+    private final GameCharacterPersistenceSpi gameCharacters;
+
+    private final MinioSpi minioSpi;
+
+    private final AuditSpi audit;
+
+    private final EntitlementApi entitlementApi;
 
     @Override
     public Adventure update(UUID accountId, Adventure adventure) {
@@ -192,28 +211,63 @@ public class AdventureUpdaterService implements AdventureUpdaterApi {
         }
     }
 
+    /**
+     * One attempt, not retried here: the caller runs it in a transaction and replays it on a concurrent change, so that
+     * the characters and the seat are always written together.
+     */
     @Override
-    public Adventure quitAdventure(UUID adventureId, UUID accountId) {
+    public Adventure quitAdventure(UUID adventureId, UUID accountId, Map<UUID, String> deletions) {
         Account account = currentAccountService.getAccountById(accountId);
 
-        Adventure left = retryOnConcurrentChange(() -> {
-            Adventure adventure = adventureFinderApi.findById(adventureId)
-                    .orElseThrow(AdventureNotFoundException::new);
+        Adventure adventure = adventureFinderApi.findById(adventureId)
+                .orElseThrow(AdventureNotFoundException::new);
 
-            if (!adventure.getPlayers().contains(account.getId())) {
-                throw new PlayerNotInAdventureException();
+        if (!adventure.getPlayers().contains(account.getId())) {
+            throw new PlayerNotInAdventureException();
+        }
+
+        List<GameCharacter> mine = gameCharacters.findByAdventureId(adventureId).stream()
+                // The non-player characters of a former game master stay with the adventure
+                .filter(character -> !character.isNpc() && account.getId().equals(character.getOwner().getId()))
+                .toList();
+        Map<UUID, GameCharacter> byId = mine.stream().collect(Collectors.toMap(GameCharacter::getId, Function.identity()));
+
+        // Everything is checked before anything is written: a wrong name or a full reserve refuses the whole quit
+        Map<UUID, String> requested = deletions == null ? Map.of() : deletions;
+        requested.forEach((characterId, confirmation) -> {
+            GameCharacter character = byId.get(characterId);
+            if (character == null) {
+                throw new DeletionNotConfirmedException();
             }
-
-            List<UUID> players = new ArrayList<>(adventure.getPlayers());
-            players.remove(account.getId());
-
-            return spi.save(adventure.withPlayers(players));
+            DeletionConfirmation.requireName(character.getName(), confirmation);
         });
+
+        List<GameCharacter> moving = mine.stream().filter(character -> !requested.containsKey(character.getId())).toList();
+        if (!moving.isEmpty()) {
+            // "used" counts all the arrivals but the last one: the reserve must still have room for that last one
+            entitlementApi.verifyAccountLimit(account.getId(), PlanLimit.CHARACTERS_WITHOUT_ADVENTURE,
+                    gameCharacters.countByOwnerIdWithoutAdventure(account.getId()) + moving.size() - 1);
+        }
+
+        mine.stream().filter(character -> requested.containsKey(character.getId())).forEach(this::deleteCharacter);
+        moving.forEach(character -> gameCharacters.save(character.withAdventure(null).withActive(false)));
+
+        List<UUID> players = new ArrayList<>(adventure.getPlayers());
+        players.remove(account.getId());
+        Adventure left = spi.save(adventure.withPlayers(players));
 
         // The chat and the WebRTC signals already open for this account must stop as well
         accessRevocation.participationEnded(account.getId(), adventureId);
 
         return left;
+    }
+
+    private void deleteCharacter(GameCharacter character) {
+        gameCharacters.deleteById(character.getId());
+        audit.deletion("character", character.getOwner().getId(), character.getId());
+        if (character.getPicturePath() != null) {
+            minioSpi.deleteAfterCommit(character.getPicturePath());
+        }
     }
 
     /**

@@ -46,7 +46,7 @@ public class GameCharacterDatabaseAdapter implements GameCharacterPersistenceSpi
     @Override
     @Transactional
     public List<GameCharacter> findByOwnerId(UUID ownerId) {
-        return repository.findByOwner_Id(ownerId).stream().map(GameCharacterEntityMapper::toDomain).toList();
+        return repository.findByOwner_IdAndNpcFalse(ownerId).stream().map(GameCharacterEntityMapper::toDomain).toList();
     }
 
     @Override
@@ -58,13 +58,38 @@ public class GameCharacterDatabaseAdapter implements GameCharacterPersistenceSpi
 
     @Override
     @Transactional(readOnly = true)
+    public List<GameCharacter> findVisibleByAdventureId(UUID adventureId, boolean withPrivateNpcs) {
+        return (withPrivateNpcs ? repository.findByAdventure_Id(adventureId) : repository.findPublicByAdventureId(adventureId))
+                .stream().map(GameCharacterEntityMapper::toDomain).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countNpcsByAdventureId(UUID adventureId) {
+        return repository.countByAdventure_IdAndNpcTrue(adventureId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public long countByOwnerIdAndAdventureId(UUID ownerId, UUID adventureId) {
-        return repository.countByOwner_IdAndAdventure_Id(ownerId, adventureId);
+        return repository.countByOwner_IdAndAdventure_IdAndNpcFalse(ownerId, adventureId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<GameCharacter> findActive(UUID ownerId, UUID adventureId) {
+        return repository.findByOwner_IdAndAdventure_IdAndActiveTrue(ownerId, adventureId).map(GameCharacterEntityMapper::toDomain);
     }
 
     @Override
     @Transactional(readOnly = true)
     public long countByOwnerIdWithoutAdventure(UUID ownerId) {
         return repository.countByOwner_IdAndAdventureIsNull(ownerId);
+    }
+
+    @Override
+    @Transactional
+    public void moveToReserveByAdventureId(UUID adventureId) {
+        repository.moveToReserveByAdventureId(adventureId);
     }
 }

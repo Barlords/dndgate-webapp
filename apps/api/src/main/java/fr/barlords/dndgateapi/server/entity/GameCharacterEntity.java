@@ -1,5 +1,6 @@
 package fr.barlords.dndgateapi.server.entity;
 
+import fr.barlords.dndgateapi.domain.functional.model.CharacterVisibility;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -25,7 +26,7 @@ public class GameCharacterEntity implements Serializable {
     private AccountEntity owner;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "adventure_id", updatable = false)
+    @JoinColumn(name = "adventure_id")
     private AdventureEntity adventure;
 
     @Column(name = "`name`",  nullable = false)
@@ -43,8 +44,18 @@ public class GameCharacterEntity implements Serializable {
     @Column(name = "background", nullable = false, length = 80000)
     private String background;
 
-    @Column(name = "picture_path", nullable = false)
+    @Column(name = "picture_path")
     private String picturePath;
+
+    @Column(name = "active", nullable = false)
+    private boolean active;
+
+    @Column(name = "npc", nullable = false)
+    private boolean npc;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "visibility", nullable = false, length = 20)
+    private CharacterVisibility visibility;
 
     @Version
     @Column(name = "version", nullable = false)
