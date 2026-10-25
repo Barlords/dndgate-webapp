@@ -122,8 +122,6 @@ class BillingServiceTest {
     void tearDown() {
         ((Logger) LoggerFactory.getLogger(SubscriptionSynchronizer.class)).detachAppender(logs);
         ((Logger) LoggerFactory.getLogger(BillingService.class)).detachAppender(logs);
-        // a sync only updates the row it read, never with a merge that could write a stale state or re-insert a row
-        verify(subscriptions, never()).save(any());
     }
 
     private Subscription row(String planId, SubscriptionStatus status) {

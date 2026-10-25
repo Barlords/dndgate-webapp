@@ -12,8 +12,6 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.Collection;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,8 +20,6 @@ import java.util.UUID;
 public interface SubscriptionRepository extends JpaRepository<SubscriptionEntity, UUID> {
 
     Optional<SubscriptionEntity> findByStripeCustomerId(String stripeCustomerId);
-
-    List<SubscriptionEntity> findByAccountIdIn(Collection<UUID> accountIds);
 
     /**
      * One statement, so that two simultaneous first checkouts of an account cannot overwrite each other's customer:

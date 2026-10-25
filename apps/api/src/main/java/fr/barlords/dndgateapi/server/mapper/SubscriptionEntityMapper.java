@@ -18,18 +18,4 @@ public interface SubscriptionEntityMapper {
                 .updatedAt(entity.getUpdatedAt())
                 .build();
     }
-
-    static SubscriptionEntity fromDomain(Subscription domain) {
-        return SubscriptionEntity.builder()
-                .accountId(domain.getAccountId())
-                .stripeCustomerId(domain.getStripeCustomerId())
-                .stripeSubscriptionId(domain.getStripeSubscriptionId())
-                .planId(domain.getPlanId())
-                .billingInterval(domain.getInterval())
-                .status(domain.getStatus())
-                .currentPeriodEnd(domain.getCurrentPeriodEnd())
-                .cancelAtPeriodEnd(domain.isCancelAtPeriodEnd())
-                .updatedAt(domain.getUpdatedAt())
-                .build();
-    }
 }
