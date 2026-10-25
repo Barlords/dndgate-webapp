@@ -102,6 +102,25 @@ class GameCharacterCreatorServiceTest {
     }
 
     @Test
+    void the_first_character_of_a_player_in_an_adventure_is_created_active_and_the_next_ones_are_not() {
+        playerIsParticipant();
+        when(spi.save(any(GameCharacter.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        Assertions.assertTrue(create(PNG).isActive());
+
+        when(spi.findActive(player.getId(), adventure.getId())).thenReturn(java.util.Optional.of(draft));
+
+        Assertions.assertFalse(create(PNG).isActive());
+    }
+
+    @Test
+    void a_character_of_the_reserve_is_never_active() {
+        when(spi.save(any(GameCharacter.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        Assertions.assertFalse(service.create(player.getId(), null, draft, new ByteArrayInputStream(PNG)).isActive());
+    }
+
+    @Test
     void the_picture_is_stored_where_the_character_says_with_its_real_content_type() throws Exception {
         playerIsParticipant();
         when(spi.save(any(GameCharacter.class))).thenAnswer(i -> i.getArguments()[0]);

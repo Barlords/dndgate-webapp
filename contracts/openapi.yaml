@@ -234,6 +234,61 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /game-characters/{id}/adventure:
+    put:
+      tags:
+      - Game characters
+      summary: Move game character to adventure
+      operationId: moveGameCharacterToAdventure
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CharacterAdventureRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameCharacterDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      tags:
+      - Game characters
+      summary: Move game character to reserve
+      operationId: moveGameCharacterToReserve
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameCharacterDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /adventures/{id}/visibility:
     put:
       tags:
@@ -290,6 +345,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AdventureDto"
+        default:
+          description: "The error, in the same shape whatever produced it (RFC 9457)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /adventures/{id}/players/me/active-character:
+    put:
+      tags:
+      - Adventures
+      summary: Set active character
+      operationId: setActiveCharacter
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActiveCharacterRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameCharacterDto"
         default:
           description: "The error, in the same shape whatever produced it (RFC 9457)."
           content:
@@ -2381,6 +2467,40 @@ components:
           items:
             type: string
             format: date
+    CharacterAdventureRequest:
+      type: object
+      properties:
+        adventureId:
+          type: string
+          format: uuid
+      required:
+      - adventureId
+    GameCharacterDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        race:
+          type: string
+        martialClass:
+          type: string
+        personality:
+          type: string
+        background:
+          type: string
+        pictureUrl:
+          type: string
+        ownerId:
+          type: string
+          format: uuid
+        adventureId:
+          type: string
+          format: uuid
+        active:
+          type: boolean
     AdventureSetVisibilityRequest:
       type: object
       properties:
@@ -2442,6 +2562,14 @@ components:
           - FINISH
       required:
       - status
+    ActiveCharacterRequest:
+      type: object
+      properties:
+        characterId:
+          type: string
+          format: uuid
+      required:
+      - characterId
     MasterVoteRequest:
       type: object
       properties:
@@ -2724,30 +2852,6 @@ components:
       - name
       - personality
       - race
-    GameCharacterDto:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        race:
-          type: string
-        martialClass:
-          type: string
-        personality:
-          type: string
-        background:
-          type: string
-        pictureUrl:
-          type: string
-        ownerId:
-          type: string
-          format: uuid
-        adventureId:
-          type: string
-          format: uuid
     AdventureCreationRequest:
       type: object
       properties:

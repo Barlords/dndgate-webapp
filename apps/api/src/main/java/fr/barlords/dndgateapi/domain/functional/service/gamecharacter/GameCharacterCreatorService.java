@@ -58,6 +58,9 @@ public class GameCharacterCreatorService implements GameCharacterCreatorApi {
         // Checked before the picture is read and stored: a refused character must not leave a file behind
         verifyLimit(account.getId(), adventure);
 
+        // The first character of a player in an adventure is the one they play
+        gameCharacter = gameCharacter.withActive(adventure != null && spi.findActive(account.getId(), adventure.getId()).isEmpty());
+
         if (pictureInputStream == null) {
             return spi.save(gameCharacter.withOwner(account).withAdventure(adventure));
         }

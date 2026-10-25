@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -31,6 +32,9 @@ public interface GameCharacterRepository extends JpaRepository<GameCharacterEnti
 
 
     long countByOwner_IdAndAdventure_Id(UUID ownerId, UUID adventureId);
+
+    @EntityGraph(attributePaths = "adventure")
+    Optional<GameCharacterEntity> findByOwner_IdAndAdventure_IdAndActiveTrue(UUID ownerId, UUID adventureId);
 
     long countByOwner_IdAndAdventureIsNull(UUID ownerId);
 }

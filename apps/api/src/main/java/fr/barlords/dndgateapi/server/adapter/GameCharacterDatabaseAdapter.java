@@ -64,6 +64,12 @@ public class GameCharacterDatabaseAdapter implements GameCharacterPersistenceSpi
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<GameCharacter> findActive(UUID ownerId, UUID adventureId) {
+        return repository.findByOwner_IdAndAdventure_IdAndActiveTrue(ownerId, adventureId).map(GameCharacterEntityMapper::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public long countByOwnerIdWithoutAdventure(UUID ownerId) {
         return repository.countByOwner_IdAndAdventureIsNull(ownerId);
     }

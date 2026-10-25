@@ -6,6 +6,9 @@ import fr.barlords.dndgateapi.domain.functional.model.pagination.PageRequest;
 
 import fr.barlords.dndgateapi.client.dto.DeletionConfirmationRequest;
 import fr.barlords.dndgateapi.client.dto.adventure.*;
+import fr.barlords.dndgateapi.client.dto.gamecharacter.GameCharacterDto;
+import fr.barlords.dndgateapi.client.mapper.GameCharacterDtoMapper;
+import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterMoverApi;
 import fr.barlords.dndgateapi.client.mapper.AdventureDtoMapper;
 import fr.barlords.dndgateapi.client.mapper.AdventureEntitlementsDtoMapper;
 import fr.barlords.dndgateapi.client.service.AuthVerifierService;
@@ -37,6 +40,7 @@ public class AdventureController {
     private final AdventureDeleterApi adventureDeleterApi;
     private final AdventureUpdaterApi adventureUpdaterApi;
     private final AdventureEntitlementsApi adventureEntitlementsApi;
+    private final GameCharacterMoverApi gameCharacterMoverApi;
 
     @GetMapping
     @ResponseStatus(OK)
@@ -177,6 +181,18 @@ public class AdventureController {
                 adventureUpdaterApi.quitAdventure(
                         UuidValidator.validate(id),
                         authVerifierService.currentAccountId()
+                )
+        );
+    }
+
+    @PutMapping("/{id}/players/me/active-character")
+    @ResponseStatus(OK)
+    public GameCharacterDto setActiveCharacter(@PathVariable String id, @Valid @RequestBody ActiveCharacterRequest request) {
+        return GameCharacterDtoMapper.toDto(
+                gameCharacterMoverApi.activate(
+                        authVerifierService.currentAccountId(),
+                        UuidValidator.validate(id),
+                        request.characterId()
                 )
         );
     }

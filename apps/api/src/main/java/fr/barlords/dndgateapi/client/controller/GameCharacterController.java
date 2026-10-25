@@ -22,7 +22,9 @@ import fr.barlords.dndgateapi.domain.functional.exception.gamecharacter.GameChar
 import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterCreatorApi;
 import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterDeleterApi;
 import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterFinderApi;
+import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterMoverApi;
 import fr.barlords.dndgateapi.domain.port.in.gamecharacter.GameCharacterUpdaterApi;
+import fr.barlords.dndgateapi.client.dto.gamecharacter.CharacterAdventureRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -51,6 +53,8 @@ public class GameCharacterController {
     private final GameCharacterUpdaterApi gameCharacterUpdaterApi;
 
     private final GameCharacterDeleterApi gameCharacterDeleterApi;
+
+    private final GameCharacterMoverApi gameCharacterMoverApi;
 
     // GET //
 
@@ -137,7 +141,33 @@ public class GameCharacterController {
     }
 
 
+    // PUT //
+
+    @PutMapping("/{id}/adventure")
+    @ResponseStatus(OK)
+    public GameCharacterDto moveGameCharacterToAdventure(
+            @PathVariable String id,
+            @Valid @RequestBody CharacterAdventureRequest request) {
+        return GameCharacterDtoMapper.toDto(
+                gameCharacterMoverApi.moveToAdventure(
+                        authVerifierService.currentAccountId(),
+                        UuidValidator.validate(id),
+                        request.adventureId()
+                )
+        );
+    }
+
+
     // DELETE //
+
+    /** Reversible, so unlike the other deletions it asks for no confirmation: the character goes back to the reserve. */
+    @DeleteMapping("/{id}/adventure")
+    @ResponseStatus(OK)
+    public GameCharacterDto moveGameCharacterToReserve(@PathVariable String id) {
+        return GameCharacterDtoMapper.toDto(
+                gameCharacterMoverApi.moveToReserve(authVerifierService.currentAccountId(), UuidValidator.validate(id))
+        );
+    }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(NO_CONTENT)

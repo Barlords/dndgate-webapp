@@ -41,6 +41,10 @@ public class GameCharacter {
     @With
     String picturePath;
 
+    /** The character the owner currently plays in the adventure: at most one per player and adventure. */
+    @With
+    boolean active;
+
     /** Version read from the storage, null while the character has never been saved: it detects concurrent changes. */
     @With
     Long version;

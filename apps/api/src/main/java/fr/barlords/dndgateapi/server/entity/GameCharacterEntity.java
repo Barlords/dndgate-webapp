@@ -25,7 +25,7 @@ public class GameCharacterEntity implements Serializable {
     private AccountEntity owner;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "adventure_id", updatable = false)
+    @JoinColumn(name = "adventure_id")
     private AdventureEntity adventure;
 
     @Column(name = "`name`",  nullable = false)
@@ -45,6 +45,9 @@ public class GameCharacterEntity implements Serializable {
 
     @Column(name = "picture_path")
     private String picturePath;
+
+    @Column(name = "active", nullable = false)
+    private boolean active;
 
     @Version
     @Column(name = "version", nullable = false)
