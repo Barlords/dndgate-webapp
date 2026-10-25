@@ -5,9 +5,26 @@ export interface ApiFieldError {
   message: string;
 }
 
+const PLAN_LIMIT_TYPE = 'urn:dndgate:plan-limit-reached';
+const PLAN_FEATURE_TYPE = 'urn:dndgate:feature-not-included';
+
+/** A refusal decided by a plan: what was refused, and which plan would allow it. */
+export interface PlanRefusal {
+  kind: 'limit' | 'feature';
+  /** The limit or the feature refused. */
+  key: string;
+  max?: number;
+  planId?: string;
+  upgradePlanId: string | null;
+  decidedBy: 'account' | 'master';
+}
+
 /** An API failure (RFC 9457 problem+json) reduced to what the screens need. */
 export interface ApiProblem {
   status: number;
+  type?: string;
+  /** Set only for the two plan refusals. */
+  plan?: PlanRefusal;
   title?: string;
   detail?: string;
   correlationId?: string;
@@ -37,6 +54,25 @@ function retryAfter(error: HttpErrorResponse): number | undefined {
   return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined;
 }
 
+function planRefusal(
+  type: string | undefined,
+  body: Record<string, unknown>,
+): PlanRefusal | undefined {
+  const kind = type === PLAN_LIMIT_TYPE ? 'limit' : type === PLAN_FEATURE_TYPE ? 'feature' : null;
+  const key = text(body[kind === 'limit' ? 'limit' : 'feature']);
+  if (kind === null || key === undefined) {
+    return undefined;
+  }
+  return {
+    kind,
+    key,
+    max: typeof body['max'] === 'number' ? body['max'] : undefined,
+    planId: text(body['planId']),
+    upgradePlanId: text(body['upgradePlanId']) ?? null,
+    decidedBy: body['decidedBy'] === 'master' ? 'master' : 'account',
+  };
+}
+
 /** Reads a failed HTTP call. A Blob body (binary requests) needs `toApiProblemAsync`. */
 export function toApiProblem(error: unknown): ApiProblem {
   if (!(error instanceof HttpErrorResponse) || error.status === 0) {
@@ -45,8 +81,11 @@ export function toApiProblem(error: unknown): ApiProblem {
   const body = (
     typeof error.error === 'object' && error.error !== null ? error.error : {}
   ) as Record<string, unknown>;
+  const type = text(body['type']);
   return {
     status: error.status,
+    type,
+    plan: planRefusal(type, body),
     title: text(body['title']),
     detail: text(body['detail']),
     correlationId: text(body['correlationId']),

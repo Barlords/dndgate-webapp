@@ -1,5 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { ApiProblem } from './api-problem';
+import { Router } from '@angular/router';
+import { featureName, limitName, planName } from '../plans/plan-texts';
+import { ApiProblem, PlanRefusal } from './api-problem';
 import { Dictionary } from '../i18n/dictionary';
 import { I18n } from '../i18n/i18n.service';
 
@@ -51,6 +53,7 @@ function messageFor(
 @Injectable({ providedIn: 'root' })
 export class NotifierService {
   private readonly t = inject(I18n).t;
+  private readonly router = inject(Router);
 
   private nextId = 0;
   private readonly list = signal<Toast[]>([]);
@@ -68,6 +71,10 @@ export class NotifierService {
     if (problem.status === 401) {
       return; // The interceptor already ended the session and redirected to the login page.
     }
+    if (problem.plan) {
+      this.refusal(problem.plan, context);
+      return;
+    }
     const t = this.t().common;
     const { message, detail } = messageFor(problem, t.errors);
     this.push(
@@ -79,6 +86,34 @@ export class NotifierService {
       },
       // The reference has to stay long enough to be selected and copied.
       problem.correlationId === undefined,
+    );
+  }
+
+  /** A plan refusal stays until dismissed: the reader has to see which plan would allow it. */
+  private refusal(plan: PlanRefusal, context?: string): void {
+    const t = this.t();
+    const what =
+      plan.kind === 'limit'
+        ? t.plans.limitReached(limitName(plan.key, t), plan.max)
+        : t.plans.featureMissing(featureName(plan.key, t));
+    let message = what;
+    let action: ToastAction | undefined;
+    if (plan.upgradePlanId !== null) {
+      const name = planName(plan.upgradePlanId, t);
+      if (plan.decidedBy === 'master') {
+        message = `${what} ${t.plans.askMaster(name)}`;
+      } else {
+        message = `${what} ${t.plans.upgradeTo(name)}`;
+        action = { label: t.plans.seeOffers, run: () => void this.router.navigateByUrl('/plans') };
+      }
+    }
+    this.push(
+      {
+        kind: 'error',
+        message: context ? t.common.errors.inContext(context, message) : message,
+        action,
+      },
+      false,
     );
   }
 
