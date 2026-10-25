@@ -9,10 +9,22 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.LinkedMultiValueMap;
+import fr.barlords.dndgateapi.domain.functional.exception.plan.PaymentProviderUnavailableException;
+import fr.barlords.dndgateapi.domain.functional.model.plan.BillingInterval;
+import fr.barlords.dndgateapi.domain.functional.model.plan.ProviderSubscription;
+import fr.barlords.dndgateapi.domain.functional.model.plan.SubscriptionStatus;
 import tools.jackson.databind.JsonNode;
 
+import java.util.List;
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * Deleting an account anonymizes it: the person disappears, what other players rely on stays.
@@ -55,6 +67,58 @@ class AccountAnonymizationIntegrationTest extends ApiIntegrationTestSupport {
     private void setStatus(TestAccount master, UUID adventureId, String adventureStatus) {
         Assertions.assertEquals(200, status(HttpMethod.PUT, "/adventures/" + adventureId + "/status", master,
                 Map.of("status", adventureStatus)));
+    }
+
+    // ---- the subscription ----
+
+    private ProviderSubscription stripeSubscription(String id, SubscriptionStatus status) {
+        return new ProviderSubscription(id, "test-paid", BillingInterval.MONTHLY, status, Instant.now().plusSeconds(3600), false);
+    }
+
+    private int subscriptionRows(TestAccount account) {
+        return jdbc.queryForObject("select count(*) from subscription where account_id = ?", Integer.class, account.id());
+    }
+
+    @Test
+    void anonymizing_cancels_the_ongoing_subscriptions_and_forgets_the_row() {
+        TestAccount account = registerAndLogin();
+        subscribe(account, "test-paid");
+        when(paymentProviderSpi.isEnabled()).thenReturn(true);
+        when(paymentProviderSpi.findSubscriptions("cus_test_" + account.id())).thenReturn(List.of(
+                stripeSubscription("sub_ongoing", SubscriptionStatus.ACTIVE),
+                stripeSubscription("sub_over", SubscriptionStatus.CANCELED)));
+
+        Assertions.assertEquals(204, deleteAccount(account));
+
+        verify(paymentProviderSpi).cancelNow("sub_ongoing");
+        verify(paymentProviderSpi, never()).cancelNow("sub_over");
+        Assertions.assertEquals(0, subscriptionRows(account));
+    }
+
+    @Test
+    void an_account_without_customer_is_anonymized_without_stripe() {
+        TestAccount account = registerAndLogin();
+
+        Assertions.assertEquals(204, deleteAccount(account));
+
+        verify(paymentProviderSpi, never()).findSubscriptions(any());
+        verify(paymentProviderSpi, never()).cancelNow(any());
+    }
+
+    @Test
+    void a_stripe_failure_refuses_the_anonymization_and_keeps_the_account() {
+        TestAccount account = registerAndLogin();
+        subscribe(account, "test-paid");
+        when(paymentProviderSpi.isEnabled()).thenReturn(true);
+        when(paymentProviderSpi.findSubscriptions("cus_test_" + account.id())).thenReturn(List.of(
+                stripeSubscription("sub_ongoing", SubscriptionStatus.ACTIVE)));
+        doThrow(new PaymentProviderUnavailableException("Stripe is down")).when(paymentProviderSpi).cancelNow("sub_ongoing");
+
+        Assertions.assertEquals(503, deleteAccount(account));
+
+        Assertions.assertEquals(1, subscriptionRows(account));
+        Assertions.assertNull(jdbc.queryForObject("select anonymized_at from accounts where id = ?", java.sql.Timestamp.class, account.id()));
+        login(account);
     }
 
     // ---- the person disappears ----

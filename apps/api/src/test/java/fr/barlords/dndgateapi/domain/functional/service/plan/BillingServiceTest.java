@@ -533,4 +533,39 @@ class BillingServiceTest {
         assertThrows(SubscriptionSyncConflictException.class, () -> service.handleWebhook("payload", "sig"));
         verify(subscriptions, times(3)).updateIfUnchanged(any(), any());
     }
+
+    // ---- account anonymization ----
+
+    @Test
+    void an_account_without_a_row_is_cancelled_nowhere() {
+        service.cancelForAnonymizedAccount(accountId);
+
+        verifyNoInteractions(provider);
+        verify(subscriptions, never()).deleteByAccountId(any());
+    }
+
+    @Test
+    void only_the_ongoing_subscriptions_of_the_customer_are_ended() {
+        hasRow(row("mid", SubscriptionStatus.ACTIVE));
+        when(provider.findSubscriptions(CUSTOMER)).thenReturn(List.of(
+                atStripe("sub_active", "mid", SubscriptionStatus.ACTIVE, 10),
+                atStripe("sub_canceled", "mid", SubscriptionStatus.CANCELED, -10),
+                atStripe("sub_past_due", "mid", SubscriptionStatus.PAST_DUE, 5)));
+
+        service.cancelForAnonymizedAccount(accountId);
+
+        verify(provider).cancelNow("sub_active");
+        verify(provider, never()).cancelNow("sub_canceled");
+        verify(provider).cancelNow("sub_past_due");
+    }
+
+    @Test
+    void a_row_with_billing_off_refuses_the_cancellation() {
+        hasRow(row("mid", SubscriptionStatus.ACTIVE));
+        when(provider.isEnabled()).thenReturn(false);
+
+        assertThrows(PaymentProviderUnavailableException.class, () -> service.cancelForAnonymizedAccount(accountId));
+
+        verify(provider, never()).cancelNow(anyString());
+    }
 }

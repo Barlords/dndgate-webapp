@@ -13,6 +13,7 @@ import fr.barlords.dndgateapi.domain.functional.model.plan.Plan;
 import fr.barlords.dndgateapi.domain.functional.model.plan.PlanCatalog;
 import fr.barlords.dndgateapi.domain.functional.model.plan.PlanLimit;
 import fr.barlords.dndgateapi.domain.functional.model.plan.PlanPrice;
+import fr.barlords.dndgateapi.domain.functional.model.plan.ProviderSubscription;
 import fr.barlords.dndgateapi.domain.functional.model.plan.Subscription;
 import fr.barlords.dndgateapi.domain.functional.model.plan.SubscriptionOverview;
 import fr.barlords.dndgateapi.domain.functional.service.CurrentAccountService;
@@ -133,6 +134,20 @@ public class BillingService implements BillingApi {
             return;
         }
         synchronizer.sync(row.get());
+    }
+
+    @Override
+    public void cancelForAnonymizedAccount(UUID accountId) {
+        Optional<Subscription> row = subscriptions.findByAccountId(accountId);
+        if (row.isEmpty()) {
+            return;
+        }
+        requireEnabled();
+        for (ProviderSubscription found : provider.findSubscriptions(row.get().getStripeCustomerId())) {
+            if (found.status().isOngoing()) {
+                provider.cancelNow(found.id());
+            }
+        }
     }
 
     private void requireEnabled() {

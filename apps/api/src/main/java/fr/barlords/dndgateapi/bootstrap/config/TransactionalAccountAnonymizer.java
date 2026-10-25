@@ -27,7 +27,11 @@ public class TransactionalAccountAnonymizer implements AccountAnonymizerApi {
 
     @Override
     public void anonymize(UUID accountId, String password, ClientAddress client) {
-        delegate.verify(accountId, password, client).ifPresent(account -> transaction.executeWithoutResult(status -> delegate.apply(account)));
+        delegate.verify(accountId, password, client).ifPresent(account -> {
+            // the payment provider is called outside the transaction, before anything is written
+            delegate.cancelSubscription(account);
+            transaction.executeWithoutResult(status -> delegate.apply(account));
+        });
     }
 
 }

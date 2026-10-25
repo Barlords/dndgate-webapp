@@ -33,4 +33,12 @@ public interface BillingApi {
      * @throws fr.barlords.dndgateapi.domain.functional.exception.plan.InvalidWebhookSignatureException when the signature is missing or wrong
      */
     void handleWebhook(String payload, String signatureHeader);
+
+    /**
+     * Ends at the payment provider every ongoing subscription of an account that is about to be anonymized. Nothing
+     * when the account has no customer. The subscription row itself is not touched.
+     *
+     * @throws fr.barlords.dndgateapi.domain.functional.exception.plan.PaymentProviderUnavailableException when the account has a customer and billing is off or the provider fails
+     */
+    void cancelForAnonymizedAccount(UUID accountId);
 }

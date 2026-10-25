@@ -15,6 +15,7 @@ import fr.barlords.dndgateapi.domain.functional.model.adventure.master.MasterCla
 import fr.barlords.dndgateapi.domain.functional.model.adventure.master.MasterClaimStatus;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountAnonymizerApi;
 import fr.barlords.dndgateapi.domain.port.in.account.AccountSessionRevokerApi;
+import fr.barlords.dndgateapi.domain.port.in.plan.BillingApi;
 import fr.barlords.dndgateapi.domain.port.out.AccountPersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.AdventurePersistenceSpi;
 import fr.barlords.dndgateapi.domain.port.out.GameCharacterPersistenceSpi;
@@ -24,6 +25,7 @@ import fr.barlords.dndgateapi.domain.port.out.MinioSpi;
 import fr.barlords.dndgateapi.domain.port.out.OpaqueTokenSpi;
 import fr.barlords.dndgateapi.domain.port.out.PasswordHasherSpi;
 import fr.barlords.dndgateapi.domain.port.out.SpellBookPersistenceSpi;
+import fr.barlords.dndgateapi.domain.port.out.SubscriptionPersistenceSpi;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -71,9 +73,16 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
 
     private final LoginFailureSpi loginFailures;
 
+    private final BillingApi billing;
+
+    private final SubscriptionPersistenceSpi subscriptions;
+
     @Override
     public void anonymize(UUID accountId, String password, ClientAddress client) {
-        verify(accountId, password, client).ifPresent(this::apply);
+        verify(accountId, password, client).ifPresent(account -> {
+            cancelSubscription(account);
+            apply(account);
+        });
     }
 
     /**
@@ -96,7 +105,15 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
     }
 
     /**
-     * Second step of {@link #anonymize}, to run in one transaction. The account keeps the version read by
+     * Between {@link #verify} and {@link #apply}, outside any transaction: ends the subscription at the payment
+     * provider. If that fails nothing has been changed yet and the account stays usable.
+     */
+    public void cancelSubscription(Account account) {
+        billing.cancelForAnonymizedAccount(account.getId());
+    }
+
+    /**
+     * Third step of {@link #anonymize}, to run in one transaction. The account keeps the version read by
      * {@link #verify}: if it changed since, its save is refused and nothing is kept.
      */
     public void apply(Account account) {
@@ -108,6 +125,7 @@ public class AccountAnonymizerService implements AccountAnonymizerApi {
         deleteSpellBooks(accountId);
         deleteMagicItems(accountId);
         deleteCharactersWithoutAdventure(accountId);
+        subscriptions.deleteByAccountId(accountId);
 
         accounts.save(anonymousVersionOf(account));
 
