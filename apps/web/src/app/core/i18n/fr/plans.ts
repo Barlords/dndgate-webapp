@@ -55,7 +55,8 @@ export const plans = {
   page: {
     navLabel: 'Offres',
     title: 'Les offres',
-    intro: 'Choisis l’offre qui convient à ta table. Tu peux en changer ou te désabonner à tout moment.',
+    intro:
+      'Choisis l’offre qui convient à ta table. Tu peux en changer ou te désabonner à tout moment.',
     billingPeriod: 'Période de facturation',
     includedFeatures: 'Fonctions incluses',
     limitsHeading: 'Limites',
@@ -68,5 +69,15 @@ export const plans = {
     context: 'Chargement des offres',
     checkoutContext: 'Ouverture du paiement',
     portalContext: 'Ouverture de la gestion de l’abonnement',
+  },
+  success: {
+    title: 'Paiement',
+    checking: 'Nous vérifions ton paiement…',
+    welcome: (planName: string) => `Bienvenue dans l’offre ${planName}`,
+    toProfile: 'Voir mon profil',
+    toTavern: 'Aller à la taverne',
+    pending: 'Ton paiement est en cours de confirmation…',
+    checkAgain: 'Vérifier à nouveau',
+    context: 'Vérification du paiement',
   },
 };

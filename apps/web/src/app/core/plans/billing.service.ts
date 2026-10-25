@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, InjectionToken, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -35,6 +36,12 @@ export class Billing {
     inject(AuthService)
       .sessionEnded.pipe(takeUntilDestroyed())
       .subscribe(() => this.current.set(null));
+    // Back from Stripe, the browser may restore this page as it was left, with the call still "running".
+    inject(DOCUMENT).defaultView?.addEventListener('pageshow', (event) => {
+      if ((event as PageTransitionEvent).persisted) {
+        this.running.set(false);
+      }
+    });
   }
 
   private readonly current = signal<SubscriptionDto | null>(null);

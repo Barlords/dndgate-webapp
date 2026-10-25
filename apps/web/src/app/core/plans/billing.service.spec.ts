@@ -126,4 +126,15 @@ describe('Billing', () => {
     // Still busy: the page is being left.
     expect(billing.busy()).toBe(true);
   });
+
+  it('coming_back_from_the_back_forward_cache_unlocks_the_buttons', () => {
+    billing.openPortal();
+    post('/billing/portal-session').flush({ url: 'https://stripe.test/portal' });
+    expect(billing.busy()).toBe(true);
+    // A page loaded afresh is not a restore: still waiting for the redirect.
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: false }));
+    expect(billing.busy()).toBe(true);
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+    expect(billing.busy()).toBe(false);
+  });
 });

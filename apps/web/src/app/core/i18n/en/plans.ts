@@ -70,4 +70,14 @@ export const plans: Dictionary['plans'] = {
     checkoutContext: 'Opening the payment',
     portalContext: 'Opening the subscription management',
   },
+  success: {
+    title: 'Payment',
+    checking: 'We are checking your payment…',
+    welcome: (planName: string) => `Welcome to the ${planName} plan`,
+    toProfile: 'See my profile',
+    toTavern: 'Go to the tavern',
+    pending: 'Your payment is being confirmed…',
+    checkAgain: 'Check again',
+    context: 'Checking the payment',
+  },
 };
