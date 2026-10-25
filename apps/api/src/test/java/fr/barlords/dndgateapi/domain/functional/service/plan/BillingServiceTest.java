@@ -35,6 +35,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.slf4j.LoggerFactory;
 
 import java.time.Clock;
@@ -55,6 +56,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -566,6 +569,33 @@ class BillingServiceTest {
 
         assertThrows(PaymentProviderUnavailableException.class, () -> service.cancelForAnonymizedAccount(accountId));
 
+        verify(provider, never()).expireOpenCheckoutSessions(anyString());
+        verify(provider, never()).cancelNow(anyString());
+    }
+
+    @Test
+    void the_open_checkout_pages_are_expired_before_the_subscriptions_are_read_and_ended() {
+        hasRow(row("mid", SubscriptionStatus.ACTIVE));
+        when(provider.findSubscriptions(CUSTOMER)).thenReturn(List.of(
+                atStripe("sub_active", "mid", SubscriptionStatus.ACTIVE, 10)));
+
+        service.cancelForAnonymizedAccount(accountId);
+
+        // expired first: a page paid meanwhile has created its subscription before the subscriptions are read
+        InOrder order = inOrder(provider);
+        order.verify(provider).expireOpenCheckoutSessions(CUSTOMER);
+        order.verify(provider).findSubscriptions(CUSTOMER);
+        order.verify(provider).cancelNow("sub_active");
+    }
+
+    @Test
+    void a_failing_expiry_of_the_checkout_pages_stops_the_cancellation() {
+        hasRow(row("mid", SubscriptionStatus.ACTIVE));
+        doThrow(new PaymentProviderUnavailableException("down")).when(provider).expireOpenCheckoutSessions(CUSTOMER);
+
+        assertThrows(PaymentProviderUnavailableException.class, () -> service.cancelForAnonymizedAccount(accountId));
+
+        verify(provider, never()).findSubscriptions(anyString());
         verify(provider, never()).cancelNow(anyString());
     }
 }

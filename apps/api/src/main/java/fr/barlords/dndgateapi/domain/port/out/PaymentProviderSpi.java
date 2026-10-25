@@ -37,4 +37,7 @@ public interface PaymentProviderSpi {
 
     /** Ends the subscription immediately. */
     void cancelNow(String subscriptionId);
+
+    /** Expires every hosted payment page of the customer that can still be paid. */
+    void expireOpenCheckoutSessions(String customerId);
 }

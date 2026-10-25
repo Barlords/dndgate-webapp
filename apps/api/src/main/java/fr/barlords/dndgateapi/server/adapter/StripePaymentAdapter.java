@@ -7,12 +7,14 @@ import com.stripe.model.Event;
 import com.stripe.model.Price;
 import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
+import com.stripe.model.checkout.Session;
 import com.stripe.net.Webhook;
 import com.stripe.param.CustomerCreateParams;
 import com.stripe.param.PriceListParams;
 import com.stripe.param.SubscriptionListParams;
 import com.stripe.param.billingportal.SessionCreateParams;
 import com.stripe.param.checkout.SessionCreateParams.AutomaticTax;
+import com.stripe.param.checkout.SessionListParams;
 import com.stripe.param.checkout.SessionCreateParams.ConsentCollection;
 import com.stripe.param.checkout.SessionCreateParams.CustomText;
 import com.stripe.param.checkout.SessionCreateParams.LineItem;
@@ -50,7 +52,7 @@ public class StripePaymentAdapter implements PaymentProviderSpi {
 
     // Stripe refuses an expiry under 30 minutes from the moment it receives the request: keep a margin
     private static final Duration CHECKOUT_LIFETIME = Duration.ofMinutes(31);
-    private static final long SUBSCRIPTION_PAGE_SIZE = 100L;
+    private static final long PAGE_SIZE = 100L;
     private static final String ACCOUNT_ID_KEY = "account_id";
     private static final String PLAN_ID_KEY = "plan_id";
 
@@ -94,7 +96,7 @@ public class StripePaymentAdapter implements PaymentProviderSpi {
             Iterable<Subscription> subscriptions = stripe.subscriptions().list(SubscriptionListParams.builder()
                     .setCustomer(customerId)
                     .setStatus(SubscriptionListParams.Status.ALL)
-                    .setLimit(SUBSCRIPTION_PAGE_SIZE)
+                    .setLimit(PAGE_SIZE)
                     .build()).autoPagingIterable();
             Map<String, String> planIdByProduct = new HashMap<>();
             List<ProviderSubscription> result = new ArrayList<>();
@@ -246,6 +248,32 @@ public class StripePaymentAdapter implements PaymentProviderSpi {
             stripe.subscriptions().cancel(subscriptionId);
         } catch (StripeException e) {
             throw unavailable("cancel a subscription", e);
+        }
+    }
+
+    @Override
+    public void expireOpenCheckoutSessions(String customerId) {
+        StripeClient stripe = enabledClient();
+        try {
+            // every page is read before the first expiry, so that the paging cursor never points at a changed session
+            List<String> open = new ArrayList<>();
+            for (Session session : stripe.checkout().sessions().list(SessionListParams.builder()
+                    .setCustomer(customerId)
+                    .setStatus(SessionListParams.Status.OPEN)
+                    .setLimit(PAGE_SIZE)
+                    .build()).autoPagingIterable()) {
+                open.add(session.getId());
+            }
+            for (String sessionId : open) {
+                stripe.checkout().sessions().expire(sessionId);
+            }
+        } catch (StripeException e) {
+            throw unavailable("expire the checkout sessions", e);
+        } catch (RuntimeException e) {
+            if (e.getCause() instanceof StripeException cause) {
+                throw unavailable("expire the checkout sessions", cause);
+            }
+            throw e;
         }
     }
 

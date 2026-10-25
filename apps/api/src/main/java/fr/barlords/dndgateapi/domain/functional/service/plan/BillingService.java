@@ -143,7 +143,11 @@ public class BillingService implements BillingApi {
             return;
         }
         requireEnabled();
-        for (ProviderSubscription found : provider.findSubscriptions(row.get().getStripeCustomerId())) {
+        String customerId = row.get().getStripeCustomerId();
+        // First, so that no page opened before the deletion can still be paid: a page paid meanwhile has created its
+        // subscription, which the reading below finds and ends
+        provider.expireOpenCheckoutSessions(customerId);
+        for (ProviderSubscription found : provider.findSubscriptions(customerId)) {
             if (found.status().isOngoing()) {
                 provider.cancelNow(found.id());
             }

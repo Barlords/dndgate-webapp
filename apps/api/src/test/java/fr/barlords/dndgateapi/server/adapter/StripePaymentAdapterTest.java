@@ -67,6 +67,7 @@ class StripePaymentAdapterTest {
         assertThrows(PaymentProviderUnavailableException.class, () -> disabled.createPortalSession("cus_1", "https://back"));
         assertThrows(PaymentProviderUnavailableException.class, () -> disabled.parseWebhookEvent("{}", "t=1,v1=a"));
         assertThrows(PaymentProviderUnavailableException.class, () -> disabled.cancelNow("sub_1"));
+        assertThrows(PaymentProviderUnavailableException.class, () -> disabled.expireOpenCheckoutSessions("cus_1"));
         assertTrue(adapter().isEnabled());
     }
 
@@ -205,6 +206,78 @@ class StripePaymentAdapterTest {
                 + "{\"id\":\"si_" + id + "\",\"object\":\"subscription_item\",\"current_period_end\":" + periodEnd + ","
                 + "\"price\":{\"id\":\"price_" + id + "\",\"object\":\"price\",\"product\":\"" + productId + "\","
                 + "\"recurring\":{\"interval\":\"" + interval + "\"}}}]}}";
+    }
+
+    private static String sessions(boolean hasMore, String... ids) {
+        List<String> data = new java.util.ArrayList<>();
+        for (String id : ids) {
+            data.add(session(id, "open"));
+        }
+        return "{\"object\":\"list\",\"url\":\"/v1/checkout/sessions\",\"has_more\":" + hasMore
+                + ",\"data\":[" + String.join(",", data) + "]}";
+    }
+
+    private static String session(String id, String status) {
+        return "{\"id\":\"" + id + "\",\"object\":\"checkout.session\",\"status\":\"" + status + "\"}";
+    }
+
+    @Test
+    void every_open_checkout_page_of_the_customer_is_expired() {
+        stripe.answer("GET", "/v1/checkout/sessions", sessions(true, "cs_1"))
+                .answer("GET", "/v1/checkout/sessions", sessions(false, "cs_2"))
+                .answer("POST", "/v1/checkout/sessions/cs_1/expire", session("cs_1", "expired"))
+                .answer("POST", "/v1/checkout/sessions/cs_2/expire", session("cs_2", "expired"));
+
+        adapter().expireOpenCheckoutSessions("cus_9");
+
+        List<FakeStripeServer.Call> pages = stripe.calls().stream()
+                .filter(call -> call.method().equals("GET") && call.path().equals("/v1/checkout/sessions")).toList();
+        assertEquals(2, pages.size(), "every page is read");
+        Map<String, String> query = pages.get(0).form();
+        assertEquals("cus_9", query.get("customer"));
+        assertEquals("open", query.get("status"));
+        assertEquals("100", query.get("limit"));
+        assertEquals("cs_1", pages.get(1).form().get("starting_after"));
+        assertNotNull(stripe.only("POST", "/v1/checkout/sessions/cs_1/expire"));
+        assertNotNull(stripe.only("POST", "/v1/checkout/sessions/cs_2/expire"));
+        // every page is read before the first expiry: the cursor never points at a session that changed meanwhile
+        List<String> order = stripe.calls().stream().map(FakeStripeServer.Call::path).toList();
+        assertEquals(List.of("/v1/checkout/sessions", "/v1/checkout/sessions", "/v1/checkout/sessions/cs_1/expire",
+                "/v1/checkout/sessions/cs_2/expire"), order);
+    }
+
+    @Test
+    void a_customer_without_an_open_checkout_page_expires_nothing() {
+        stripe.answer("GET", "/v1/checkout/sessions", sessions(false));
+
+        adapter().expireOpenCheckoutSessions("cus_9");
+
+        assertEquals(1, stripe.calls().size());
+    }
+
+    @Test
+    void a_failing_listing_or_expiry_of_the_checkout_pages_becomes_unavailable() {
+        stripe.fail("GET", "/v1/checkout/sessions", 500, "{\"error\":{\"type\":\"api_error\",\"message\":\"boom\"}}");
+        assertThrows(PaymentProviderUnavailableException.class, () -> adapter().expireOpenCheckoutSessions("cus_9"));
+
+        try (FakeStripeServer other = new FakeStripeServer()) {
+            other.answer("GET", "/v1/checkout/sessions", sessions(true, "cs_1"))
+                    .fail("GET", "/v1/checkout/sessions", 500, "{\"error\":{\"type\":\"api_error\",\"message\":\"boom\"}}");
+            StripePaymentAdapter adapter = new StripePaymentAdapter(StripeClient.builder().setApiKey("sk_test_123")
+                    .setApiBase(other.baseUrl()).setMaxNetworkRetries(0).build(), WEBHOOK_SECRET, TERMS, Clock.systemUTC());
+            assertThrows(PaymentProviderUnavailableException.class, () -> adapter.expireOpenCheckoutSessions("cus_9"),
+                    "a failing next page");
+            assertTrue(other.calls().stream().noneMatch(call -> call.path().endsWith("/expire")));
+        }
+
+        try (FakeStripeServer other = new FakeStripeServer()) {
+            other.answer("GET", "/v1/checkout/sessions", sessions(false, "cs_1"))
+                    .fail("POST", "/v1/checkout/sessions/cs_1/expire", 500, "{\"error\":{\"type\":\"api_error\",\"message\":\"boom\"}}");
+            StripePaymentAdapter adapter = new StripePaymentAdapter(StripeClient.builder().setApiKey("sk_test_123")
+                    .setApiBase(other.baseUrl()).setMaxNetworkRetries(0).build(), WEBHOOK_SECRET, TERMS, Clock.systemUTC());
+            assertThrows(PaymentProviderUnavailableException.class, () -> adapter.expireOpenCheckoutSessions("cus_9"),
+                    "a failing expiry");
+        }
     }
 
     @Test

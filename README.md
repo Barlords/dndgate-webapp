@@ -281,7 +281,7 @@ Une invitation refusée n'est pas comptée. Les lignes plus anciennes que la plu
 - Les aventures du compte qui n'ont pas démarré sont annulées et masquées ; celles qui ont démarré restent consultables par leurs joueurs.
   Sa place est libérée dans les aventures qui n'ont pas démarré, conservée dans les autres.
 - L'ancien pseudo et l'ancien e-mail peuvent être réutilisés par une nouvelle inscription.
-- **Abonnement** : avant l'anonymisation, l'API **résilie immédiatement** les abonnements Stripe du compte (sans remboursement au prorata) puis efface la ligne d'abonnement ; le client Stripe et ses factures restent chez Stripe. Si l'appel à Stripe échoue, la suppression répond `503` et rien n'est anonymisé. Fenêtre d'échec partiel acceptée : Stripe résilie, puis la transaction d'anonymisation échoue ; le compte reste, son abonnement est terminé, et **relancer la suppression est sans danger**.
+- **Abonnement** : avant l'anonymisation, l'API **fait expirer les pages Checkout encore ouvertes** du client (une page ouverte juste avant la suppression ne peut plus être payée), puis **résilie immédiatement** les abonnements Stripe du compte (sans remboursement au prorata) et efface la ligne d'abonnement ; le client Stripe et ses factures restent chez Stripe. Si l'appel à Stripe échoue, la suppression répond `503` et rien n'est anonymisé. Fenêtre d'échec partiel acceptée : Stripe résilie, puis la transaction d'anonymisation échoue ; le compte reste, son abonnement est terminé, et **relancer la suppression est sans danger**.
 
 ### Vérification de l'adresse e-mail
 

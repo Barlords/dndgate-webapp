@@ -90,6 +90,7 @@ class AccountAnonymizationIntegrationTest extends ApiIntegrationTestSupport {
 
         Assertions.assertEquals(204, deleteAccount(account));
 
+        verify(paymentProviderSpi).expireOpenCheckoutSessions("cus_test_" + account.id());
         verify(paymentProviderSpi).cancelNow("sub_ongoing");
         verify(paymentProviderSpi, never()).cancelNow("sub_over");
         Assertions.assertEquals(0, subscriptionRows(account));
@@ -102,6 +103,7 @@ class AccountAnonymizationIntegrationTest extends ApiIntegrationTestSupport {
         Assertions.assertEquals(204, deleteAccount(account));
 
         verify(paymentProviderSpi, never()).findSubscriptions(any());
+        verify(paymentProviderSpi, never()).expireOpenCheckoutSessions(any());
         verify(paymentProviderSpi, never()).cancelNow(any());
     }
 
