@@ -21,6 +21,7 @@ import { LoadError } from '../../../../shared/ui/load-error/load-error';
 import { Loading } from '../../../../shared/ui/loading/loading';
 import { AdventureContext } from '../adventure-context.service';
 import { CharacterPortrait } from './character-portrait';
+import { I18n } from '../../../../core/i18n/i18n.service';
 
 type ListState = 'loading' | 'ready' | 'failed';
 
@@ -110,8 +111,8 @@ type ListState = 'loading' | 'ready' | 'failed';
   `,
   template: `
     <div class="head">
-      <h1>Personnages</h1>
-      <dg-button (click)="create()">Créer un personnage</dg-button>
+      <h1>{{ t().tavern.characters.title }}</h1>
+      <dg-button (click)="create()">{{ t().tavern.characters.create }}</dg-button>
     </div>
     @switch (state()) {
       @case ('ready') {
@@ -135,13 +136,15 @@ type ListState = 'loading' | 'ready' | 'failed';
             }
           </ul>
         } @else {
-          <div class="state"><p>Aucun personnage pour le moment.</p></div>
+          <div class="state">
+            <p>{{ t().tavern.characters.empty }}</p>
+          </div>
         }
       }
       @case ('failed') {
         <div class="state">
           <dg-load-error
-            message="Impossible de charger les personnages."
+            [message]="t().tavern.characters.loadError"
             [problem]="loadProblem()"
             (retry)="load()"
           />
@@ -149,13 +152,18 @@ type ListState = 'loading' | 'ready' | 'failed';
       }
       @default {
         <div class="state">
-          <dg-loading label="Chargement des personnages" message="Les héros se rassemblent…" />
+          <dg-loading
+            [label]="t().tavern.characters.loading"
+            [message]="t().tavern.characters.loadingFlavour"
+          />
         </div>
       }
     }
   `,
 })
 export class CharacterListPage {
+  protected readonly t = inject(I18n).t;
+
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   private readonly context = inject(AdventureContext);

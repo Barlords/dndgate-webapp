@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, input, model, OnInit } from '@angular/core';
 import { SafeStorage } from '../../../core/storage/safe-storage';
 import { Icon } from '../icon/icon';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 export type ViewMode = 'table' | 'cards';
 
@@ -16,12 +17,12 @@ const MODES: readonly ViewMode[] = ['table', 'cards'];
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Icon],
   template: `
-    <div class="toggle" role="group" aria-label="Affichage">
+    <div class="toggle" role="group" [attr.aria-label]="t().common.viewToggle.label">
       <button
         type="button"
         class="toggle__option"
-        aria-label="Afficher en tableau"
-        title="Tableau"
+        [attr.aria-label]="t().common.viewToggle.showTable"
+        [attr.title]="t().common.viewToggle.table"
         [attr.aria-pressed]="mode() === 'table'"
         (click)="choose('table')"
       >
@@ -30,8 +31,8 @@ const MODES: readonly ViewMode[] = ['table', 'cards'];
       <button
         type="button"
         class="toggle__option"
-        aria-label="Afficher en cartes"
-        title="Cartes"
+        [attr.aria-label]="t().common.viewToggle.showCards"
+        [attr.title]="t().common.viewToggle.cards"
         [attr.aria-pressed]="mode() === 'cards'"
         (click)="choose('cards')"
       >
@@ -89,6 +90,8 @@ const MODES: readonly ViewMode[] = ['table', 'cards'];
   `,
 })
 export class ViewToggle implements OnInit {
+  protected readonly t = inject(I18n).t;
+
   private readonly storage = inject(SafeStorage);
 
   readonly mode = model<ViewMode>('cards');

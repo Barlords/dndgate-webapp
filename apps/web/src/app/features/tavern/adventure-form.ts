@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, input, output } from '@angular/core';
 import {
   AbstractControl,
   FormControl,
@@ -12,7 +12,7 @@ import { ApiProblem } from '../../core/errors/api-problem';
 import { applyFieldErrors } from '../../core/errors/form-errors';
 import { Button } from '../../shared/ui/button/button';
 import { FormField } from '../../shared/ui/form-field/form-field';
-import { VISIBILITY_LABEL } from './adventure-status';
+import { I18n } from '../../core/i18n/i18n.service';
 
 export const NAME_MAX = 255;
 export const DESCRIPTION_MAX = 5000;
@@ -58,46 +58,60 @@ const BLANK: AdventureValue = {
   `,
   template: `
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-      <dg-form-field label="Nom" [control]="form.controls.name">
+      <dg-form-field [label]="t().tavern.adventureForm.name" [control]="form.controls.name">
         <input formControlName="name" type="text" />
       </dg-form-field>
-      <dg-form-field label="Description" [control]="form.controls.description">
+      <dg-form-field
+        [label]="t().tavern.adventureForm.description"
+        [control]="form.controls.description"
+      >
         <textarea formControlName="description" rows="6"></textarea>
       </dg-form-field>
       <div class="row">
-        <dg-form-field label="Nombre de joueurs maximum" [control]="form.controls.maxPlayer">
+        <dg-form-field
+          [label]="t().tavern.adventureForm.maxPlayer"
+          [control]="form.controls.maxPlayer"
+        >
           <input formControlName="maxPlayer" type="number" min="1" max="100" />
         </dg-form-field>
         @if (withVisibility()) {
-          <dg-form-field label="Visibilité" [control]="form.controls.visibility">
+          <dg-form-field
+            [label]="t().tavern.adventureForm.visibility"
+            [control]="form.controls.visibility"
+          >
             <select formControlName="visibility">
-              <option value="PUBLIC">{{ labels.PUBLIC }}</option>
-              <option value="PRIVATE">{{ labels.PRIVATE }}</option>
+              <option value="PUBLIC">{{ t().tavern.visibility['PUBLIC'] }}</option>
+              <option value="PRIVATE">{{ t().tavern.visibility['PRIVATE'] }}</option>
             </select>
           </dg-form-field>
         }
       </div>
       <div class="row">
-        <dg-form-field label="Code postal" [control]="form.controls.postalCode">
+        <dg-form-field
+          [label]="t().tavern.adventureForm.postalCode"
+          [control]="form.controls.postalCode"
+        >
           <input formControlName="postalCode" type="text" autocomplete="postal-code" />
         </dg-form-field>
-        <dg-form-field label="Ville" [control]="form.controls.city">
+        <dg-form-field [label]="t().tavern.adventureForm.city" [control]="form.controls.city">
           <input formControlName="city" type="text" autocomplete="address-level2" />
         </dg-form-field>
       </div>
-      <dg-button type="submit" [loading]="busy()">{{ submitLabel() }}</dg-button>
+      <dg-button type="submit" [loading]="busy()">{{
+        submitLabel() ?? t().common.actions.create
+      }}</dg-button>
     </form>
   `,
 })
 export class AdventureForm {
+  protected readonly t = inject(I18n).t;
+
   readonly initial = input<AdventureValue>(BLANK);
-  readonly submitLabel = input('Créer');
+  readonly submitLabel = input<string | null>(null);
   readonly busy = input(false);
   /** False where the visibility has its own control, so that the form cannot contradict it. */
   readonly withVisibility = input(true);
   readonly saved = output<AdventureValue>();
-
-  protected readonly labels = VISIBILITY_LABEL;
 
   protected readonly form = new FormGroup({
     name: new FormControl('', {

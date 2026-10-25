@@ -8,9 +8,9 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { catchError, map, Observable, of, Subject, switchMap } from 'rxjs';
+import { catchError, EMPTY, map, Observable, of, skip, Subject, switchMap } from 'rxjs';
 import { ApiConfiguration } from '../../../core/api/generated/api-configuration';
 import {
   deleteSpellBookById,
@@ -36,6 +36,7 @@ import { EntryTable } from '../pages/entry-table.component';
 import { EntrySummary, Ruleset, RulesetSection } from '../rulesets/ruleset.model';
 import { SpellBookForm, SpellBookValue } from './spellbook-form';
 import { downloadSpellBook } from './spellbook-file';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 /** What the book's ruleset tells about its spells: their summaries, or why nothing is known. */
 interface Catalog {
@@ -43,7 +44,8 @@ interface Catalog {
   /** The ruleset and its spell section, whose table shows the spells. */
   ruleset: Ruleset | null;
   section: RulesetSection | null;
-  note: string | null;
+  /** Why the spells cannot be shown in full, as a text of the dictionary. */
+  note: 'noRuleset' | 'noDetails' | null;
 }
 
 interface Loaded {
@@ -55,11 +57,11 @@ const NO_RULESET: Catalog = {
   entries: null,
   ruleset: null,
   section: null,
-  note: 'Jeu de règles indisponible.',
+  note: 'noRuleset',
 };
 const NO_DETAILS: Catalog = {
   ...NO_RULESET,
-  note: 'Détails des sorts indisponibles pour le moment.',
+  note: 'noDetails',
 };
 
 /**
@@ -219,7 +221,7 @@ const NO_DETAILS: Catalog = {
         <article>
           @if (editing()) {
             <dg-spellbook-form
-              submitLabel="Enregistrer"
+              [submitLabel]="t().common.actions.save"
               [initial]="editValue()"
               [busy]="saving()"
               (saved)="save($event)"
@@ -229,34 +231,44 @@ const NO_DETAILS: Catalog = {
           <header class="head">
             <a class="back" routerLink="/library/grimoires">
               <dg-icon name="chevron-left" />
-              Retour à mes grimoires
+              {{ t().library.spellbooks.back }}
             </a>
             <div class="head__name">
               <h1>{{ shown.name }}</h1>
               <p class="ruleset">{{ rulesetLabel() }}</p>
             </div>
             <div class="actions">
-              <dg-icon-button icon="edit" label="Modifier" (click)="editing.set(true)" />
+              <dg-icon-button
+                icon="edit"
+                [label]="t().common.actions.edit"
+                (click)="editing.set(true)"
+              />
               <dg-icon-button
                 icon="download"
-                label="Exporter"
+                [label]="t().library.spellbooks.export"
                 [loading]="exporting()"
                 (click)="export()"
               />
-              <dg-icon-button icon="trash" label="Supprimer" variant="danger" (click)="remove()" />
+              <dg-icon-button
+                icon="trash"
+                [label]="t().common.actions.delete"
+                variant="danger"
+                (click)="remove()"
+              />
             </div>
           </header>
           @if (shown.description) {
             <p class="description">
-              <span class="description__caption">Description</span>{{ shown.description }}
+              <span class="description__caption">{{ t().library.spellbooks.description }}</span
+              >{{ shown.description }}
             </p>
           }
 
           @if (catalog().note; as note) {
-            <p class="note" role="status">{{ note }}</p>
+            <p class="note" role="status">{{ t().library.spellbooks[note] }}</p>
           }
           @if ((shown.spellList ?? []).length === 0) {
-            <p>Ce grimoire ne contient aucun sort. Ajoute-en depuis la liste des sorts.</p>
+            <p>{{ t().library.spellbooks.empty }}</p>
           } @else {
             @if (catalog().ruleset && catalog().section && known().length > 0) {
               <dg-entry-table
@@ -264,24 +276,24 @@ const NO_DETAILS: Catalog = {
                 [section]="catalog().section!"
                 [entries]="known()"
                 [rowActions]="removeAction"
-                actionsLabel="Retirer"
+                [actionsLabel]="t().library.spellbooks.remove"
               />
             }
             @if (unknown().length > 0) {
               @if (catalog().entries) {
-                <h2 class="unknown__title">Sorts introuvables</h2>
+                <h2 class="unknown__title">{{ t().library.spellbooks.unknownTitle }}</h2>
               }
               <ul class="unknown">
                 @for (index of unknown(); track index) {
                   <li class="spell">
                     <span [class.spell__name--unknown]="catalog().entries">{{
-                      catalog().entries ? 'Sort introuvable (' + index + ')' : index
+                      catalog().entries ? t().library.spellbooks.unknownSpell(index) : index
                     }}</span>
                     <dg-icon-button
                       icon="trash"
                       variant="danger"
-                      label="Retirer"
-                      [ariaLabel]="'Retirer ' + index + ' du grimoire'"
+                      [label]="t().library.spellbooks.remove"
+                      [ariaLabel]="t().library.spellbooks.removeSpell(index)"
                       (click)="removeSpell(index)"
                     />
                   </li>
@@ -292,20 +304,23 @@ const NO_DETAILS: Catalog = {
         </article>
       } @else if (notFound()) {
         <div class="state">
-          <p role="alert">Grimoire introuvable.</p>
-          <a routerLink="/library/grimoires">Retour à mes grimoires</a>
+          <p role="alert">{{ t().library.spellbooks.notFound }}</p>
+          <a routerLink="/library/grimoires">{{ t().library.spellbooks.back }}</a>
         </div>
       } @else if (loaded().failed) {
         <div class="state">
           <dg-load-error
-            message="Impossible de charger ce grimoire."
+            [message]="t().library.spellbooks.bookLoadError"
             [problem]="loadProblem()"
             (retry)="reload()"
           />
         </div>
       } @else {
         <div class="state">
-          <dg-loading label="Chargement du grimoire" message="Le grimoire s’entrouvre…" />
+          <dg-loading
+            [label]="t().library.spellbooks.bookLoading"
+            [message]="t().library.spellbooks.bookLoadingFlavour"
+          />
         </div>
       }
     </dg-parchment>
@@ -314,14 +329,17 @@ const NO_DETAILS: Catalog = {
       <dg-icon-button
         icon="trash"
         variant="danger"
-        label="Retirer"
-        [ariaLabel]="'Retirer ' + entry.name + ' du grimoire'"
+        [label]="t().library.spellbooks.remove"
+        [ariaLabel]="t().library.spellbooks.removeSpell(entry.name)"
         (click)="removeSpell(entry.index)"
       />
     </ng-template>
   `,
 })
 export class SpellBookDetailPage {
+  private readonly i18n = inject(I18n);
+  protected readonly t = this.i18n.t;
+
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   private readonly registry = inject(RulesetRegistry);
@@ -389,6 +407,17 @@ export class SpellBookDetailPage {
           this.breadcrumb.setLast(state.value.book.name ?? '');
         }
       });
+    // The spells come in the reader's language: read them again when it changes (the book stays).
+    toObservable(this.i18n.language)
+      .pipe(
+        skip(1),
+        switchMap(() => {
+          const book = this.book();
+          return book === null ? EMPTY : this.catalogOf(book);
+        }),
+        takeUntilDestroyed(),
+      )
+      .subscribe((catalog) => this.catalog.set(catalog));
   }
 
   protected reload(): void {
@@ -444,7 +473,7 @@ export class SpellBookDetailPage {
           this.editing.set(false);
           this.book.set(updated);
           this.breadcrumb.setLast(updated.name ?? '');
-          this.notifier.success('Grimoire mis à jour.');
+          this.notifier.success(this.t().library.spellbooks.updated);
         },
         error: (error: unknown) => {
           this.saving.set(false);
@@ -452,7 +481,7 @@ export class SpellBookDetailPage {
           if (problem.status === 409) {
             this.notifier.conflict(() => this.reload());
           } else if (!(problem.status === 400 && this.form()?.showProblem(problem))) {
-            this.notifier.error(problem, 'Modification du grimoire');
+            this.notifier.error(problem, this.t().library.spellbooks.updating);
           }
         },
       });
@@ -467,7 +496,8 @@ export class SpellBookDetailPage {
             ...book!,
             spellList: (book!.spellList ?? []).filter((index) => index !== spellIndex),
           })),
-        error: (error: unknown) => this.notifier.error(toApiProblem(error), 'Retrait du sort'),
+        error: (error: unknown) =>
+          this.notifier.error(toApiProblem(error), this.t().library.spellbooks.removingSpell),
       });
   }
 
@@ -483,7 +513,7 @@ export class SpellBookDetailPage {
         },
         error: (error: unknown) => {
           this.exporting.set(false);
-          this.notifier.error(toApiProblem(error), 'Export du grimoire');
+          this.notifier.error(toApiProblem(error), this.t().library.spellbooks.exporting);
         },
       });
   }
@@ -492,12 +522,12 @@ export class SpellBookDetailPage {
     const book = this.book()!;
     this.confirm
       .typeToConfirm({
-        title: 'Supprimer le grimoire',
-        message: `Cette action est irréversible. Retape le nom du grimoire (${book.name}) pour confirmer.`,
+        title: this.t().library.spellbooks.deleteTitle,
+        message: this.t().library.spellbooks.deleteMessage(book.name ?? ''),
         expected: book.name,
-        inputLabel: 'Nom du grimoire',
+        inputLabel: this.t().library.spellbooks.deleteInput,
         inputType: 'text',
-        confirmLabel: 'Supprimer',
+        confirmLabel: this.t().common.actions.delete,
       })
       .pipe(
         takeUntilDestroyed(this.destroyRef),
@@ -513,12 +543,12 @@ export class SpellBookDetailPage {
       .subscribe({
         next: (done) => {
           if (done) {
-            this.notifier.success('Grimoire supprimé.');
+            this.notifier.success(this.t().library.spellbooks.deleted);
             void this.router.navigateByUrl('/library/grimoires');
           }
         },
         error: (error: unknown) =>
-          this.notifier.error(toApiProblem(error), 'Suppression du grimoire'),
+          this.notifier.error(toApiProblem(error), this.t().library.spellbooks.deleting),
       });
   }
 }

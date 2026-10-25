@@ -8,6 +8,8 @@ import { Emblem } from '../../shared/ui/emblem/emblem';
 import { Icon } from '../../shared/ui/icon/icon';
 import { NavGroup } from '../nav.model';
 import { SidebarStateService } from '../sidebar-state.service';
+import { I18n } from '../../core/i18n/i18n.service';
+import { LanguageSelect } from '../../shared/ui/language-select/language-select';
 
 /**
  * The sidebar: the DnDGate logo (back to the home page), the part's name, a slot for what sits
@@ -18,7 +20,7 @@ import { SidebarStateService } from '../sidebar-state.service';
 @Component({
   selector: 'dg-sidebar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, RouterLinkActive, Icon, Brand, Emblem],
+  imports: [RouterLink, RouterLinkActive, Icon, Brand, Emblem, LanguageSelect],
   templateUrl: './sidebar.html',
   styleUrl: './sidebar.scss',
   host: {
@@ -27,11 +29,12 @@ import { SidebarStateService } from '../sidebar-state.service';
   },
 })
 export class Sidebar {
+  protected readonly t = inject(I18n).t;
+
   readonly heading = input.required<string>();
   readonly groups = input.required<NavGroup[]>();
 
   protected readonly panelId = 'dg-sidebar-panel';
-  protected readonly homeLabel = "DnDGate, retour à l'accueil";
   private readonly state = inject(SidebarStateService);
   protected readonly collapsed = this.state.collapsed;
   protected readonly drawer = computed(() => this.state.small() && !this.state.collapsed());

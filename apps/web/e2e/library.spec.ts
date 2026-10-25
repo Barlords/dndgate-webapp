@@ -1,4 +1,6 @@
 import { Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { expect, test } from './support/test';
 import { ACCOUNT, authDto, emptyPage, json, mockDnd5eApi } from './support/mocks';
 
@@ -241,10 +243,10 @@ test('a feature of the levels table leads to its description', async ({ page }) 
 
   await table.getByRole('link', { name: 'Arcane Tradition' }).click();
   await expect(page).toHaveURL(/#subclasses$/);
-  await expect(page.getByRole('heading', { name: 'Subclasses' })).toBeInViewport();
+  await expect(page.getByRole('heading', { name: 'Sous-classes' })).toBeInViewport();
   // A little below the top of the window, not glued to it.
   expect(
-    (await page.getByRole('heading', { name: 'Subclasses' }).boundingBox())!.y,
+    (await page.getByRole('heading', { name: 'Sous-classes' }).boundingBox())!.y,
   ).toBeGreaterThan(8);
 });
 
@@ -258,4 +260,62 @@ test('on a small screen, the opened drawer lies over the page and takes the clic
   await page.getByRole('link', { name: 'Classes' }).click();
 
   await expect(page).toHaveURL(/\/library\/dnd5e-2014\/classes$/);
+});
+
+test('the language select turns the interface and the SRD texts to English, and keeps it', async ({
+  page,
+}) => {
+  const asked: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('dnd5eapi.co')) asked.push(request.url());
+  });
+  await page.goto('/library/dnd5e-2014/spells');
+  await expect(page.getByRole('heading', { name: 'Sorts' })).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
+  expect(asked.some((url) => url.includes('lang=fr-FR'))).toBe(true);
+
+  asked.length = 0;
+  await page.getByRole('button', { name: 'English' }).click();
+  await expect(page.getByRole('heading', { name: 'Spells' })).toBeVisible();
+  await expect(page.getByText('5 entries')).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  expect(asked.length).toBeGreaterThan(0);
+  expect(asked.every((url) => url.includes('lang=en'))).toBe(true);
+
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Spells' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'English' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+});
+
+test('an open entry is read again from the SRD in the language chosen', async ({ page }) => {
+  const wizard = JSON.parse(
+    readFileSync(join(__dirname, 'fixtures', 'class-wizard.json'), 'utf8'),
+  ) as object;
+  // Like the API: `?lang=` first, else the browser's language (`Accept-Language`, French here).
+  const asked: string[] = [];
+  await page.route('https://www.dnd5eapi.co/api/2014/classes/wizard*', async (route) => {
+    const request = route.request();
+    if (!request.url().includes('/wizard?') && !request.url().endsWith('/wizard')) {
+      return route.fallback();
+    }
+    asked.push(request.url());
+    const lang =
+      new URL(request.url()).searchParams.get('lang') ??
+      (await request.allHeaders())['accept-language'];
+    return json(route, { ...wizard, name: lang?.startsWith('fr') ? 'Magicien' : 'Wizard' });
+  });
+
+  await page.goto('/library/dnd5e-2014/classes/wizard');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Magicien');
+
+  await page.getByRole('button', { name: 'English' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Wizard');
+  expect(asked.map((url) => new URL(url).search)).toEqual(['?lang=fr-FR', '?lang=en']);
+
+  // Back in French, the answer already read in French is shown again.
+  await page.getByRole('button', { name: 'Français' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Magicien');
 });

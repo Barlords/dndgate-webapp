@@ -22,6 +22,8 @@ import { ApiProblem } from '../../../../core/errors/api-problem';
 import { applyFieldErrors } from '../../../../core/errors/form-errors';
 import { Button } from '../../../../shared/ui/button/button';
 import { FormField } from '../../../../shared/ui/form-field/form-field';
+import { Dictionary } from '../../../../core/i18n/dictionary';
+import { I18n } from '../../../../core/i18n/i18n.service';
 
 export const NAME_MIN = 3;
 export const NAME_MAX = 50;
@@ -76,18 +78,24 @@ function startsWith(bytes: Uint8Array, signature: number[]): boolean {
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47];
 const JPEG_SIGNATURE = [0xff, 0xd8, 0xff];
 
+/** The words of the picture's problems, in the reader's language. */
+export type PictureTexts = Pick<
+  Dictionary['tavern']['characters'],
+  'pictureTooBig' | 'pictureFormat'
+>;
+
 /**
  * Checks a picture before it is sent: at most 5 MB, and PNG or JPEG by its first bytes (the name
  * and the declared type prove nothing). Returns the message to show, or null when it is fine.
  */
-export async function checkPicture(file: File): Promise<string | null> {
+export async function checkPicture(file: File, texts: PictureTexts): Promise<string | null> {
   if (file.size > PICTURE_MAX_BYTES) {
-    return 'L’image pèse plus de 5 Mo.';
+    return texts.pictureTooBig;
   }
   const head = new Uint8Array(await file.slice(0, PNG_SIGNATURE.length + 4).arrayBuffer());
   return startsWith(head, PNG_SIGNATURE) || startsWith(head, JPEG_SIGNATURE)
     ? null
-    : 'L’image doit être un PNG ou un JPEG.';
+    : texts.pictureFormat;
 }
 
 /**
@@ -153,9 +161,9 @@ export async function checkPicture(file: File): Promise<string | null> {
       @if (withPicture()) {
         <div class="picture">
           <div>
-            <label class="caption" for="dg-character-picture"
-              >Portrait (PNG ou JPEG, 5 Mo au maximum)</label
-            >
+            <label class="caption" for="dg-character-picture">{{
+              t().tavern.characters.picture
+            }}</label>
             <input
               id="dg-character-picture"
               type="file"
@@ -167,23 +175,29 @@ export async function checkPicture(file: File): Promise<string | null> {
             }
           </div>
           @if (previewUrl(); as url) {
-            <img class="preview" [src]="url" alt="Aperçu du portrait" />
+            <img class="preview" [src]="url" [alt]="t().tavern.characters.preview" />
           }
         </div>
       }
-      <dg-form-field label="Nom" [control]="form.controls.name">
+      <dg-form-field [label]="t().tavern.characters.name" [control]="form.controls.name">
         <input formControlName="name" type="text" autocomplete="off" />
       </dg-form-field>
-      <dg-form-field label="Race" [control]="form.controls.race">
+      <dg-form-field [label]="t().tavern.characters.race" [control]="form.controls.race">
         <input formControlName="race" type="text" autocomplete="off" />
       </dg-form-field>
-      <dg-form-field label="Classe" [control]="form.controls.martialClass">
+      <dg-form-field [label]="t().tavern.characters.class" [control]="form.controls.martialClass">
         <input formControlName="martialClass" type="text" autocomplete="off" />
       </dg-form-field>
-      <dg-form-field label="Personnalité" [control]="form.controls.personality">
+      <dg-form-field
+        [label]="t().tavern.characters.personality"
+        [control]="form.controls.personality"
+      >
         <textarea formControlName="personality" rows="4"></textarea>
       </dg-form-field>
-      <dg-form-field label="Histoire" [control]="form.controls.background">
+      <dg-form-field
+        [label]="t().tavern.characters.background"
+        [control]="form.controls.background"
+      >
         <textarea formControlName="background" rows="8"></textarea>
       </dg-form-field>
       <p class="counter" [class.over]="backgroundLength() > backgroundMax">
@@ -192,13 +206,17 @@ export async function checkPicture(file: File): Promise<string | null> {
       @if (problem(); as message) {
         <p class="problem" role="alert">{{ message }}</p>
       }
-      <dg-button type="submit" [loading]="busy()">{{ submitLabel() }}</dg-button>
+      <dg-button type="submit" [loading]="busy()">{{
+        submitLabel() ?? t().tavern.characters.createSubmit
+      }}</dg-button>
     </form>
   `,
 })
 export class CharacterForm {
+  protected readonly t = inject(I18n).t;
+
   readonly initial = input<CharacterValue>(BLANK);
-  readonly submitLabel = input('Créer le personnage');
+  readonly submitLabel = input<string | null>(null);
   readonly busy = input(false);
   /** Creation asks for a picture; the API cannot change it afterwards. */
   readonly withPicture = input(false);
@@ -254,7 +272,7 @@ export class CharacterForm {
   }
 
   protected formatted(count: number): string {
-    return count.toLocaleString('fr-FR').replace(/\s/g, ' ');
+    return count.toLocaleString(this.t().common.locale).replace(/\s/g, ' ');
   }
 
   protected async pick(event: Event): Promise<void> {
@@ -265,7 +283,7 @@ export class CharacterForm {
     if (file === null) {
       return;
     }
-    const problem = await checkPicture(file);
+    const problem = await checkPicture(file, this.t().tavern.characters);
     if (problem !== null) {
       this.pictureProblem.set(problem);
       return;
@@ -280,7 +298,7 @@ export class CharacterForm {
     }
     const missingPicture = this.withPicture() && this.picture === null;
     if (missingPicture && this.pictureProblem() === null) {
-      this.pictureProblem.set('Choisis une image pour ton personnage.');
+      this.pictureProblem.set(this.t().tavern.characters.pictureRequired);
     }
     if (this.form.invalid) {
       this.form.markAllAsTouched();

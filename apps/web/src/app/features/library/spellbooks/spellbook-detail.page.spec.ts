@@ -6,6 +6,7 @@ import { provideApi } from '../../../core/api/api.providers';
 import { NotifierService } from '../../../core/errors/notifier.service';
 import { BreadcrumbService } from '../../../layout/breadcrumb.service';
 import { ConfirmService } from '../../../shared/ui/confirm-dialog/confirm.service';
+import { I18n } from '../../../core/i18n/i18n.service';
 import { LibraryTestbed, setupLibrary } from '../library.testing';
 import { FakeRuleset } from '../rulesets/fake.ruleset';
 import { EntrySummary, Ruleset } from '../rulesets/ruleset.model';
@@ -174,6 +175,23 @@ describe('SpellBookDetailPage', () => {
     expect(main().textContent).toContain('Arcane');
     expect(main().textContent).toContain('Détails des sorts indisponibles');
     expect(unknown()).toEqual(['shield']);
+  });
+
+  it('reads the spells again in the new language, without asking for the book again', async () => {
+    const ruleset = new FakeRuleset({ id: 'dnd5e-2014' });
+    const list = vi.spyOn(ruleset, 'list');
+    await open(BOOK, [ruleset]);
+    expect(list).toHaveBeenCalledTimes(1);
+
+    list.mockReturnValue(
+      of([{ index: 'shield', name: 'Bouclier', fields: { level: 1, school: 'Abjuration' } }]),
+    );
+    TestBed.inject(I18n).use('en');
+    await library.render();
+
+    expect(list).toHaveBeenCalledTimes(2);
+    expect(rows().map((cells) => cells[0])).toEqual(['Bouclier']);
+    localStorage.clear();
   });
 
   it('shows a not-found state for an unknown book', async () => {

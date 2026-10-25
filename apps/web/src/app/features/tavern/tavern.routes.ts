@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { TavernShell } from './tavern-shell';
+import { crumb } from '../../layout/breadcrumb.service';
 
 /** Every Tavern page, under `/tavern`. */
 export const TAVERN_ROUTES: Routes = [
@@ -11,27 +12,27 @@ export const TAVERN_ROUTES: Routes = [
       {
         path: 'adventures',
         pathMatch: 'full',
-        data: { breadcrumb: 'Aventures' },
+        data: { breadcrumb: crumb((t) => t.tavern.shell.adventures) },
         loadComponent: () => import('./quest-board.page').then((m) => m.QuestBoardPage),
       },
       {
         path: 'code',
-        data: { breadcrumb: 'Utiliser un code' },
+        data: { breadcrumb: crumb((t) => t.tavern.shell.useCode) },
         loadComponent: () => import('./use-code.page').then((m) => m.UseCodePage),
       },
       {
         path: 'new',
-        data: { breadcrumb: 'Créer une aventure' },
+        data: { breadcrumb: crumb((t) => t.tavern.crumbs.newAdventure) },
         loadComponent: () => import('./create-adventure.page').then((m) => m.CreateAdventurePage),
       },
       {
         path: 'mine',
-        data: { breadcrumb: 'Mes aventures' },
+        data: { breadcrumb: crumb((t) => t.tavern.shell.myAdventures) },
         loadComponent: () => import('./my-adventures.page').then((m) => m.MyAdventuresPage),
       },
       {
         path: 'characters',
-        data: { breadcrumb: 'Mes personnages' },
+        data: { breadcrumb: crumb((t) => t.tavern.shell.myCharacters) },
         children: [
           {
             path: '',
@@ -47,7 +48,7 @@ export const TAVERN_ROUTES: Routes = [
             children: [
               {
                 path: 'new',
-                data: { breadcrumb: 'Nouveau personnage' },
+                data: { breadcrumb: crumb((t) => t.tavern.crumbs.newCharacter) },
                 loadComponent: () =>
                   import('./adventure/characters/character-form.page').then(
                     (m) => m.CharacterFormPage,
@@ -55,7 +56,7 @@ export const TAVERN_ROUTES: Routes = [
               },
               {
                 path: ':characterId',
-                data: { breadcrumb: 'Personnage' },
+                data: { breadcrumb: crumb((t) => t.tavern.crumbs.character) },
                 children: [
                   {
                     path: '',
@@ -67,7 +68,7 @@ export const TAVERN_ROUTES: Routes = [
                   },
                   {
                     path: 'edit',
-                    data: { breadcrumb: 'Modifier' },
+                    data: { breadcrumb: crumb((t) => t.tavern.crumbs.edit) },
                     loadComponent: () =>
                       import('./adventure/characters/character-form.page').then(
                         (m) => m.CharacterFormPage,
@@ -81,13 +82,13 @@ export const TAVERN_ROUTES: Routes = [
       },
       {
         path: 'grimoires',
-        data: { breadcrumb: 'Mes grimoires' },
+        data: { breadcrumb: crumb((t) => t.tavern.shell.mySpellbooks) },
         loadComponent: () =>
           import('../library/spellbooks/spellbook-list.page').then((m) => m.SpellBookListPage),
       },
       {
         path: 'magic-items',
-        data: { breadcrumb: 'Mes objets magiques' },
+        data: { breadcrumb: crumb((t) => t.tavern.shell.myMagicItems) },
         children: [
           {
             path: '',
@@ -97,14 +98,14 @@ export const TAVERN_ROUTES: Routes = [
           },
           {
             path: 'new',
-            data: { breadcrumb: 'Nouvel objet magique' },
+            data: { breadcrumb: crumb((t) => t.tavern.crumbs.newMagicItem) },
             loadComponent: () =>
               import('./magic-items/magic-item-form.page').then((m) => m.MagicItemFormPage),
           },
           {
             path: ':id',
             // Replaced by the item's name once it has loaded.
-            data: { breadcrumb: 'Objet magique' },
+            data: { breadcrumb: crumb((t) => t.tavern.crumbs.magicItem) },
             loadComponent: () =>
               import('./magic-items/magic-item-form.page').then((m) => m.MagicItemFormPage),
           },
@@ -118,23 +119,23 @@ export const TAVERN_ROUTES: Routes = [
       { path: 'mine/finished', redirectTo: 'mine' },
       {
         path: 'adventures/:id',
-        data: { breadcrumb: 'Aventure' },
+        data: { breadcrumb: crumb((t) => t.tavern.crumbs.adventure) },
         loadComponent: () => import('./adventure/adventure-shell').then((m) => m.AdventureShell),
         children: [
           { path: '', pathMatch: 'full', redirectTo: 'overview' },
           {
             path: 'overview',
-            data: { breadcrumb: 'Informations' },
+            data: { breadcrumb: crumb((t) => t.tavern.crumbs.overview) },
             loadComponent: () => import('./adventure/overview.page').then((m) => m.OverviewPage),
           },
           {
             path: 'players',
-            data: { breadcrumb: 'Joueurs' },
+            data: { breadcrumb: crumb((t) => t.tavern.crumbs.players) },
             loadComponent: () => import('./adventure/players.page').then((m) => m.PlayersPage),
           },
           {
             path: 'characters',
-            data: { breadcrumb: 'Personnages' },
+            data: { breadcrumb: crumb((t) => t.tavern.crumbs.characters) },
             children: [
               {
                 path: '',
@@ -146,7 +147,7 @@ export const TAVERN_ROUTES: Routes = [
               },
               {
                 path: 'new',
-                data: { breadcrumb: 'Nouveau personnage' },
+                data: { breadcrumb: crumb((t) => t.tavern.crumbs.newCharacter) },
                 loadComponent: () =>
                   import('./adventure/characters/character-form.page').then(
                     (m) => m.CharacterFormPage,
@@ -154,7 +155,7 @@ export const TAVERN_ROUTES: Routes = [
               },
               {
                 path: ':characterId',
-                data: { breadcrumb: 'Personnage' },
+                data: { breadcrumb: crumb((t) => t.tavern.crumbs.character) },
                 children: [
                   {
                     path: '',
@@ -166,7 +167,7 @@ export const TAVERN_ROUTES: Routes = [
                   },
                   {
                     path: 'edit',
-                    data: { breadcrumb: 'Modifier' },
+                    data: { breadcrumb: crumb((t) => t.tavern.crumbs.edit) },
                     loadComponent: () =>
                       import('./adventure/characters/character-form.page').then(
                         (m) => m.CharacterFormPage,
@@ -178,27 +179,27 @@ export const TAVERN_ROUTES: Routes = [
           },
           {
             path: 'chronicle',
-            data: { breadcrumb: 'Chronique' },
+            data: { breadcrumb: crumb((t) => t.tavern.crumbs.chronicle) },
             loadComponent: () => import('./adventure/chronicle.page').then((m) => m.ChroniclePage),
           },
           {
             path: 'gm-notes',
-            data: { breadcrumb: 'Notes du MJ' },
+            data: { breadcrumb: crumb((t) => t.tavern.crumbs.gmNotes) },
             loadComponent: () => import('./adventure/gm-notes.page').then((m) => m.GmNotesPage),
           },
           {
             path: 'planning',
-            data: { breadcrumb: 'Planning' },
+            data: { breadcrumb: crumb((t) => t.tavern.crumbs.planning) },
             loadComponent: () => import('./adventure/planning.page').then((m) => m.PlanningPage),
           },
           {
             path: 'messages',
-            data: { breadcrumb: 'Messagerie' },
+            data: { breadcrumb: crumb((t) => t.tavern.crumbs.messages) },
             loadComponent: () => import('./adventure/messages.page').then((m) => m.MessagesPage),
           },
           {
             path: 'master',
-            data: { breadcrumb: 'MJ' },
+            data: { breadcrumb: crumb((t) => t.tavern.crumbs.master) },
             loadComponent: () => import('./adventure/master.page').then((m) => m.MasterPage),
           },
         ],

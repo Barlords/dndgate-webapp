@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, input, output } from '@angular/core';
 import {
   AbstractControl,
   FormControl,
@@ -11,14 +11,8 @@ import { ApiProblem } from '../../../core/errors/api-problem';
 import { applyFieldErrors } from '../../../core/errors/form-errors';
 import { Button } from '../../../shared/ui/button/button';
 import { FormField } from '../../../shared/ui/form-field/form-field';
-import {
-  MagicItemRarity,
-  MagicItemType,
-  RARITIES,
-  RARITY_LABEL,
-  TYPE_LABEL,
-  TYPES,
-} from './magic-item-labels';
+import { MagicItemRarity, MagicItemType, RARITIES, TYPES } from './magic-item-labels';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 export const NAME_MAX = 255;
 export const DESCRIPTION_MAX = 5000;
@@ -87,49 +81,54 @@ function notBlank(control: AbstractControl): ValidationErrors | null {
   `,
   template: `
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-      <dg-form-field label="Nom" [control]="form.controls.name">
+      <dg-form-field [label]="t().tavern.magicItems.name" [control]="form.controls.name">
         <input formControlName="name" type="text" />
       </dg-form-field>
       <div class="form__row">
-        <dg-form-field label="Type" [control]="form.controls.type">
+        <dg-form-field [label]="t().tavern.magicItems.type" [control]="form.controls.type">
           <select formControlName="type">
             @for (type of types; track type) {
-              <option [value]="type">{{ typeLabels[type] }}</option>
+              <option [value]="type">{{ t().tavern.magicItems.types[type] }}</option>
             }
           </select>
         </dg-form-field>
-        <dg-form-field label="Rareté" [control]="form.controls.rarity">
+        <dg-form-field [label]="t().tavern.magicItems.rarity" [control]="form.controls.rarity">
           <select formControlName="rarity">
             @for (rarity of rarities; track rarity) {
-              <option [value]="rarity">{{ rarityLabels[rarity] }}</option>
+              <option [value]="rarity">{{ t().tavern.magicItems.rarities[rarity] }}</option>
             }
           </select>
         </dg-form-field>
       </div>
       <label class="form__check">
         <input formControlName="requiresAttunement" type="checkbox" />
-        Harmonisation requise
+        {{ t().tavern.magicItems.requiresAttunement }}
       </label>
-      <dg-form-field label="Description" [control]="form.controls.description">
+      <dg-form-field
+        [label]="t().tavern.magicItems.description"
+        [control]="form.controls.description"
+      >
         <textarea formControlName="description" rows="6"></textarea>
       </dg-form-field>
       <div class="form__actions">
-        <dg-button type="submit" [loading]="busy()">{{ submitLabel() }}</dg-button>
+        <dg-button type="submit" [loading]="busy()">{{
+          submitLabel() ?? t().tavern.magicItems.createSubmit
+        }}</dg-button>
         <ng-content />
       </div>
     </form>
   `,
 })
 export class MagicItemForm {
+  protected readonly t = inject(I18n).t;
+
   readonly initial = input<MagicItemValue>(BLANK_MAGIC_ITEM);
-  readonly submitLabel = input('Créer l’objet');
+  readonly submitLabel = input<string | null>(null);
   readonly busy = input(false);
   readonly saved = output<MagicItemValue>();
 
   protected readonly types = TYPES;
   protected readonly rarities = RARITIES;
-  protected readonly typeLabels = TYPE_LABEL;
-  protected readonly rarityLabels = RARITY_LABEL;
 
   protected readonly form = new FormGroup({
     name: new FormControl('', {

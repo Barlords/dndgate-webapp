@@ -1,8 +1,9 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { catchError, map, Observable, shareReplay, throwError } from 'rxjs';
-import { CONTENT_LANGUAGE, wantsTranslation } from '../content-language';
 import { RulesetEntryNotFoundError } from '../ruleset.model';
+import { I18n } from '../../../../core/i18n/i18n.service';
+import { Language } from '../../../../core/i18n/dictionary';
 
 export type Dnd5eVersion = '2014' | '2024';
 
@@ -34,8 +35,11 @@ const TRANSLATED: Record<Dnd5eVersion, Partial<Record<string, ReadonlySet<string
   '2024': {},
 };
 
-/** The language codes the API knows, by the language part of the reader's tag. */
-const API_LANGUAGES: Partial<Record<string, string>> = { fr: 'fr-FR' };
+/** The language codes the API knows, by language of the interface; English is its own. */
+const API_LANGUAGES: Record<Language, string | null> = { fr: 'fr-FR', en: null };
+
+/** The API's own language, what it answers in for what it does not translate. */
+const SOURCE_LANGUAGE = 'en';
 
 interface GraphqlResponse<T> {
   data?: T;
@@ -59,7 +63,8 @@ function climbs(segment: string): boolean {
 /**
  * The only door to dnd5eapi.co. Answers are cached in memory for the life of the page, by URL (REST)
  * or by query and variables (GraphQL); a failure is never cached, so asking again retries. A
- * resource the API translates into the reader's language is asked in it (`?lang=`).
+ * resource the API translates into the reader's language (the interface's) is asked in it
+ * (`?lang=`), anything else in English.
  */
 @Injectable({ providedIn: 'root' })
 export class Dnd5eClient {
@@ -67,23 +72,25 @@ export class Dnd5eClient {
 
   private readonly http = inject(HttpClient);
   private readonly cache = new Map<string, Observable<unknown>>();
-  private readonly language = inject(CONTENT_LANGUAGE);
-  private readonly apiLanguage = API_LANGUAGES[this.language.toLowerCase().split('-')[0]] ?? null;
+  private readonly i18n = inject(I18n);
 
   /** The language to ask `resource` in, when the API translates it into the reader's. */
   private translation(version: Dnd5eVersion, resource: string): string | null {
-    const language = this.apiLanguage;
+    const language = API_LANGUAGES[this.i18n.language()];
     return language !== null && TRANSLATED[version][language]?.has(resource) ? language : null;
   }
 
-  /** Whether the reader wants another language than English and `resource` is not in it. */
+  /** Whether the reader reads another language than English and `resource` is not in it. */
   untranslated(version: Dnd5eVersion, resource: string): boolean {
-    return wantsTranslation(this.language) && this.translation(version, resource) === null;
+    return this.i18n.language() !== 'en' && this.translation(version, resource) === null;
   }
 
+  /**
+   * Always names the language: without `?lang=`, the API answers in the browser's
+   * (`Accept-Language`), which may not be the interface's.
+   */
   private withLanguage(url: string, version: Dnd5eVersion, resource: string): string {
-    const language = this.translation(version, resource);
-    return language === null ? url : `${url}?lang=${language}`;
+    return `${url}?lang=${this.translation(version, resource) ?? SOURCE_LANGUAGE}`;
   }
 
   /**

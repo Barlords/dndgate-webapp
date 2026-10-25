@@ -1,26 +1,32 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { NavGroup } from '../../layout/nav.model';
 import { Shell } from '../../layout/shell/shell';
+import { Dictionary } from '../../core/i18n/dictionary';
+import { I18n } from '../../core/i18n/i18n.service';
 
-export const TAVERN_GROUPS: NavGroup[] = [
-  {
-    label: 'SALLE COMMUNE',
-    items: [
-      { label: 'Aventures', icon: 'scroll', link: '/tavern/adventures', exact: true },
-      { label: 'Utiliser un code', icon: 'key', link: '/tavern/code' },
-    ],
-  },
-  {
-    label: 'MON ESPACE',
-    items: [
-      { label: 'Mes aventures', icon: 'sword', link: '/tavern/mine' },
-      { label: 'Mes personnages', icon: 'user', link: '/tavern/characters' },
-      { label: 'Mes grimoires', icon: 'book', link: '/tavern/grimoires' },
-      { label: 'Mes objets magiques', icon: 'gem', link: '/tavern/magic-items' },
-    ],
-  },
-];
+/** The menu of the Tavern, in the reader's language. */
+export function tavernGroups(t: Dictionary): NavGroup[] {
+  const shell = t.tavern.shell;
+  return [
+    {
+      label: shell.commonRoom,
+      items: [
+        { label: shell.adventures, icon: 'scroll', link: '/tavern/adventures', exact: true },
+        { label: shell.useCode, icon: 'key', link: '/tavern/code' },
+      ],
+    },
+    {
+      label: shell.mySpace,
+      items: [
+        { label: shell.myAdventures, icon: 'sword', link: '/tavern/mine' },
+        { label: shell.myCharacters, icon: 'user', link: '/tavern/characters' },
+        { label: shell.mySpellbooks, icon: 'book', link: '/tavern/grimoires' },
+        { label: shell.myMagicItems, icon: 'gem', link: '/tavern/magic-items' },
+      ],
+    },
+  ];
+}
 
 /** Layout of every Tavern page: the sidebar of the common room and of the reader's own space. */
 @Component({
@@ -28,11 +34,13 @@ export const TAVERN_GROUPS: NavGroup[] = [
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Shell, RouterOutlet],
   template: `
-    <dg-shell heading="TAVERNE" [groups]="groups">
+    <dg-shell [heading]="t().tavern.shell.heading" [groups]="groups()">
       <router-outlet />
     </dg-shell>
   `,
 })
 export class TavernShell {
-  protected readonly groups = TAVERN_GROUPS;
+  protected readonly t = inject(I18n).t;
+
+  protected readonly groups = computed(() => tavernGroups(this.t()));
 }

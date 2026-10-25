@@ -13,8 +13,8 @@
   @if (open()) {
     <div class="panel__body" cdkTrapFocus [cdkTrapFocusAutoCapture]="true">
       <header class="panel__head">
-        <h2 class="panel__title" [id]="panelId() + '-title'">Filtres</h2>
-        <dg-icon-button icon="close" label="Fermer" (click)="closed.emit()" />
+        <h2 class="panel__title" [id]="panelId() + '-title'">{{ t().library.list.filters }}</h2>
+        <dg-icon-button icon="close" [label]="t().common.actions.close" (click)="closed.emit()" />
       </header>
 
       @for (filter of filters(); track filter.key) {
@@ -31,18 +31,18 @@
               {{ option.label }}
             </label>
           } @empty {
-            <p class="panel__none">Aucune valeur.</p>
+            <p class="panel__none">{{ t().library.list.noValue }}</p>
           }
         </fieldset>
       }
       @if (tickedCount() > 0) {
         <button type="button" class="panel__clear" (click)="cleared.emit()">
-          Effacer les filtres
+          {{ t().library.list.clearFilters }}
         </button>
       }
 
       <fieldset class="panel__group">
-        <legend>Colonnes</legend>
+        <legend>{{ t().library.list.columns }}</legend>
         @for (column of columns(); track column.key; let first = $first) {
           <label class="panel__choice">
             <input
@@ -58,7 +58,7 @@
       </fieldset>
 
       <label class="panel__size">
-        <span>Par page</span>
+        <span>{{ t().library.list.perPage }}</span>
         <select #sizeField (change)="resized.emit(sizeField.value)">
           @for (size of pageSizes; track size) {
             <option [value]="size" [selected]="size === pageSize()">{{ size }}</option>

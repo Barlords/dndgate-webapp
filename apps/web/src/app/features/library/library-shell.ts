@@ -6,12 +6,14 @@ import { Shell } from '../../layout/shell/shell';
 import { RulesetSelect } from './ruleset-select';
 import { SectionGroup } from './rulesets/ruleset.model';
 import { SelectedRulesetService } from './rulesets/selected-ruleset.service';
+import { Text } from '../../core/i18n/dictionary';
+import { I18n } from '../../core/i18n/i18n.service';
 
 /** The headings of the section groups, in the order the sidebar shows them. */
-export const SECTION_GROUPS: readonly { id: SectionGroup; label: string }[] = [
-  { id: 'players', label: 'POUR LES JOUEURS' },
-  { id: 'master', label: 'POUR LE MJ' },
-  { id: 'rules', label: 'RÈGLES' },
+export const SECTION_GROUPS: readonly { id: SectionGroup; label: Text }[] = [
+  { id: 'players', label: (t) => t.library.shell.groups.players },
+  { id: 'master', label: (t) => t.library.shell.groups.master },
+  { id: 'rules', label: (t) => t.library.shell.groups.rules },
 ];
 
 /**
@@ -23,20 +25,23 @@ export const SECTION_GROUPS: readonly { id: SectionGroup; label: string }[] = [
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Shell, RulesetSelect, RouterOutlet],
   template: `
-    <dg-shell heading="BIBLIOTHÈQUE" [groups]="groups()">
+    <dg-shell [heading]="t().library.shell.heading" [groups]="groups()">
       <dg-ruleset-select sidebarHeader />
       <router-outlet />
     </dg-shell>
   `,
 })
 export class LibraryShell {
+  protected readonly t = inject(I18n).t;
+
   private readonly selected = inject(SelectedRulesetService);
   private readonly auth = inject(AuthService);
 
   protected readonly groups = computed<NavGroup[]>(() => {
     const ruleset = this.selected.current();
+    const t = this.t();
     const groups: NavGroup[] = SECTION_GROUPS.map((group) => ({
-      label: group.label,
+      label: group.label(t),
       items: ruleset.sections
         .filter((section) => section.group === group.id)
         .map((section) => ({
@@ -47,8 +52,8 @@ export class LibraryShell {
     })).filter((group) => group.items.length > 0);
     if (this.auth.isAuthenticated() && ruleset.spellSectionId !== null) {
       groups.push({
-        label: 'MES GRIMOIRES',
-        items: [{ label: 'Mes grimoires', icon: 'book', link: '/library/grimoires' }],
+        label: t.library.shell.groups.spellbooks,
+        items: [{ label: t.library.spellbooks.title, icon: 'book', link: '/library/grimoires' }],
       });
     }
     return groups;

@@ -29,6 +29,7 @@ import { Button } from '../../../shared/ui/button/button';
 import { FormField } from '../../../shared/ui/form-field/form-field';
 import { StarRating } from '../../../shared/ui/star-rating/star-rating';
 import { AdventureContext } from './adventure-context.service';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 /** « Joueurs »: the master, then the players; the master of a new adventure can invite more. */
 @Component({
@@ -71,12 +72,12 @@ import { AdventureContext } from './adventure-context.service';
   `,
   template: `
     @let a = context.adventure()!;
-    <h1>Joueurs</h1>
+    <h1>{{ t().tavern.players.title }}</h1>
     <ul class="people">
       <li>
-        <span class="role">MJ</span>
+        <span class="role">{{ t().tavern.roles.master }}</span>
         @if (a.masterVacant) {
-          Aucun MJ pour le moment.
+          {{ t().tavern.players.noMaster }}
         } @else {
           <a [routerLink]="['/players', a.creatorId]">{{ pseudo(a.creatorId!) }}</a>
           <ng-container *ngTemplateOutlet="ratingTpl; context: { id: a.creatorId }" />
@@ -84,19 +85,19 @@ import { AdventureContext } from './adventure-context.service';
       </li>
       @for (id of a.players; track id) {
         <li>
-          <span class="role">Joueur</span>
+          <span class="role">{{ t().tavern.roles.player }}</span>
           <a [routerLink]="['/players', id]">{{ pseudo(id) }}</a>
           <ng-container *ngTemplateOutlet="ratingTpl; context: { id }" />
         </li>
       } @empty {
-        <li>Aucun joueur pour le moment.</li>
+        <li>{{ t().tavern.players.none }}</li>
       }
     </ul>
 
     <ng-template #ratingTpl let-id="id">
       @if (canRate(id)) {
         <div class="rating">
-          <span>Ta note</span>
+          <span>{{ t().tavern.players.yourRating }}</span>
           <dg-star-rating [value]="mine()[id]" (valueChange)="rate(id, $event)" />
           @if (means()[id]; as m) {
             <span class="mean">{{ meanLabel(m) }}</span>
@@ -106,20 +107,24 @@ import { AdventureContext } from './adventure-context.service';
     </ng-template>
 
     @if (canInvite()) {
-      <h2>Inviter un joueur</h2>
+      <h2>{{ t().tavern.players.invite }}</h2>
       <form [formGroup]="form" (ngSubmit)="invite()" novalidate>
-        <dg-form-field label="Pseudo du joueur" [control]="pseudoControl">
+        <dg-form-field [label]="t().tavern.players.pseudo" [control]="pseudoControl">
           <input type="text" formControlName="pseudo" autocomplete="off" />
         </dg-form-field>
         @if (problem(); as message) {
           <p class="problem" role="alert">{{ message }}</p>
         }
-        <dg-button type="submit" [loading]="inviting()">Inviter</dg-button>
+        <dg-button type="submit" [loading]="inviting()">{{
+          t().tavern.players.inviteSubmit
+        }}</dg-button>
       </form>
     }
   `,
 })
 export class PlayersPage {
+  protected readonly t = inject(I18n).t;
+
   protected readonly context = inject(AdventureContext);
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
@@ -170,9 +175,15 @@ export class PlayersPage {
   }
 
   protected meanLabel(mean: RatingMeanDto): string {
-    return mean.average === null
-      ? 'Pas encore d’avis'
-      : `Moyenne : ${mean.average.toFixed(1).replace('.', ',')} (${mean.count} avis)`;
+    const texts = this.t().tavern.players;
+    if (mean.average === null) {
+      return texts.noRatingYet;
+    }
+    const average = mean.average.toLocaleString(this.t().common.locale, {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    });
+    return texts.mean(average, mean.count ?? 0);
   }
 
   protected rate(id: string, rate: number): void {
@@ -183,7 +194,8 @@ export class PlayersPage {
           this.mine.update((all) => ({ ...all, [id]: rate }));
           this.loadMean(id);
         },
-        error: (error: unknown) => this.notifier.error(toApiProblem(error), 'Évaluation du joueur'),
+        error: (error: unknown) =>
+          this.notifier.error(toApiProblem(error), this.t().tavern.players.rating),
       });
   }
 
@@ -215,7 +227,7 @@ export class PlayersPage {
           const failure = toApiProblem(error);
           this.mine.update((all) => ({ ...all, [id]: null }));
           if (failure.status !== 404) {
-            this.notifier.error(failure, 'Chargement de ta note');
+            this.notifier.error(failure, this.t().tavern.players.loadingRating);
           }
         },
       });
@@ -252,22 +264,22 @@ export class PlayersPage {
         next: () => {
           this.inviting.set(false);
           this.pseudoControl.reset('');
-          this.notifier.success(`Invitation envoyée à ${pseudo}.`);
+          this.notifier.success(this.t().tavern.players.invited(pseudo));
         },
         error: (error: unknown) => {
           this.inviting.set(false);
           const failure = toApiProblem(error);
           if (failure.status === 409) {
-            this.problem.set('Cette aventure a déjà commencé ou ce joueur y participe déjà.');
+            this.problem.set(this.t().tavern.players.cannotInvite);
           } else if (failure.status === 429) {
             const wait = failure.retryAfterSeconds;
             this.problem.set(
               wait === undefined
-                ? 'Trop d’invitations envoyées, réessaie plus tard.'
-                : `Trop d’invitations envoyées, réessaie dans ${wait} s.`,
+                ? this.t().tavern.players.tooManyInvitations
+                : this.t().tavern.players.tooManyInvitationsFor(wait),
             );
           } else {
-            this.notifier.error(failure, 'Invitation du joueur');
+            this.notifier.error(failure, this.t().tavern.players.inviting);
           }
         },
       });

@@ -13,12 +13,12 @@ import { Parchment } from '../../shared/ui/parchment/parchment';
 import { Loading } from '../../shared/ui/loading/loading';
 import { ViewMode } from '../../shared/ui/view-toggle/view-toggle';
 import { AdventureCard } from './adventure-card';
-import { STATUS_LABEL, Status, VISIBILITY_LABEL, Visibility } from './adventure-status';
 import { ListHeader } from './list-header';
+import { I18n } from '../../core/i18n/i18n.service';
 
 interface Mine {
   adventure: AdventureDto;
-  role: 'MJ' | 'Joueur';
+  role: 'master' | 'player';
 }
 
 type Loaded =
@@ -33,9 +33,9 @@ type Loaded =
   template: `
     <dg-parchment>
       <dg-list-header
-        heading="Mes aventures"
+        [heading]="t().tavern.mine.title"
         storageKey="dg.tavern.mine.view"
-        createLabel="Créer mon aventure"
+        [createLabel]="t().tavern.board.create"
         [(mode)]="view"
         (create)="createAdventure()"
       />
@@ -47,12 +47,12 @@ type Loaded =
               <table class="table">
                 <thead>
                   <tr>
-                    <th scope="col">Nom</th>
-                    <th scope="col">Rôle</th>
-                    <th scope="col">Statut</th>
-                    <th scope="col">Lieu</th>
-                    <th scope="col">Joueurs</th>
-                    <th scope="col">Visibilité</th>
+                    <th scope="col">{{ t().tavern.columns.name }}</th>
+                    <th scope="col">{{ t().tavern.columns.role }}</th>
+                    <th scope="col">{{ t().tavern.columns.status }}</th>
+                    <th scope="col">{{ t().tavern.columns.place }}</th>
+                    <th scope="col">{{ t().tavern.columns.players }}</th>
+                    <th scope="col">{{ t().tavern.columns.visibility }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -63,7 +63,7 @@ type Loaded =
                           item.adventure.name
                         }}</a>
                       </td>
-                      <td>{{ item.role }}</td>
+                      <td>{{ t().tavern.roles[item.role] }}</td>
                       <td>{{ statusLabel(item.adventure.status) }}</td>
                       <td>{{ item.adventure.city }} ({{ item.adventure.postalCode }})</td>
                       <td>
@@ -78,17 +78,22 @@ type Loaded =
           } @else {
             <ul class="cards">
               @for (item of current.all; track item.adventure.id) {
-                <li><dg-adventure-card [adventure]="item.adventure" [role]="item.role" /></li>
+                <li>
+                  <dg-adventure-card
+                    [adventure]="item.adventure"
+                    [role]="t().tavern.roles[item.role]"
+                  />
+                </li>
               }
             </ul>
           }
         } @else {
-          <p>Tu ne joues ni ne mènes encore aucune aventure.</p>
+          <p>{{ t().tavern.mine.empty }}</p>
         }
       } @else if (current.state === 'failed') {
         <div class="state">
           <dg-load-error
-            message="Impossible de charger tes aventures."
+            [message]="t().tavern.mine.loadError"
             [problem]="current.problem"
             (retry)="retries.next()"
           />
@@ -96,8 +101,8 @@ type Loaded =
       } @else {
         <div class="state">
           <dg-loading
-            label="Chargement des aventures"
-            message="Vos compagnons d’armes répondent à l’appel…"
+            [label]="t().tavern.board.loading"
+            [message]="t().tavern.mine.loadingFlavour"
           />
         </div>
       }
@@ -105,6 +110,8 @@ type Loaded =
   `,
 })
 export class MyAdventuresPage {
+  protected readonly t = inject(I18n).t;
+
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   private readonly router = inject(Router);
@@ -143,11 +150,11 @@ export class MyAdventuresPage {
   }
 
   protected statusLabel(status: string | undefined): string {
-    return STATUS_LABEL[status as Status] ?? '';
+    return this.t().tavern.status[status ?? ''] ?? '';
   }
 
   protected visibilityLabel(visibility: string | undefined): string {
-    return VISIBILITY_LABEL[visibility as Visibility] ?? '';
+    return this.t().tavern.visibility[visibility ?? ''] ?? '';
   }
 
   protected createAdventure(): void {
@@ -159,10 +166,10 @@ export class MyAdventuresPage {
 function merge(player: AdventureDto[], master: AdventureDto[]): Mine[] {
   const byId = new Map<string, Mine>();
   for (const adventure of player) {
-    byId.set(adventure.id!, { adventure, role: 'Joueur' });
+    byId.set(adventure.id!, { adventure, role: 'player' });
   }
   for (const adventure of master) {
-    byId.set(adventure.id!, { adventure, role: 'MJ' });
+    byId.set(adventure.id!, { adventure, role: 'master' });
   }
   return [...byId.values()].sort((a, b) =>
     (a.adventure.name ?? '').localeCompare(b.adventure.name ?? '', 'fr'),

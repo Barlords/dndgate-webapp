@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AdventureDto } from '../../core/api/generated/models/adventure-dto';
 import { Icon } from '../../shared/ui/icon/icon';
-import { STATUS_LABEL, Status, VISIBILITY_LABEL, Visibility } from './adventure-status';
+import { I18n } from '../../core/i18n/i18n.service';
 
 const EXCERPT_LENGTH = 140;
 
@@ -99,7 +99,7 @@ const EXCERPT_LENGTH = 140;
       <div class="card__seals">
         <span class="seal seal--{{ statusClass() }}">{{ statusLabel() }}</span>
         @if (adventure().masterVacant) {
-          <span class="seal seal--vacant">MJ recherché</span>
+          <span class="seal seal--vacant">{{ t().tavern.card.masterWanted }}</span>
         }
         @if (role(); as role) {
           <span class="seal seal--role">{{ role }}</span>
@@ -111,7 +111,10 @@ const EXCERPT_LENGTH = 140;
       <p class="card__excerpt">{{ excerpt() }}</p>
       <ul class="card__meta">
         <li>{{ adventure().city }} ({{ adventure().postalCode }})</li>
-        <li><dg-icon name="users" /> {{ players() }} / {{ adventure().maxPlayer }} joueurs</li>
+        <li>
+          <dg-icon name="users" />
+          {{ t().tavern.card.players(players(), adventure().maxPlayer ?? 0) }}
+        </li>
         <li>{{ visibilityLabel() }}</li>
       </ul>
       <div class="card__footer"><ng-content /></div>
@@ -119,14 +122,18 @@ const EXCERPT_LENGTH = 140;
   `,
 })
 export class AdventureCard {
+  protected readonly t = inject(I18n).t;
+
   readonly adventure = input.required<AdventureDto>();
   /** « MJ » or « Joueur », when the card is about the reader's own adventures. */
   readonly role = input<string | null>(null);
 
-  protected readonly statusLabel = computed(() => STATUS_LABEL[this.adventure().status as Status]);
+  protected readonly statusLabel = computed(
+    () => this.t().tavern.status[this.adventure().status ?? ''] ?? '',
+  );
   protected readonly statusClass = computed(() => (this.adventure().status ?? '').toLowerCase());
   protected readonly visibilityLabel = computed(
-    () => VISIBILITY_LABEL[this.adventure().visibility as Visibility],
+    () => this.t().tavern.visibility[this.adventure().visibility ?? ''] ?? '',
   );
   protected readonly players = computed(() => this.adventure().players?.length ?? 0);
   protected readonly excerpt = computed(() => {

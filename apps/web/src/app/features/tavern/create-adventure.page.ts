@@ -11,16 +11,11 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { ApiConfiguration } from '../../core/api/generated/api-configuration';
 import { createAdventure } from '../../core/api/generated/functions';
-import { ApiProblem, toApiProblem } from '../../core/errors/api-problem';
+import { toApiProblem } from '../../core/errors/api-problem';
 import { NotifierService } from '../../core/errors/notifier.service';
 import { Parchment } from '../../shared/ui/parchment/parchment';
 import { AdventureForm, AdventureValue } from './adventure-form';
-
-const LIMIT_REACHED: ApiProblem = {
-  status: 409,
-  detail: 'tu mènes déjà 50 aventures actives, termine ou abandonne-en une avant d’en créer.',
-  errors: [],
-};
+import { I18n } from '../../core/i18n/i18n.service';
 
 /** « Créer une aventure »: the caller becomes its game master. */
 @Component({
@@ -30,16 +25,18 @@ const LIMIT_REACHED: ApiProblem = {
   styleUrl: './tavern-page.scss',
   template: `
     <dg-parchment>
-      <h1>Créer une aventure</h1>
+      <h1>{{ t().tavern.create.title }}</h1>
       <dg-adventure-form
         [busy]="saving()"
-        submitLabel="Créer l’aventure"
+        [submitLabel]="t().tavern.create.submit"
         (saved)="create($event)"
       />
     </dg-parchment>
   `,
 })
 export class CreateAdventurePage {
+  protected readonly t = inject(I18n).t;
+
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   private readonly router = inject(Router);
@@ -56,16 +53,20 @@ export class CreateAdventurePage {
       .subscribe({
         next: ({ body: created }) => {
           this.saving.set(false);
-          this.notifier.success('Aventure créée.');
+          this.notifier.success(this.t().tavern.create.created);
           void this.router.navigate(['/tavern/adventures', created.id]);
         },
         error: (error: unknown) => {
           this.saving.set(false);
           const problem = toApiProblem(error);
           if (problem.status === 409) {
-            this.notifier.error(LIMIT_REACHED);
+            this.notifier.error({
+              status: 409,
+              detail: this.t().tavern.create.limitReached,
+              errors: [],
+            });
           } else if (!(problem.status === 400 && this.form()?.showProblem(problem))) {
-            this.notifier.error(problem, 'Création de l’aventure');
+            this.notifier.error(problem, this.t().tavern.create.creating);
           }
         },
       });

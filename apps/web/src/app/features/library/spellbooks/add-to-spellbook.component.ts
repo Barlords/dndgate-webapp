@@ -5,6 +5,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { SpellBookDto } from '../../../core/api/generated/models/spell-book-dto';
 import { Icon } from '../../../shared/ui/icon/icon';
 import { MySpellBooksStore } from './my-spellbooks.store';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 /**
  * The « + grimoire » button of a spell, on its page and on each row of the spell list: a menu of
@@ -161,11 +162,13 @@ import { MySpellBooksStore } from './my-spellbooks.store';
         <dg-icon class="add-to-book__plus" name="plus" />
         <dg-icon name="book" />
         @if (revealLabel()) {
-          <span class="add-to-book__label" aria-hidden="true">Ajouter au grimoire</span>
+          <span class="add-to-book__label" aria-hidden="true">{{
+            t().library.spellbooks.add
+          }}</span>
         }
       </button>
       <ng-template #menu>
-        <ul cdkMenu class="add-to-book__menu" aria-label="Mes grimoires">
+        <ul cdkMenu class="add-to-book__menu" [attr.aria-label]="t().library.spellbooks.title">
           @for (book of fitting(); track book.id) {
             <li
               cdkMenuItemCheckbox
@@ -178,7 +181,9 @@ import { MySpellBooksStore } from './my-spellbooks.store';
               {{ book.name }}
             </li>
           } @empty {
-            <li class="add-to-book__empty" role="none">Aucun grimoire pour ce jeu de règles.</li>
+            <li class="add-to-book__empty" role="none">
+              {{ t().library.spellbooks.noneForRuleset }}
+            </li>
           }
           <li role="none">
             <a
@@ -187,7 +192,7 @@ import { MySpellBooksStore } from './my-spellbooks.store';
               [routerLink]="['/library/grimoires']"
               [queryParams]="{ ruleset: rulesetId() }"
             >
-              Créer un grimoire
+              {{ t().library.spellbooks.create }}
             </a>
           </li>
         </ul>
@@ -196,6 +201,8 @@ import { MySpellBooksStore } from './my-spellbooks.store';
   `,
 })
 export class AddToSpellbook {
+  protected readonly t = inject(I18n).t;
+
   protected readonly auth = inject(AuthService);
   private readonly store = inject(MySpellBooksStore);
 
@@ -207,7 +214,8 @@ export class AddToSpellbook {
 
   protected readonly accessibleName = computed(() => {
     const name = this.spellName();
-    return name ? `Ajouter ${name} au grimoire` : 'Ajouter au grimoire';
+    const texts = this.t().library.spellbooks;
+    return name ? texts.addSpell(name) : texts.add;
   });
   protected readonly fitting = computed(() =>
     this.store.books().filter((book) => book.ruleset === this.rulesetId()),

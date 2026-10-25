@@ -1,5 +1,5 @@
 import { EntryDetail } from '../../../ruleset.model';
-import { paragraphs } from '../common';
+import { EntryTexts, paragraphs, SOURCE_TEXTS } from '../common';
 
 export interface ApiWeaponMastery {
   index: string;
@@ -7,11 +7,14 @@ export interface ApiWeaponMastery {
   description: string;
 }
 
-export function mapWeaponMastery(mastery: ApiWeaponMastery): EntryDetail {
+export function mapWeaponMastery(
+  mastery: ApiWeaponMastery,
+  t: EntryTexts = SOURCE_TEXTS,
+): EntryDetail {
   return {
     index: mastery.index,
     name: mastery.name,
-    subtitle: 'Weapon mastery',
+    subtitle: t.weaponMastery,
     tags: [],
     blocks: [{ kind: 'text', paragraphs: paragraphs(mastery.description) }],
   };

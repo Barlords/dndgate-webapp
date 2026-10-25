@@ -21,23 +21,25 @@ import { LoadError } from '../../../shared/ui/load-error/load-error';
 import { Parchment } from '../../../shared/ui/parchment/parchment';
 import { Loading } from '../../../shared/ui/loading/loading';
 import { AdventureContext } from './adventure-context.service';
+import { Text } from '../../../core/i18n/dictionary';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 interface Tab {
   path: string;
-  label: string;
+  label: Text;
   /** Visitors of a public adventure only get the tabs that are not reserved. */
   participantsOnly: boolean;
 }
 
 export const ADVENTURE_TABS: Tab[] = [
-  { path: 'overview', label: 'Informations', participantsOnly: false },
-  { path: 'players', label: 'Joueurs', participantsOnly: true },
-  { path: 'characters', label: 'Personnages', participantsOnly: true },
-  { path: 'chronicle', label: 'Chronique', participantsOnly: true },
-  { path: 'gm-notes', label: 'Notes du MJ', participantsOnly: true },
-  { path: 'planning', label: 'Planning', participantsOnly: false },
-  { path: 'messages', label: 'Messagerie', participantsOnly: true },
-  { path: 'master', label: 'MJ', participantsOnly: true },
+  { path: 'overview', label: (t) => t.tavern.crumbs.overview, participantsOnly: false },
+  { path: 'players', label: (t) => t.tavern.crumbs.players, participantsOnly: true },
+  { path: 'characters', label: (t) => t.tavern.crumbs.characters, participantsOnly: true },
+  { path: 'chronicle', label: (t) => t.tavern.crumbs.chronicle, participantsOnly: true },
+  { path: 'gm-notes', label: (t) => t.tavern.crumbs.gmNotes, participantsOnly: true },
+  { path: 'planning', label: (t) => t.tavern.crumbs.planning, participantsOnly: false },
+  { path: 'messages', label: (t) => t.tavern.crumbs.messages, participantsOnly: true },
+  { path: 'master', label: (t) => t.tavern.crumbs.master, participantsOnly: true },
 ];
 
 /** One adventure: loads it, names the breadcrumb and shows the tabs the reader may use. */
@@ -79,9 +81,9 @@ export const ADVENTURE_TABS: Tab[] = [
     <dg-parchment>
       @switch (context.state()) {
         @case ('ready') {
-          <nav class="tabs" aria-label="Sections de l’aventure">
+          <nav class="tabs" [attr.aria-label]="t().tavern.adventure.sections">
             @for (tab of visibleTabs(); track tab.path) {
-              <a [routerLink]="tab.path" routerLinkActive="active">{{ tab.label }}</a>
+              <a [routerLink]="tab.path" routerLinkActive="active">{{ tab.label(t()) }}</a>
             }
           </nav>
           <!-- A new outlet per adventure: its pages must not keep the previous one's data. -->
@@ -91,14 +93,14 @@ export const ADVENTURE_TABS: Tab[] = [
         }
         @case ('missing') {
           <div class="state">
-            <p role="alert">Cette aventure est introuvable ou privée.</p>
-            <a routerLink="/tavern/adventures">Retour aux aventures</a>
+            <p role="alert">{{ t().tavern.adventure.notFound }}</p>
+            <a routerLink="/tavern/adventures">{{ t().tavern.adventure.back }}</a>
           </div>
         }
         @case ('failed') {
           <div class="state">
             <dg-load-error
-              message="Impossible de charger l’aventure."
+              [message]="t().tavern.adventure.loadError"
               [problem]="context.problem()"
               (retry)="retry()"
             />
@@ -107,8 +109,8 @@ export const ADVENTURE_TABS: Tab[] = [
         @default {
           <div class="state">
             <dg-loading
-              label="Chargement de l’aventure"
-              message="Le conteur rassemble ses notes…"
+              [label]="t().tavern.adventure.loading"
+              [message]="t().tavern.adventure.loadingFlavour"
             />
           </div>
         }
@@ -117,6 +119,8 @@ export const ADVENTURE_TABS: Tab[] = [
   `,
 })
 export class AdventureShell {
+  protected readonly t = inject(I18n).t;
+
   protected readonly context = inject(AdventureContext);
   private readonly breadcrumb = inject(BreadcrumbService);
   private readonly route = inject(ActivatedRoute);

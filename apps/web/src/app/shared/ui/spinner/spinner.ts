@@ -1,15 +1,16 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 /**
  * Busy indicator: a ring of gold runes turning around a small lozenge. With reduced motion it only
- * glows. `label` is announced to assistive technologies; pass an empty label when the surrounding
- * control already says it is busy.
+ * glows. `label` is announced to assistive technologies (the dictionary's « loading » without it);
+ * pass an empty label when the surrounding control already says it is busy.
  */
 @Component({
   selector: 'dg-spinner',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
-    '[attr.role]': 'label() ? "status" : null',
+    '[attr.role]': 'said() ? "status" : null',
   },
   template: `
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -17,8 +18,8 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
       <circle class="runes" cx="12" cy="12" r="9.5" />
       <path class="core" d="M12 8.5 15.5 12 12 15.5 8.5 12z" />
     </svg>
-    @if (label()) {
-      <span class="dg-visually-hidden">{{ label() }}</span>
+    @if (said(); as said) {
+      <span class="dg-visually-hidden">{{ said }}</span>
     }
   `,
   styles: `
@@ -84,5 +85,8 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   `,
 })
 export class Spinner {
-  readonly label = input('Chargement…');
+  private readonly t = inject(I18n).t;
+
+  readonly label = input<string | null>(null);
+  protected readonly said = computed(() => this.label() ?? this.t().common.loading.label);
 }

@@ -8,6 +8,7 @@ import { NotifierService } from '../../core/errors/notifier.service';
 import { Button } from '../../shared/ui/button/button';
 import { FormField } from '../../shared/ui/form-field/form-field';
 import { AccountLayout } from './account-layout';
+import { I18n } from '../../core/i18n/i18n.service';
 
 /** Only a path of this site is a safe place to go back to; `//host` would leave it. */
 export function safeReturnUrl(value: string | null): string | null {
@@ -19,26 +20,28 @@ export function safeReturnUrl(value: string | null): string | null {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReactiveFormsModule, RouterLink, AccountLayout, FormField, Button],
   template: `
-    <dg-account-layout heading="Connexion">
+    <dg-account-layout [heading]="t().account.login.title">
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <dg-form-field label="Pseudo" [control]="form.controls.pseudo">
+        <dg-form-field [label]="t().account.fields.pseudo" [control]="form.controls.pseudo">
           <input formControlName="pseudo" type="text" autocomplete="username" />
         </dg-form-field>
-        <dg-form-field label="Mot de passe" [control]="form.controls.password">
+        <dg-form-field [label]="t().account.fields.password" [control]="form.controls.password">
           <input formControlName="password" type="password" autocomplete="current-password" />
         </dg-form-field>
         @if (failure(); as message) {
           <p class="dg-account__alert" role="alert">{{ message }}</p>
         }
         <div class="dg-account__actions">
-          <dg-button type="submit" [loading]="busy()">Se connecter</dg-button>
-          <a routerLink="/signup">Pas encore de compte ? Inscris-toi</a>
+          <dg-button type="submit" [loading]="busy()">{{ t().account.login.submit }}</dg-button>
+          <a routerLink="/signup">{{ t().account.login.toSignup }}</a>
         </div>
       </form>
     </dg-account-layout>
   `,
 })
 export class LoginPage {
+  protected readonly t = inject(I18n).t;
+
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -75,9 +78,9 @@ export class LoginPage {
           this.busy.set(false);
           const problem = toApiProblem(error);
           if (problem.status === 401) {
-            this.failure.set('Pseudo ou mot de passe incorrect.');
+            this.failure.set(this.t().account.login.wrong);
           } else {
-            this.notifier.error(problem, 'Connexion');
+            this.notifier.error(problem, this.t().account.login.context);
           }
         },
       });

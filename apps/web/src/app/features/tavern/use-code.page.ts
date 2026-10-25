@@ -11,10 +11,9 @@ import { NotifierService } from '../../core/errors/notifier.service';
 import { Button } from '../../shared/ui/button/button';
 import { FormField } from '../../shared/ui/form-field/form-field';
 import { Parchment } from '../../shared/ui/parchment/parchment';
+import { I18n } from '../../core/i18n/i18n.service';
 
 export const CODE_MAX = 50;
-const UNAVAILABLE = 'Cette aventure a déjà commencé ou est complète.';
-const UNKNOWN_CODE = 'Ce code n’existe pas, a expiré ou n’est plus valable.';
 
 /**
  * « Utiliser un code »: one field for both kinds of invitation. The code is first tried as a
@@ -28,21 +27,20 @@ const UNKNOWN_CODE = 'Ce code n’existe pas, a expiré ou n’est plus valable.
   styleUrl: './tavern-page.scss',
   template: `
     <dg-parchment>
-      <h1>Utiliser un code</h1>
-      <p class="lead">
-        Un maître du jeu t’a envoyé un code d’invitation, pour rejoindre son aventure ou pour en
-        devenir le MJ ? Saisis-le ici.
-      </p>
+      <h1>{{ t().tavern.code.title }}</h1>
+      <p class="lead">{{ t().tavern.code.lead }}</p>
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <dg-form-field label="Code d’invitation" [control]="form.controls.code">
+        <dg-form-field [label]="t().tavern.code.field" [control]="form.controls.code">
           <input formControlName="code" type="text" autocomplete="off" />
         </dg-form-field>
-        <dg-button type="submit" [loading]="busy()">Valider</dg-button>
+        <dg-button type="submit" [loading]="busy()">{{ t().tavern.code.submit }}</dg-button>
       </form>
     </dg-parchment>
   `,
 })
 export class UseCodePage {
+  protected readonly t = inject(I18n).t;
+
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   private readonly router = inject(Router);
@@ -79,9 +77,9 @@ export class UseCodePage {
           if (problem.status === 404) {
             this.tryAsMaster(code);
           } else if (problem.status === 409) {
-            this.refuse(UNAVAILABLE);
+            this.refuse(this.t().tavern.code.unavailable);
           } else {
-            this.fail(problem, 'Invitation');
+            this.fail(problem, this.t().tavern.code.invitation);
           }
         },
       });
@@ -92,15 +90,15 @@ export class UseCodePage {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: ({ body }) => {
-          this.notifier.success('Tu es maintenant le MJ de cette aventure.');
+          this.notifier.success(this.t().tavern.code.nowMaster);
           this.open(body.id!);
         },
         error: (error: unknown) => {
           const problem = toApiProblem(error);
           if (problem.status === 404 || problem.status === 409) {
-            this.refuse(UNKNOWN_CODE);
+            this.refuse(this.t().tavern.code.unknown);
           } else {
-            this.fail(problem, 'Invitation de MJ');
+            this.fail(problem, this.t().tavern.code.masterInvitation);
           }
         },
       });

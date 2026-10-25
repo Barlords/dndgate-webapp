@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { map, Subject, switchMap } from 'rxjs';
+import { map, skip, Subject, switchMap } from 'rxjs';
 import { BreadcrumbService } from '../../../layout/breadcrumb.service';
 import { toApiProblem } from '../../../core/errors/api-problem';
 import { LoadError } from '../../../shared/ui/load-error/load-error';
-import { DEFAULT_LOADING_MESSAGE, Loading } from '../../../shared/ui/loading/loading';
+import { Loading } from '../../../shared/ui/loading/loading';
 import { Parchment } from '../../../shared/ui/parchment/parchment';
 import { AddToSpellbook } from '../spellbooks/add-to-spellbook.component';
 import { MySpellBooksStore } from '../spellbooks/my-spellbooks.store';
@@ -14,6 +14,7 @@ import { EntryDetail, Ruleset, RulesetEntryNotFoundError } from '../rulesets/rul
 import { DetailBlocks } from './detail-blocks.component';
 import { LOADING, LoadState, loadWithRetry } from './load-state';
 import { UntranslatedNote } from './untranslated-note.component';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 /** One entry of a section: its name, subtitle and tags over the ruleset's blocks. */
 @Component({
@@ -63,20 +64,22 @@ import { UntranslatedNote } from './untranslated-note.component';
         </article>
       } @else if (notFound()) {
         <div class="entry__state">
-          <p role="alert">Entrée introuvable.</p>
-          <a [routerLink]="['/library', ruleset().id, sectionId()]">Retour à la rubrique</a>
+          <p role="alert">{{ t().library.detail.notFound }}</p>
+          <a [routerLink]="['/library', ruleset().id, sectionId()]">{{
+            t().library.detail.back
+          }}</a>
         </div>
       } @else if (failed()) {
         <div class="entry__state">
           <dg-load-error
-            message="Impossible de charger cette entrée."
+            [message]="t().library.detail.loadError"
             [problem]="loadProblem()"
             (retry)="retry()"
           />
         </div>
       } @else {
         <div class="entry__state">
-          <dg-loading label="Chargement de l'entrée" [message]="loadingMessage()" />
+          <dg-loading [label]="t().library.detail.loading" [message]="loadingMessage()" />
         </div>
       }
     </dg-parchment>
@@ -150,6 +153,9 @@ import { UntranslatedNote } from './untranslated-note.component';
   `,
 })
 export class EntryDetailPage {
+  private readonly i18n = inject(I18n);
+  protected readonly t = this.i18n.t;
+
   private readonly registry = inject(RulesetRegistry);
   private readonly breadcrumb = inject(BreadcrumbService);
   private readonly route = inject(ActivatedRoute);
@@ -171,8 +177,7 @@ export class EntryDetailPage {
   protected readonly sectionId = computed(() => this.params().get('sectionId') ?? '');
   protected readonly loadingMessage = computed(
     () =>
-      this.ruleset().sections.find((section) => section.id === this.sectionId())?.loadingMessage ??
-      DEFAULT_LOADING_MESSAGE,
+      this.ruleset().sections.find((section) => section.id === this.sectionId())?.loadingMessage,
   );
   /** Whether the entry is one of the spells of its ruleset (which spell books hold). */
   protected readonly spell = computed(
@@ -199,6 +204,10 @@ export class EntryDetailPage {
           this.breadcrumb.setLast(loaded.value.name);
         }
       });
+    // The entry comes in the reader's language: read again when it changes.
+    toObservable(this.i18n.language)
+      .pipe(skip(1), takeUntilDestroyed())
+      .subscribe(() => this.retries.next());
   }
 
   protected retry(): void {

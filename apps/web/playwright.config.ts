@@ -14,7 +14,8 @@ export default defineConfig({
     baseURL: 'http://localhost:4200',
     trace: 'retain-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // The journeys read the French interface: the browser language decides it on first visit.
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], locale: 'fr-FR' } }],
   webServer: {
     command: 'npm start',
     url: 'http://localhost:4200',

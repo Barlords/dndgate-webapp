@@ -1,5 +1,5 @@
 import { DetailBlock, EntryDetail } from '../../ruleset.model';
-import { ApiRef, joinNames } from './common';
+import { ApiRef, EntryTexts, joinNames, SOURCE_TEXTS } from './common';
 
 interface StringOption {
   option_type: 'string';
@@ -28,22 +28,30 @@ export interface ApiBackground {
   starting_gold?: { quantity: number; unit: string };
 }
 
-function stringTable(title: string, label: string, set: OptionSet<StringOption>): DetailBlock {
+function stringTable(
+  title: string,
+  label: string,
+  set: OptionSet<StringOption>,
+  t: EntryTexts,
+): DetailBlock {
   return {
     kind: 'table',
     title,
-    columns: ['No.', label],
+    columns: [t.number, label],
     rows: set.from.options.map((option, i) => [String(i + 1), option.string]),
   };
 }
 
-export function mapBackground(background: ApiBackground): EntryDetail {
+export function mapBackground(
+  background: ApiBackground,
+  t: EntryTexts = SOURCE_TEXTS,
+): EntryDetail {
   const stats = [
-    { label: 'Skill proficiencies', value: joinNames(background.starting_proficiencies) },
+    { label: t.skillProficiencies, value: joinNames(background.starting_proficiencies, t.none) },
     ...(background.starting_gold
       ? [
           {
-            label: 'Starting gold',
+            label: t.startingGold,
             value: `${background.starting_gold.quantity} ${background.starting_gold.unit}`,
           },
         ]
@@ -57,22 +65,22 @@ export function mapBackground(background: ApiBackground): EntryDetail {
       { kind: 'stats', layout: 'rows', items: stats },
       {
         kind: 'entries',
-        title: 'Feature',
+        title: t.feature,
         items: [{ name: background.feature.name, text: background.feature.desc.join('\n\n') }],
       },
-      stringTable('Personality traits', 'Personality trait', background.personality_traits),
+      stringTable(t.personalityTraits, t.personalityTrait, background.personality_traits, t),
       {
         kind: 'table',
-        title: 'Ideals',
-        columns: ['No.', 'Ideal', 'Alignments'],
+        title: t.ideals,
+        columns: [t.number, t.ideal, t.alignments],
         rows: background.ideals.from.options.map((option, i) => [
           String(i + 1),
           option.desc,
           joinNames(option.alignments, '—'),
         ]),
       },
-      stringTable('Bonds', 'Bond', background.bonds),
-      stringTable('Flaws', 'Flaw', background.flaws),
+      stringTable(t.bonds, t.bond, background.bonds, t),
+      stringTable(t.flaws, t.flaw, background.flaws, t),
     ],
   };
 }

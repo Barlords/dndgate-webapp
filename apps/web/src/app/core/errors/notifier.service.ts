@@ -1,5 +1,7 @@
-import { Injectable, signal } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { ApiProblem } from './api-problem';
+import { Dictionary } from '../i18n/dictionary';
+import { I18n } from '../i18n/i18n.service';
 
 export interface ToastAction {
   label: string;
@@ -18,38 +20,38 @@ export interface Toast {
 
 const AUTO_CLOSE_MS = 6000;
 
-function messageFor(problem: ApiProblem): { message: string; detail?: string } {
+function messageFor(
+  problem: ApiProblem,
+  t: Dictionary['common']['errors'],
+): { message: string; detail?: string } {
   const { status, detail } = problem;
   if (status === 0) {
-    return { message: 'Le serveur ne répond pas.' };
+    return { message: t.noServer };
   }
   if (status === 403) {
-    return { message: 'Tu n’as pas les droits pour cette action.', detail };
+    return { message: t.forbidden, detail };
   }
   if (status === 404) {
-    return { message: 'Introuvable.', detail };
+    return { message: t.notFound, detail };
   }
   if (status === 409) {
-    return { message: detail ? `Conflit : ${detail}` : 'Conflit.' };
+    return { message: detail ? t.conflictWith(detail) : t.conflict };
   }
   if (status === 429) {
     const wait = problem.retryAfterSeconds;
-    return {
-      message:
-        wait === undefined
-          ? 'Trop de tentatives, réessaie plus tard.'
-          : `Trop de tentatives, réessaie dans ${wait} s.`,
-    };
+    return { message: wait === undefined ? t.tooMany : t.tooManyFor(wait) };
   }
   if (status >= 500) {
-    return { message: 'Erreur du serveur.', detail };
+    return { message: t.server, detail };
   }
-  return { message: 'Une erreur est survenue.', detail };
+  return { message: t.unknown, detail };
 }
 
-/** Stack of toasts shown by the toast outlet. */
+/** Stack of toasts shown by the toast outlet, written in the language of the moment they appear. */
 @Injectable({ providedIn: 'root' })
 export class NotifierService {
+  private readonly t = inject(I18n).t;
+
   private nextId = 0;
   private readonly list = signal<Toast[]>([]);
   private readonly timers = new Map<number, ReturnType<typeof setTimeout>>();
@@ -66,11 +68,12 @@ export class NotifierService {
     if (problem.status === 401) {
       return; // The interceptor already ended the session and redirected to the login page.
     }
-    const { message, detail } = messageFor(problem);
+    const t = this.t().common;
+    const { message, detail } = messageFor(problem, t.errors);
     this.push(
       {
         kind: 'error',
-        message: context ? `${context} : ${message}` : message,
+        message: context ? t.errors.inContext(context, message) : message,
         detail,
         reference: problem.correlationId,
       },
@@ -84,8 +87,8 @@ export class NotifierService {
     this.push(
       {
         kind: 'error',
-        message: 'Quelqu’un a modifié cet élément entre-temps.',
-        action: { label: 'Recharger', run: onReload },
+        message: this.t().common.errors.concurrentChange,
+        action: { label: this.t().common.actions.reload, run: onReload },
       },
       false,
     );

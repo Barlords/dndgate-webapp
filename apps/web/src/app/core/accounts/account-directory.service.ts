@@ -1,23 +1,27 @@
 import { HttpClient } from '@angular/common/http';
-import { inject, Injectable, signal, Signal, WritableSignal } from '@angular/core';
+import { computed, inject, Injectable, signal, Signal, WritableSignal } from '@angular/core';
 import { map, Observable, shareReplay } from 'rxjs';
 import { ApiConfiguration } from '../api/generated/api-configuration';
 import { getAccountById } from '../api/generated/functions';
 import { PublicAccountDto } from '../api/generated/models/public-account-dto';
+import { Dictionary } from '../i18n/dictionary';
+import { I18n } from '../i18n/i18n.service';
 
-export const PSEUDO_LOADING = '…';
-export const PSEUDO_DELETED = 'Compte supprimé';
 /** A failed lookup is not retried sooner than this: templates read `pseudo()` on every render. */
 export const RETRY_COOLDOWN_MS = 30_000;
-export const PSEUDO_UNKNOWN = 'Compte inconnu';
 
 /** Display name of an account: its pseudo, or « Compte supprimé » once anonymized. */
-export function displayName(account: PublicAccountDto): string {
-  return account.anonymized ? PSEUDO_DELETED : (account.pseudo ?? PSEUDO_UNKNOWN);
+export function displayName(account: PublicAccountDto, t: Dictionary): string {
+  return account.anonymized ? t.account.names.deleted : (account.pseudo ?? t.account.names.unknown);
 }
 
+/** What is known of an account: written in the reader's language only when shown. */
+type Known =
+  { kind: 'loading' } | { kind: 'found'; account: PublicAccountDto } | { kind: 'failed' };
+
 interface PseudoEntry {
-  name: WritableSignal<string>;
+  known: WritableSignal<Known>;
+  name: Signal<string>;
   /** When the last lookup failed, or null while loading or loaded. */
   failedAt: number | null;
 }
@@ -30,6 +34,7 @@ interface PseudoEntry {
 export class AccountDirectory {
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
+  private readonly t = inject(I18n).t;
 
   private readonly accounts = new Map<string, Observable<PublicAccountDto>>();
   private readonly pseudos = new Map<string, PseudoEntry>();
@@ -48,30 +53,43 @@ export class AccountDirectory {
   }
 
   /**
-   * « … » while loading, « Compte supprimé » once anonymized; the same signal for the same id.
-   * Safe to call from a template: no `toSignal`, which refuses to run in a reactive context.
-   * A failed lookup shows « Compte inconnu » and is retried by a call made 30 s or more later,
-   * on the same signal.
+   * « … » while loading, « Compte supprimé » once anonymized; the same signal for the same id,
+   * in the reader's language. Safe to call from a template: no `toSignal`, which refuses to run in
+   * a reactive context. A failed lookup shows « Compte inconnu » and is retried by a call made
+   * 30 s or more later, on the same signal.
    */
   pseudo(id: string): Signal<string> {
     let entry = this.pseudos.get(id);
     if (entry === undefined) {
-      entry = { name: signal(PSEUDO_LOADING), failedAt: null };
+      const known = signal<Known>({ kind: 'loading' });
+      entry = { known, name: computed(() => this.nameOf(known())), failedAt: null };
       this.pseudos.set(id, entry);
       this.load(id, entry);
     } else if (entry.failedAt !== null && Date.now() - entry.failedAt >= RETRY_COOLDOWN_MS) {
       this.load(id, entry);
     }
-    return entry.name.asReadonly();
+    return entry.name;
+  }
+
+  private nameOf(known: Known): string {
+    const t = this.t();
+    switch (known.kind) {
+      case 'found':
+        return displayName(known.account, t);
+      case 'failed':
+        return t.account.names.unknown;
+      default:
+        return t.account.names.loading;
+    }
   }
 
   private load(id: string, entry: PseudoEntry): void {
     entry.failedAt = null;
     this.get(id).subscribe({
-      next: (account) => entry.name.set(displayName(account)),
+      next: (account) => entry.known.set({ kind: 'found', account }),
       error: () => {
         entry.failedAt = Date.now();
-        entry.name.set(PSEUDO_UNKNOWN);
+        entry.known.set({ kind: 'failed' });
       },
     });
   }

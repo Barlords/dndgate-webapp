@@ -30,12 +30,7 @@ import { LOADING, LoadState, loadWithRetry } from '../pages/load-state';
 import { RulesetRegistry } from '../rulesets/ruleset-registry';
 import { SelectedRulesetService } from '../rulesets/selected-ruleset.service';
 import { SpellBookForm, SpellBookValue } from './spellbook-form';
-
-const LIMIT_REACHED: ApiProblem = {
-  status: 409,
-  detail: 'tu as atteint la limite de 100 grimoires.',
-  errors: [],
-};
+import { I18n } from '../../../core/i18n/i18n.service';
 
 /**
  * « Mes grimoires »: the signed-in reader's spell books, as a table or as cards, with creation and
@@ -153,28 +148,28 @@ const LIMIT_REACHED: ApiProblem = {
   template: `
     <dg-parchment>
       <dg-list-header
-        heading="Mes grimoires"
+        [heading]="t().library.spellbooks.title"
         storageKey="dg.spellbooks.view"
-        createLabel="Créer un grimoire"
+        [createLabel]="t().library.spellbooks.create"
         [(mode)]="view"
         (create)="toggleCreate()"
       >
         <dg-button variant="ghost" [loading]="importing()" (click)="file.click()">
-          Importer
+          {{ t().library.spellbooks.import }}
         </dg-button>
         <input
           #file
           class="file"
           type="file"
           accept="application/json,.json"
-          aria-label="Fichier de grimoire à importer"
+          [attr.aria-label]="t().library.spellbooks.importFile"
           (change)="importFile($event)"
         />
       </dg-list-header>
 
       @if (importErrors(); as errors) {
         <div class="import-errors" role="alert">
-          <p>Ce fichier ne peut pas être importé.</p>
+          <p>{{ t().library.spellbooks.cannotImport }}</p>
           <ul>
             @for (error of errors; track $index) {
               <li>
@@ -189,7 +184,7 @@ const LIMIT_REACHED: ApiProblem = {
       }
 
       @if (creating()) {
-        <section class="create" aria-label="Nouveau grimoire">
+        <section class="create" [attr.aria-label]="t().library.spellbooks.newBook">
           <dg-spellbook-form
             [rulesets]="choices()"
             [initial]="blank()"
@@ -207,9 +202,9 @@ const LIMIT_REACHED: ApiProblem = {
               <table class="table">
                 <thead>
                   <tr>
-                    <th scope="col">Nom</th>
-                    <th scope="col">Jeu de règles</th>
-                    <th scope="col">Sorts</th>
+                    <th scope="col">{{ t().library.spellbooks.name }}</th>
+                    <th scope="col">{{ t().library.spellbooks.ruleset }}</th>
+                    <th scope="col">{{ t().library.spellbooks.spells }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -239,25 +234,30 @@ const LIMIT_REACHED: ApiProblem = {
             </ul>
           }
         } @else {
-          <p>Tu n’as pas encore de grimoire.</p>
+          <p>{{ t().library.spellbooks.none }}</p>
         }
       } @else if (loaded().failed) {
         <div class="state">
           <dg-load-error
-            message="Impossible de charger tes grimoires."
+            [message]="t().library.spellbooks.loadError"
             [problem]="loadProblem()"
             (retry)="retry()"
           />
         </div>
       } @else {
         <div class="state">
-          <dg-loading label="Chargement des grimoires" message="Dépoussiérage des grimoires…" />
+          <dg-loading
+            [label]="t().library.spellbooks.loading"
+            [message]="t().library.spellbooks.loadingFlavour"
+          />
         </div>
       }
     </dg-parchment>
   `,
 })
 export class SpellBookListPage {
+  protected readonly t = inject(I18n).t;
+
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   private readonly registry = inject(RulesetRegistry);
@@ -317,8 +317,12 @@ export class SpellBookListPage {
   }
 
   protected count(book: SpellBookDto): string {
-    const n = book.spellList?.length ?? 0;
-    return `${n} ${n > 1 ? 'sorts' : 'sort'}`;
+    return this.t().library.spellbooks.spellCount(book.spellList?.length ?? 0);
+  }
+
+  /** The API refuses a 101st book with a bare 409: this says why. */
+  private limitReached(): ApiProblem {
+    return { status: 409, detail: this.t().library.spellbooks.limitReached, errors: [] };
   }
 
   protected retry(): void {
@@ -338,15 +342,15 @@ export class SpellBookListPage {
           this.saving.set(false);
           this.creating.set(false);
           this.books.update((books) => [...books, body]);
-          this.notifier.success('Grimoire créé.');
+          this.notifier.success(this.t().library.spellbooks.created);
         },
         error: (error: unknown) => {
           this.saving.set(false);
           const problem = toApiProblem(error);
           if (problem.status === 409) {
-            this.notifier.error(LIMIT_REACHED);
+            this.notifier.error(this.limitReached());
           } else if (!(problem.status === 400 && this.form()?.showProblem(problem))) {
-            this.notifier.error(problem, 'Création du grimoire');
+            this.notifier.error(problem, this.t().library.spellbooks.creating);
           }
         },
       });
@@ -366,21 +370,26 @@ export class SpellBookListPage {
         next: ({ body }) => {
           this.importing.set(false);
           this.books.update((books) => [...books, body]);
-          this.notifier.success('Grimoire importé.');
+          this.notifier.success(this.t().library.spellbooks.imported);
         },
         error: (error: unknown) => {
           this.importing.set(false);
           const problem = toApiProblem(error);
           if (problem.status === 409) {
-            this.notifier.error(LIMIT_REACHED);
+            this.notifier.error(this.limitReached());
           } else if (problem.status === 400) {
             this.importErrors.set(
               problem.errors.length > 0
                 ? problem.errors
-                : [{ field: '', message: problem.detail ?? 'Le fichier est invalide.' }],
+                : [
+                    {
+                      field: '',
+                      message: problem.detail ?? this.t().library.spellbooks.invalidFile,
+                    },
+                  ],
             );
           } else {
-            this.notifier.error(problem, 'Import du grimoire');
+            this.notifier.error(problem, this.t().library.spellbooks.importing);
           }
         },
       });

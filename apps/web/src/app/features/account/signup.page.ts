@@ -18,6 +18,7 @@ import { NotifierService } from '../../core/errors/notifier.service';
 import { Button } from '../../shared/ui/button/button';
 import { FormField } from '../../shared/ui/form-field/form-field';
 import { AccountLayout } from './account-layout';
+import { I18n } from '../../core/i18n/i18n.service';
 
 const PSEUDO_PATTERN = /^\s*[\p{L}\p{N}_.-]{3,30}\s*$/u;
 const PASSWORD_MAX_BYTES = 72;
@@ -39,40 +40,40 @@ function sameAsPassword(control: AbstractControl): ValidationErrors | null {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReactiveFormsModule, RouterLink, AccountLayout, FormField, Button],
   template: `
-    <dg-account-layout heading="Inscription">
+    <dg-account-layout [heading]="t().account.signup.title">
       @if (sentTo(); as email) {
-        <p>Dernière étape : ouvre le lien reçu par e-mail pour valider ton compte.</p>
+        <p>{{ t().account.signup.lastStep }}</p>
         @if (resent()) {
           <p role="status">
-            Si une inscription est en attente pour {{ email }}, un nouvel e-mail vient de partir.
+            {{ t().account.signup.resentTo(email) }}
           </p>
         }
         <div class="dg-account__actions">
           <dg-button variant="ghost" [loading]="resending()" (click)="resend(email)">
-            Renvoyer l'e-mail
+            {{ t().account.signup.resend }}
           </dg-button>
-          <a routerLink="/login">Se connecter</a>
+          <a routerLink="/login">{{ t().account.signup.signIn }}</a>
         </div>
       } @else {
         <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-          <dg-form-field label="Pseudo" [control]="form.controls.pseudo">
+          <dg-form-field [label]="t().account.fields.pseudo" [control]="form.controls.pseudo">
             <input formControlName="pseudo" type="text" autocomplete="username" />
           </dg-form-field>
-          <dg-form-field label="Adresse e-mail" [control]="form.controls.email">
+          <dg-form-field [label]="t().account.fields.email" [control]="form.controls.email">
             <input formControlName="email" type="email" autocomplete="email" />
           </dg-form-field>
-          <dg-form-field label="Mot de passe" [control]="form.controls.password">
+          <dg-form-field [label]="t().account.fields.password" [control]="form.controls.password">
             <input formControlName="password" type="password" autocomplete="new-password" />
           </dg-form-field>
           <dg-form-field
-            label="Confirmation du mot de passe"
+            [label]="t().account.fields.confirmation"
             [control]="form.controls.confirmation"
           >
             <input formControlName="confirmation" type="password" autocomplete="new-password" />
           </dg-form-field>
           <div class="dg-account__actions">
-            <dg-button type="submit" [loading]="busy()">S'inscrire</dg-button>
-            <a routerLink="/login">Déjà un compte ? Connecte-toi</a>
+            <dg-button type="submit" [loading]="busy()">{{ t().account.signup.submit }}</dg-button>
+            <a routerLink="/login">{{ t().account.signup.toLogin }}</a>
           </div>
         </form>
       }
@@ -80,6 +81,8 @@ function sameAsPassword(control: AbstractControl): ValidationErrors | null {
   `,
 })
 export class SignupPage {
+  protected readonly t = inject(I18n).t;
+
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   private readonly notifier = inject(NotifierService);
@@ -142,10 +145,10 @@ export class SignupPage {
           this.busy.set(false);
           const problem = toApiProblem(error);
           if (problem.status === 409) {
-            this.form.controls.pseudo.setErrors({ server: 'Ce pseudo est déjà pris.' });
+            this.form.controls.pseudo.setErrors({ server: this.t().account.signup.pseudoTaken });
             this.form.controls.pseudo.markAsTouched();
           } else if (!(problem.status === 400 && applyFieldErrors(this.form, problem))) {
-            this.notifier.error(problem, 'Inscription');
+            this.notifier.error(problem, this.t().account.signup.context);
           }
         },
       });
@@ -162,7 +165,7 @@ export class SignupPage {
         },
         error: (error: unknown) => {
           this.resending.set(false);
-          this.notifier.error(toApiProblem(error), 'Renvoi de l’e-mail');
+          this.notifier.error(toApiProblem(error), this.t().account.signup.resending);
         },
       });
   }

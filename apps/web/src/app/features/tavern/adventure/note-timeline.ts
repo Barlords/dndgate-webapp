@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { Button } from '../../../shared/ui/button/button';
 import { NoteEditor, NoteValue, NoteVisibility } from './note-editor';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 /** A note as the timeline shows it, whichever kind of note it is. */
 export interface NoteView {
@@ -14,10 +15,10 @@ export interface NoteView {
 
 const FORMAT: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long', year: 'numeric' };
 
-/** « 2 mai 2026 », from `YYYY-MM-DD` without going through a time zone. */
-export function formatNoteDate(date: string): string {
+/** « 2 mai 2026 » in `fr-FR`, from `YYYY-MM-DD` without going through a time zone. */
+export function formatNoteDate(date: string, locale = 'fr-FR'): string {
   const [year, month, day] = date.split('-').map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString('fr-FR', FORMAT);
+  return new Date(year, month - 1, day).toLocaleDateString(locale, FORMAT);
 }
 
 /**
@@ -124,7 +125,7 @@ export function formatNoteDate(date: string): string {
               [initial]="editedValue()"
               [withVisibility]="withVisibility()"
               [busy]="busy()"
-              submitLabel="Enregistrer"
+              [submitLabel]="t().common.actions.save"
               (saved)="save.emit({ id: note.id, value: $event })"
               (cancelled)="cancelEdit.emit()"
             />
@@ -133,14 +134,18 @@ export function formatNoteDate(date: string): string {
               <div class="meta">
                 <time [attr.datetime]="note.date">{{ formatDate(note.date) }}</time>
                 @if (note.visibility === 'PRIVATE') {
-                  <span class="badge">Privée</span>
+                  <span class="badge">{{ t().tavern.notes.private }}</span>
                 }
               </div>
               <p class="content">{{ note.content }}</p>
               @if (canEdit()) {
                 <div class="actions">
-                  <dg-button variant="ghost" (click)="edit.emit(note.id)">Modifier</dg-button>
-                  <dg-button variant="danger" (click)="remove.emit(note.id)">Supprimer</dg-button>
+                  <dg-button variant="ghost" (click)="edit.emit(note.id)">{{
+                    t().common.actions.edit
+                  }}</dg-button>
+                  <dg-button variant="danger" (click)="remove.emit(note.id)">{{
+                    t().common.actions.delete
+                  }}</dg-button>
                 </div>
               }
             </article>
@@ -151,6 +156,8 @@ export function formatNoteDate(date: string): string {
   `,
 })
 export class NoteTimeline {
+  protected readonly t = inject(I18n).t;
+
   readonly notes = input.required<NoteView[]>();
   readonly canEdit = input(false);
   readonly withVisibility = input(false);
@@ -169,5 +176,7 @@ export class NoteTimeline {
       : null;
   });
 
-  protected readonly formatDate = formatNoteDate;
+  protected formatDate(date: string): string {
+    return formatNoteDate(date, this.t().common.locale);
+  }
 }

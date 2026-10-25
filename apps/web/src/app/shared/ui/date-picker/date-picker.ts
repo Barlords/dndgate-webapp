@@ -18,21 +18,12 @@ import {
   mondayIndex,
   toIso,
 } from './iso-date';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 interface Day {
   iso: string;
   day: number;
 }
-
-const WEEKDAYS = [
-  ['Lun', 'lundi'],
-  ['Mar', 'mardi'],
-  ['Mer', 'mercredi'],
-  ['Jeu', 'jeudi'],
-  ['Ven', 'vendredi'],
-  ['Sam', 'samedi'],
-  ['Dim', 'dimanche'],
-] as const;
 
 /** The API accepts years from 1900 to 2200. */
 const MIN_DATE = '1900-01-01';
@@ -54,16 +45,28 @@ function todayIso(): string {
   host: { '(keydown)': 'onKeydown($event)' },
   template: `
     <div class="head">
-      <button type="button" class="nav" aria-label="Mois précédent" (click)="shiftMonth(-1)">
+      <button
+        type="button"
+        class="nav"
+        [attr.aria-label]="t().common.datePicker.previousMonth"
+        (click)="shiftMonth(-1)"
+      >
         ‹
       </button>
       <h3 class="title" aria-live="polite">{{ monthLabel() }}</h3>
-      <button type="button" class="nav" aria-label="Mois suivant" (click)="shiftMonth(1)">›</button>
+      <button
+        type="button"
+        class="nav"
+        [attr.aria-label]="t().common.datePicker.nextMonth"
+        (click)="shiftMonth(1)"
+      >
+        ›
+      </button>
     </div>
     <table role="grid" [attr.aria-label]="monthLabel()" aria-multiselectable="true">
       <thead>
         <tr>
-          @for (weekday of weekdays; track weekday[0]) {
+          @for (weekday of t().common.datePicker.weekdays; track weekday[0]) {
             <th scope="col" [attr.abbr]="weekday[1]">{{ weekday[0] }}</th>
           }
         </tr>
@@ -101,7 +104,7 @@ function todayIso(): string {
         }
       </tbody>
     </table>
-    <p class="count">{{ selected().length }} / {{ max() }} dates</p>
+    <p class="count">{{ t().common.datePicker.count(selected().length, max()) }}</p>
   `,
   styles: `
     :host {
@@ -212,6 +215,8 @@ function todayIso(): string {
   `,
 })
 export class DatePicker {
+  protected readonly t = inject(I18n).t;
+
   /** Only « multiple » exists today; the input keeps the contract open. */
   readonly mode = input<'multiple'>('multiple');
   readonly selected = input<readonly string[]>([]);
@@ -221,7 +226,6 @@ export class DatePicker {
   readonly selectedChange = output<string[]>();
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
-  protected readonly weekdays = WEEKDAYS;
   protected readonly today = todayIso();
 
   /** First day of the month the reader navigated to, or null to follow the selection. */
@@ -250,7 +254,9 @@ export class DatePicker {
     return (days.find((d) => !this.isDisabled(d.iso)) ?? days[0]).iso;
   });
 
-  protected readonly monthLabel = computed(() => formatMonth(this.firstOfMonth()));
+  protected readonly monthLabel = computed(() =>
+    formatMonth(this.firstOfMonth(), this.t().common.locale),
+  );
 
   protected readonly weeks = computed<(Day | null)[][]>(() => {
     const first = this.firstOfMonth();
@@ -287,7 +293,7 @@ export class DatePicker {
   }
 
   protected label(iso: string): string {
-    return formatDateLong(iso);
+    return formatDateLong(iso, this.t().common.locale);
   }
 
   protected shiftMonth(delta: number): void {

@@ -28,9 +28,7 @@ import { LoadError } from '../../../../shared/ui/load-error/load-error';
 import { Loading } from '../../../../shared/ui/loading/loading';
 import { AdventureContext } from '../adventure-context.service';
 import { CharacterForm, CharacterSubmission, CharacterValue } from './character-form';
-
-const LIMIT_REACHED = 'Tu as déjà 10 personnages dans cette aventure.';
-const LIMIT_REACHED_WITHOUT_ADVENTURE = 'Tu as déjà 50 personnages hors aventure.';
+import { I18n } from '../../../../core/i18n/i18n.service';
 
 function toValue(character: GameCharacterDto): CharacterValue {
   return {
@@ -54,35 +52,39 @@ type LoadState = 'loading' | 'ready' | 'missing' | 'failed';
   imports: [LoadError, CharacterForm, RouterLink, Loading],
   styleUrl: '../../tavern-page.scss',
   template: `
-    <h1>{{ characterId ? 'Modifier le personnage' : 'Nouveau personnage' }}</h1>
+    <h1>
+      {{ characterId ? t().tavern.characters.editTitle : t().tavern.characters.newTitle }}
+    </h1>
     @switch (state()) {
       @case ('ready') {
         @if (!characterId || isOwner()) {
           <dg-character-form
             [initial]="initial()"
             [withPicture]="!characterId"
-            [submitLabel]="characterId ? 'Enregistrer' : 'Créer le personnage'"
+            [submitLabel]="
+              characterId ? t().common.actions.save : t().tavern.characters.createSubmit
+            "
             [busy]="saving()"
             [problem]="problem()"
             (saved)="save($event)"
           />
         } @else {
           <div class="state">
-            <p role="alert">Seul le propriétaire du personnage peut le modifier.</p>
-            <a [routerLink]="backLink()">Retour au personnage</a>
+            <p role="alert">{{ t().tavern.characters.ownerOnly }}</p>
+            <a [routerLink]="backLink()">{{ t().tavern.characters.backToCharacter }}</a>
           </div>
         }
       }
       @case ('missing') {
         <div class="state">
-          <p role="alert">Ce personnage est introuvable.</p>
-          <a [routerLink]="listLink()">Retour aux personnages</a>
+          <p role="alert">{{ t().tavern.characters.notFound }}</p>
+          <a [routerLink]="listLink()">{{ t().tavern.characters.back }}</a>
         </div>
       }
       @case ('failed') {
         <div class="state">
           <dg-load-error
-            message="Impossible de charger le personnage."
+            [message]="t().tavern.characters.oneLoadError"
             [problem]="loadProblem()"
             (retry)="load()"
           />
@@ -90,13 +92,18 @@ type LoadState = 'loading' | 'ready' | 'missing' | 'failed';
       }
       @default {
         <div class="state">
-          <dg-loading label="Chargement du personnage" message="Le héros ajuste son équipement…" />
+          <dg-loading
+            [label]="t().tavern.characters.oneLoading"
+            [message]="t().tavern.characters.oneLoadingFlavour"
+          />
         </div>
       }
     }
   `,
 })
 export class CharacterFormPage {
+  protected readonly t = inject(I18n).t;
+
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   /** Null under « Mes personnages »: the character is then created outside any adventure. */
@@ -181,7 +188,7 @@ export class CharacterFormPage {
             this.loadProblem.set(problem);
             this.state.set(problem.status === 404 ? 'missing' : 'failed');
           } else {
-            this.notifier.error(toApiProblem(error), 'Chargement du personnage');
+            this.notifier.error(toApiProblem(error), this.t().tavern.characters.oneLoading);
           }
         },
       });
@@ -209,7 +216,7 @@ export class CharacterFormPage {
       .subscribe({
         next: ({ body }) => {
           this.saving.set(false);
-          this.notifier.success('Personnage créé.');
+          this.notifier.success(this.t().tavern.characters.created);
           void this.router.navigate([...this.listLink(), body.id]);
         },
         error: (error: unknown) => {
@@ -217,10 +224,12 @@ export class CharacterFormPage {
           const failure = toApiProblem(error);
           if (failure.status === 409) {
             this.problem.set(
-              adventureId === undefined ? LIMIT_REACHED_WITHOUT_ADVENTURE : LIMIT_REACHED,
+              adventureId === undefined
+                ? this.t().tavern.characters.limitWithoutAdventure
+                : this.t().tavern.characters.limitInAdventure,
             );
           } else {
-            this.onRefused(failure, 'Création du personnage');
+            this.onRefused(failure, this.t().tavern.characters.creating);
           }
         },
       });
@@ -232,7 +241,7 @@ export class CharacterFormPage {
       .subscribe({
         next: () => {
           this.saving.set(false);
-          this.notifier.success('Personnage enregistré.');
+          this.notifier.success(this.t().tavern.characters.saved);
           void this.router.navigate([...this.listLink(), id]);
         },
         error: (error: unknown) => {
@@ -242,7 +251,7 @@ export class CharacterFormPage {
             // Keep what is typed until the reader chooses to reload.
             this.notifier.conflict(() => this.fetch(id, () => undefined));
           } else {
-            this.onRefused(failure, 'Enregistrement du personnage');
+            this.onRefused(failure, this.t().tavern.characters.saving);
           }
         },
       });

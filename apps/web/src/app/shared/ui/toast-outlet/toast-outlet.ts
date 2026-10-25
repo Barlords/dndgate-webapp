@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { NotifierService } from '../../../core/errors/notifier.service';
 import { Button } from '../button/button';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 /** Bottom-right stack of the notifier's toasts, announced politely to assistive technologies. */
 @Component({
@@ -25,7 +26,7 @@ import { Button } from '../button/button';
             }
             @if (toast.reference) {
               <p class="dg-toast__reference">
-                Référence : <code>{{ toast.reference }}</code>
+                {{ t().common.errors.reference }} <code>{{ toast.reference }}</code>
               </p>
             }
             @if (toast.action; as action) {
@@ -37,7 +38,7 @@ import { Button } from '../button/button';
           <button
             type="button"
             class="dg-toast__close"
-            aria-label="Fermer la notification"
+            [attr.aria-label]="t().common.toast.close"
             (click)="notifier.dismiss(toast.id)"
           >
             ×
@@ -147,5 +148,7 @@ import { Button } from '../button/button';
   `,
 })
 export class ToastOutlet {
+  protected readonly t = inject(I18n).t;
+
   protected readonly notifier = inject(NotifierService);
 }

@@ -6,6 +6,7 @@ import { Icon } from '../../../shared/ui/icon/icon';
 import { Parchment } from '../../../shared/ui/parchment/parchment';
 import { SECTION_GROUPS } from '../library-shell';
 import { RulesetRegistry } from '../rulesets/ruleset-registry';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 /** Front page of a ruleset: its full name and its sections, by group. */
 @Component({
@@ -82,6 +83,8 @@ import { RulesetRegistry } from '../rulesets/ruleset-registry';
   `,
 })
 export class RulesetHomePage {
+  private readonly t = inject(I18n).t;
+
   private readonly registry = inject(RulesetRegistry);
 
   protected readonly ruleset = toSignal(
@@ -92,8 +95,9 @@ export class RulesetHomePage {
 
   protected readonly groups = computed(() => {
     const sections = this.ruleset()?.sections ?? [];
+    const t = this.t();
     return SECTION_GROUPS.map((group) => ({
-      label: group.label,
+      label: group.label(t),
       sections: sections.filter((section) => section.group === group.id),
     })).filter((group) => group.sections.length > 0);
   });

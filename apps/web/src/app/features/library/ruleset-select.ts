@@ -5,6 +5,7 @@ import { SidebarStateService } from '../../layout/sidebar-state.service';
 import { Icon } from '../../shared/ui/icon/icon';
 import { RulesetRegistry } from './rulesets/ruleset-registry';
 import { SelectedRulesetService } from './rulesets/selected-ruleset.service';
+import { I18n } from '../../core/i18n/i18n.service';
 
 /**
  * The registered rulesets, by full name: a native select in the open sidebar, and in the folded one
@@ -22,13 +23,17 @@ import { SelectedRulesetService } from './rulesets/selected-ruleset.service';
         class="ruleset-select__icon"
         [cdkMenuTriggerFor]="menu"
         aria-haspopup="menu"
-        [attr.aria-label]="'Jeu de règles : ' + current().label"
-        [attr.title]="'Jeu de règles : ' + current().label"
+        [attr.aria-label]="t().library.rulesetSelect.current(current().label)"
+        [attr.title]="t().library.rulesetSelect.current(current().label)"
       >
         <dg-icon name="list" />
       </button>
       <ng-template #menu>
-        <ul cdkMenu class="ruleset-select__menu" aria-label="Jeu de règles">
+        <ul
+          cdkMenu
+          class="ruleset-select__menu"
+          [attr.aria-label]="t().library.rulesetSelect.label"
+        >
           @for (ruleset of rulesets; track ruleset.id) {
             <li
               cdkMenuItemRadio
@@ -46,7 +51,7 @@ import { SelectedRulesetService } from './rulesets/selected-ruleset.service';
       </ng-template>
     } @else {
       <label class="ruleset-select">
-        <span class="dg-visually-hidden">Jeu de règles</span>
+        <span class="dg-visually-hidden">{{ t().library.rulesetSelect.label }}</span>
         <select #field (change)="choose(field.value)">
           @for (ruleset of rulesets; track ruleset.id) {
             <option [value]="ruleset.id" [selected]="ruleset.id === current().id">
@@ -164,6 +169,8 @@ import { SelectedRulesetService } from './rulesets/selected-ruleset.service';
   `,
 })
 export class RulesetSelect {
+  protected readonly t = inject(I18n).t;
+
   private readonly router = inject(Router);
   private readonly registry = inject(RulesetRegistry);
   private readonly selected = inject(SelectedRulesetService);

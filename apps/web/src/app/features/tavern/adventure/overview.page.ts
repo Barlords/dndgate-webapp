@@ -27,26 +27,9 @@ import { NotifierService } from '../../../core/errors/notifier.service';
 import { Button } from '../../../shared/ui/button/button';
 import { ConfirmService } from '../../../shared/ui/confirm-dialog/confirm.service';
 import { AdventureForm, AdventureValue } from '../adventure-form';
-import {
-  allowedTransitions,
-  isClosed,
-  STATUS_LABEL,
-  Status,
-  VISIBILITY_LABEL,
-} from '../adventure-status';
+import { allowedTransitions, isClosed, Status } from '../adventure-status';
 import { AdventureContext } from './adventure-context.service';
-
-const STATUS_ACTION: Record<Status, string> = {
-  NOT_STARTED: 'Remettre à plus tard',
-  ONGOING: 'Démarrer l’aventure',
-  FINISH: 'Terminer l’aventure',
-  ABORT: 'Abandonner l’aventure',
-};
-
-const IRREVERSIBLE_MESSAGE: Partial<Record<Status, string>> = {
-  FINISH: 'Terminer l’aventure est irréversible : elle ne pourra plus être rouverte.',
-  ABORT: 'Abandonner l’aventure est irréversible : elle ne pourra plus être rouverte.',
-};
+import { I18n } from '../../../core/i18n/i18n.service';
 
 function toValue(adventure: AdventureDto): AdventureValue {
   return {
@@ -111,39 +94,39 @@ function toValue(adventure: AdventureDto): AdventureValue {
     @let a = adventure();
     <h1>{{ a.name }}</h1>
     <div class="seals">
-      <span class="seal">{{ statusLabels[a.status!] }}</span>
-      <span class="seal">{{ visibilityLabels[a.visibility!] }}</span>
+      <span class="seal">{{ t().tavern.status[a.status!] }}</span>
+      <span class="seal">{{ t().tavern.visibility[a.visibility!] }}</span>
       @if (a.masterVacant) {
-        <span class="seal">MJ absent</span>
+        <span class="seal">{{ t().tavern.overview.masterAbsent }}</span>
       }
     </div>
     <p class="description">{{ a.description }}</p>
     <dl class="facts">
-      <dt>MJ</dt>
+      <dt>{{ t().tavern.overview.master }}</dt>
       <dd>
         @if (a.masterVacant) {
-          Aucun MJ pour le moment.
+          {{ t().tavern.overview.noMaster }}
         } @else {
           <a [routerLink]="['/players', a.creatorId]">{{ masterName() }}</a>
         }
       </dd>
-      <dt>Joueurs</dt>
+      <dt>{{ t().tavern.overview.players }}</dt>
       <dd>{{ a.players?.length ?? 0 }} / {{ a.maxPlayer }}</dd>
-      <dt>Lieu</dt>
+      <dt>{{ t().tavern.overview.place }}</dt>
       <dd>{{ a.postalCode }} {{ a.city }}</dd>
     </dl>
 
     @if (canJoin()) {
-      <dg-button [loading]="busy()" (click)="join()">Rejoindre</dg-button>
+      <dg-button [loading]="busy()" (click)="join()">{{ t().tavern.overview.join }}</dg-button>
     }
     @if (context.isPlayer()) {
       <dg-button variant="danger" [loading]="busy()" (click)="quit()">
-        Quitter l’aventure
+        {{ t().tavern.overview.quit }}
       </dg-button>
     }
 
     @if (context.isMaster()) {
-      <h2>Statut</h2>
+      <h2>{{ t().tavern.overview.status }}</h2>
       @if (transitions().length) {
         <div class="actions">
           @for (status of transitions(); track status) {
@@ -152,25 +135,29 @@ function toValue(adventure: AdventureDto): AdventureValue {
               [disabled]="busy()"
               (click)="changeStatus(status)"
             >
-              {{ statusActions[status] }}
+              {{ t().tavern.overview.statusActions[status] }}
             </dg-button>
           }
         </div>
       } @else {
-        <p class="hint">Cette aventure est close : son statut ne changera plus.</p>
+        <p class="hint">{{ t().tavern.overview.closed }}</p>
       }
 
-      <h2>Visibilité</h2>
+      <h2>{{ t().tavern.overview.visibility }}</h2>
       <div class="actions">
         <dg-button variant="ghost" [disabled]="busy()" (click)="toggleVisibility()">
-          {{ a.visibility === 'PUBLIC' ? 'Rendre privée' : 'Rendre publique' }}
+          {{
+            a.visibility === 'PUBLIC'
+              ? t().tavern.overview.makePrivate
+              : t().tavern.overview.makePublic
+          }}
         </dg-button>
       </div>
 
       @if (!closed()) {
-        <h2>Modifier</h2>
+        <h2>{{ t().tavern.overview.edit }}</h2>
         <dg-adventure-form
-          submitLabel="Enregistrer"
+          [submitLabel]="t().common.actions.save"
           [initial]="formInitial()"
           [busy]="saving()"
           [withVisibility]="false"
@@ -178,25 +165,25 @@ function toValue(adventure: AdventureDto): AdventureValue {
         />
       }
 
-      <h2>Supprimer</h2>
+      <h2>{{ t().tavern.overview.remove }}</h2>
       <div class="actions">
         <dg-button
           variant="danger"
           [disabled]="a.status === 'ONGOING' || busy()"
           (click)="remove()"
         >
-          Supprimer l’aventure
+          {{ t().tavern.overview.removeAdventure }}
         </dg-button>
       </div>
       @if (a.status === 'ONGOING') {
-        <p class="hint">
-          Une aventure en cours ne peut pas être supprimée : termine-la ou abandonne-la d’abord.
-        </p>
+        <p class="hint">{{ t().tavern.overview.cannotRemove }}</p>
       }
     }
   `,
 })
 export class OverviewPage {
+  protected readonly t = inject(I18n).t;
+
   protected readonly context = inject(AdventureContext);
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
@@ -207,10 +194,6 @@ export class OverviewPage {
   private readonly destroyRef = inject(DestroyRef);
 
   private readonly form = viewChild(AdventureForm);
-
-  protected readonly statusLabels = STATUS_LABEL;
-  protected readonly visibilityLabels = VISIBILITY_LABEL;
-  protected readonly statusActions = STATUS_ACTION;
 
   protected readonly busy = signal(false);
   protected readonly saving = signal(false);
@@ -248,7 +231,7 @@ export class OverviewPage {
           this.saving.set(false);
           this.context.update(response.body);
           this.formInitial.set(toValue(response.body));
-          this.notifier.success('Aventure enregistrée.');
+          this.notifier.success(this.t().tavern.overview.saved);
         },
         error: (error: unknown) => {
           this.saving.set(false);
@@ -264,18 +247,20 @@ export class OverviewPage {
         this.context.reload((fresh) => this.formInitial.set(toValue(fresh))),
       );
     } else if (!(problem.status === 400 && this.form()?.showProblem(problem))) {
-      this.notifier.error(problem, 'Enregistrement de l’aventure');
+      this.notifier.error(problem, this.t().tavern.overview.saving);
     }
   }
 
   protected changeStatus(status: Status): void {
-    const message = IRREVERSIBLE_MESSAGE[status];
+    const texts = this.t().tavern.overview;
+    const message = texts.irreversible[status];
     if (message === undefined) {
       this.applyStatus(status);
       return;
     }
+    const action = texts.statusActions[status];
     this.confirmer
-      .confirm({ title: STATUS_ACTION[status], message, confirmLabel: STATUS_ACTION[status] })
+      .confirm({ title: action, message, confirmLabel: action })
       .pipe(filter(Boolean), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.applyStatus(status));
   }
@@ -286,7 +271,7 @@ export class OverviewPage {
         id: this.adventure().id!,
         body: { status },
       }),
-      'Changement de statut',
+      this.t().tavern.overview.changingStatus,
       (adventure) => this.context.update(adventure),
     );
   }
@@ -298,7 +283,7 @@ export class OverviewPage {
         id: this.adventure().id!,
         body: { visibility },
       }),
-      'Changement de visibilité',
+      this.t().tavern.overview.changingVisibility,
       (adventure) => this.context.update(adventure),
     );
   }
@@ -306,9 +291,9 @@ export class OverviewPage {
   protected join(): void {
     this.run(
       joinAdventure(this.http, this.rootUrl, { id: this.adventure().id! }),
-      'Rejoindre l’aventure',
+      this.t().tavern.overview.joining,
       () => {
-        this.notifier.success('Tu as rejoint l’aventure.');
+        this.notifier.success(this.t().tavern.overview.joined);
         this.context.reload();
       },
     );
@@ -317,18 +302,17 @@ export class OverviewPage {
   protected quit(): void {
     this.confirmer
       .confirm({
-        title: 'Quitter l’aventure',
-        message:
-          'Tu ne feras plus partie de cette aventure. Tu pourras la rejoindre à nouveau si elle est publique.',
-        confirmLabel: 'Quitter',
+        title: this.t().tavern.overview.quitTitle,
+        message: this.t().tavern.overview.quitMessage,
+        confirmLabel: this.t().tavern.overview.quitConfirm,
       })
       .pipe(filter(Boolean), takeUntilDestroyed(this.destroyRef))
       .subscribe(() =>
         this.run(
           quitAdventure(this.http, this.rootUrl, { id: this.adventure().id! }),
-          'Quitter l’aventure',
+          this.t().tavern.overview.quitting,
           () => {
-            this.notifier.success('Tu as quitté l’aventure.');
+            this.notifier.success(this.t().tavern.overview.quitted);
             void this.router.navigate(['/tavern/mine']);
           },
         ),
@@ -339,10 +323,10 @@ export class OverviewPage {
     const adventure = this.adventure();
     this.confirmer
       .typeToConfirm({
-        title: 'Supprimer l’aventure',
-        message: `Cette suppression est irréversible. Retape le nom de l’aventure (« ${adventure.name} ») pour confirmer.`,
-        confirmLabel: 'Supprimer',
-        inputLabel: 'Nom de l’aventure',
+        title: this.t().tavern.overview.deleteTitle,
+        message: this.t().tavern.overview.deleteMessage(adventure.name ?? ''),
+        confirmLabel: this.t().common.actions.delete,
+        inputLabel: this.t().tavern.overview.deleteInput,
         inputType: 'text',
         expected: adventure.name,
       })
@@ -356,9 +340,9 @@ export class OverviewPage {
             id: adventure.id!,
             body: { confirmation },
           }),
-          'Suppression de l’aventure',
+          this.t().tavern.overview.deleting,
           () => {
-            this.notifier.success('Aventure supprimée.');
+            this.notifier.success(this.t().tavern.overview.deleted);
             void this.router.navigate(['/tavern/mine']);
           },
         ),

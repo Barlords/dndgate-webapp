@@ -1,5 +1,5 @@
 import { EntryDetail } from '../../../ruleset.model';
-import { ApiRef, joinNames, names } from '../common';
+import { ApiRef, EntryTexts, joinNames, names, SOURCE_TEXTS } from '../common';
 
 export interface ApiBackground {
   index: string;
@@ -10,7 +10,10 @@ export interface ApiBackground {
   equipment_options: { desc: string }[];
 }
 
-export function mapBackground(background: ApiBackground): EntryDetail {
+export function mapBackground(
+  background: ApiBackground,
+  t: EntryTexts = SOURCE_TEXTS,
+): EntryDetail {
   const feat = background.feat.note
     ? `${background.feat.name} (${background.feat.note})`
     : background.feat.name;
@@ -23,14 +26,14 @@ export function mapBackground(background: ApiBackground): EntryDetail {
         kind: 'stats',
         layout: 'rows',
         items: [
-          { label: 'Ability scores', value: names(background.ability_scores).join(', ') },
-          { label: 'Origin feat', value: feat },
-          { label: 'Proficiencies', value: joinNames(background.proficiencies) },
+          { label: t.abilityScores, value: names(background.ability_scores).join(', ') },
+          { label: t.originFeat, value: feat },
+          { label: t.proficiencies, value: joinNames(background.proficiencies, t.none) },
         ],
       },
       {
         kind: 'text',
-        title: 'Starting equipment',
+        title: t.startingEquipment,
         paragraphs: background.equipment_options.map((option) => option.desc),
       },
     ],

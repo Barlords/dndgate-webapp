@@ -36,6 +36,7 @@ import { LoadError } from '../../../shared/ui/load-error/load-error';
 import { FormField } from '../../../shared/ui/form-field/form-field';
 import { Loading } from '../../../shared/ui/loading/loading';
 import { AdventureContext } from './adventure-context.service';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 export const MESSAGES_PAGE_SIZE = 20;
 export const MESSAGE_MAX = 5000;
@@ -44,12 +45,12 @@ export const MAX_CATCH_UP_PAGES = 5;
 /** Closer than this to the bottom of the log, the reader follows the conversation. */
 const NEAR_BOTTOM_PX = 48;
 
-const TIME_FORMAT = new Intl.DateTimeFormat('fr-FR', {
+const TIME_FORMAT: Intl.DateTimeFormatOptions = {
   day: 'numeric',
   month: 'short',
   hour: '2-digit',
   minute: '2-digit',
-});
+};
 
 /** Where the log scrolls once new messages are on screen. */
 type Scroll = 'bottom' | 'follow' | 'keep';
@@ -193,23 +194,25 @@ function byDate(a: MessageDto, b: MessageDto): number {
     }
   `,
   template: `
-    <h1>Messagerie</h1>
+    <h1>{{ t().tavern.messages.title }}</h1>
     @switch (connection()) {
       @case ('lost') {
         <div class="connection" role="status">
-          <p>Connexion perdue. Nouvelle tentative dans quelques secondes…</p>
+          <p>{{ t().tavern.messages.lost }}</p>
         </div>
       }
       @case ('stopped') {
         <div class="connection" role="status">
-          <p>Connexion perdue : les nouveaux messages n’arrivent plus.</p>
-          <dg-button variant="ghost" (click)="reconnect()">Se reconnecter</dg-button>
+          <p>{{ t().tavern.messages.stopped }}</p>
+          <dg-button variant="ghost" (click)="reconnect()">{{
+            t().tavern.messages.reconnect
+          }}</dg-button>
         </div>
       }
     }
     @switch (state()) {
       @case ('ready') {
-        <div class="log" #log role="log" aria-label="Messages de l’aventure" tabindex="0">
+        <div class="log" #log role="log" [attr.aria-label]="t().tavern.messages.log" tabindex="0">
           @if (hasOlder()) {
             <dg-button
               class="older"
@@ -217,7 +220,7 @@ function byDate(a: MessageDto, b: MessageDto): number {
               [loading]="loadingOlder()"
               (click)="loadOlder()"
             >
-              Messages plus anciens
+              {{ t().tavern.messages.older }}
             </dg-button>
           }
           @if (messages().length) {
@@ -233,19 +236,21 @@ function byDate(a: MessageDto, b: MessageDto): number {
               }
             </ol>
           } @else {
-            <p class="empty">Aucun message pour le moment. Lance la conversation !</p>
+            <p class="empty">{{ t().tavern.messages.empty }}</p>
           }
         </div>
 
         <form [formGroup]="form" (ngSubmit)="send()" novalidate>
-          <dg-form-field label="Ton message" [control]="draft">
+          <dg-form-field [label]="t().tavern.messages.yours" [control]="draft">
             <textarea formControlName="content" rows="3" (keydown)="onKeydown($event)"></textarea>
           </dg-form-field>
           <div class="composer-foot">
             <p class="hint">
-              Entrée pour envoyer, Maj + Entrée pour aller à la ligne · {{ length() }} / {{ max }}
+              {{ t().tavern.messages.hint(length(), max) }}
             </p>
-            <dg-button type="submit" [loading]="sending()">Envoyer</dg-button>
+            <dg-button type="submit" [loading]="sending()">{{
+              t().tavern.messages.send
+            }}</dg-button>
           </div>
           @if (sendProblem()) {
             <p class="problem" role="alert">{{ sendProblem() }}</p>
@@ -255,7 +260,7 @@ function byDate(a: MessageDto, b: MessageDto): number {
       @case ('failed') {
         <div class="state">
           <dg-load-error
-            message="Impossible de charger les messages."
+            [message]="t().tavern.messages.loadError"
             [problem]="loadProblem()"
             (retry)="loadHistory()"
           />
@@ -263,13 +268,18 @@ function byDate(a: MessageDto, b: MessageDto): number {
       }
       @default {
         <div class="state">
-          <dg-loading label="Chargement des messages" message="Le corbeau messager approche…" />
+          <dg-loading
+            [label]="t().tavern.messages.loading"
+            [message]="t().tavern.messages.loadingFlavour"
+          />
         </div>
       }
     }
   `,
 })
 export class MessagesPage {
+  protected readonly t = inject(I18n).t;
+
   private readonly context = inject(AdventureContext);
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
@@ -339,7 +349,7 @@ export class MessagesPage {
   }
 
   protected time(sendDate: string): string {
-    return TIME_FORMAT.format(new Date(sendDate));
+    return new Date(sendDate).toLocaleString(this.t().common.locale, TIME_FORMAT);
   }
 
   protected reconnect(): void {
@@ -392,7 +402,7 @@ export class MessagesPage {
       },
       error: (error: unknown) => {
         this.loadingOlder.set(false);
-        this.notifier.error(toApiProblem(error), 'Chargement des messages');
+        this.notifier.error(toApiProblem(error), this.t().tavern.messages.loading);
       },
     });
   }
@@ -470,10 +480,12 @@ export class MessagesPage {
           if (problem.status === 429) {
             const wait = problem.retryAfterSeconds;
             this.sendProblem.set(
-              `Tu envoies trop de messages, réessaie dans ${wait === undefined ? 'un instant' : `${wait} s`}.`,
+              wait === undefined
+                ? this.t().tavern.messages.tooMany
+                : this.t().tavern.messages.tooManyFor(wait),
             );
           } else {
-            this.notifier.error(problem, 'Envoi du message');
+            this.notifier.error(problem, this.t().tavern.messages.sending);
           }
         },
       });

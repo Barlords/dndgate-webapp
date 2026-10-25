@@ -1,5 +1,5 @@
 @if (crumbs().length > 0) {
-  <nav aria-label="Fil d'Ariane">
+  <nav [attr.aria-label]="t().common.shell.breadcrumb">
     <ol>
       @for (crumb of crumbs(); track crumb.link; let last = $last) {
         <li>
