@@ -7,8 +7,8 @@
     <a
       class="sidebar__brand"
       routerLink="/"
-      [attr.aria-label]="homeLabel"
-      [attr.title]="collapsed() ? homeLabel : null"
+      [attr.aria-label]="t().common.shell.home"
+      [attr.title]="collapsed() ? t().common.shell.home : null"
       (click)="linkFollowed()"
     >
       @if (collapsed()) {
@@ -64,20 +64,21 @@
       class="sidebar__toggle"
       [attr.aria-expanded]="!collapsed()"
       [attr.aria-controls]="panelId"
-      [attr.aria-label]="collapsed() ? 'Ouvrir le sommaire' : 'Réduire le sommaire'"
-      [attr.title]="collapsed() ? 'Ouvrir le sommaire' : 'Réduire le sommaire'"
+      [attr.aria-label]="collapsed() ? t().common.shell.open : t().common.shell.collapse"
+      [attr.title]="collapsed() ? t().common.shell.open : t().common.shell.collapse"
       (click)="toggle()"
     >
       <dg-icon name="sidebar" />
     </button>
 
     <div class="sidebar__footer">
+      <dg-language-select [vertical]="collapsed()" />
       @if (account(); as me) {
         <a
           routerLink="/account"
           class="sidebar__account"
           [attr.title]="collapsed() ? me.pseudo : null"
-          [attr.aria-label]="collapsed() ? 'Mon compte, ' + me.pseudo : null"
+          [attr.aria-label]="collapsed() ? t().common.shell.myAccount(me.pseudo ?? '') : null"
           (click)="linkFollowed()"
         >
           <span class="sidebar__avatar" aria-hidden="true">{{ initial() }}</span>
@@ -88,12 +89,12 @@
           routerLink="/login"
           class="sidebar__account"
           [queryParams]="loginQuery()"
-          [attr.title]="collapsed() ? 'Se connecter' : null"
-          [attr.aria-label]="collapsed() ? 'Se connecter' : null"
+          [attr.title]="collapsed() ? t().common.shell.signIn : null"
+          [attr.aria-label]="collapsed() ? t().common.shell.signIn : null"
           (click)="linkFollowed()"
         >
           <dg-icon name="user" />
-          <span class="sidebar__label">Se connecter</span>
+          <span class="sidebar__label">{{ t().common.shell.signIn }}</span>
         </a>
       }
     </div>

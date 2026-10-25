@@ -1,3 +1,11 @@
+import { Dictionary } from '../../../../../core/i18n/dictionary';
+import { en } from '../../../../../core/i18n/en/index';
+/** The texts an entry is written with, in the reader's language (labels, titles). */
+export type EntryTexts = Dictionary['library']['entry'];
+
+/** Without the reader's texts, an entry is written in English, the language of the API. */
+export const SOURCE_TEXTS: EntryTexts = en.library.entry;
+
 /** What the SRD API returns for a reference to another resource. */
 export interface ApiRef {
   index: string;
@@ -16,14 +24,6 @@ export function names(refs: readonly ApiRef[] | undefined): string[] {
 export function joinNames(refs: readonly ApiRef[] | undefined, fallback = 'None'): string {
   const list = names(refs);
   return list.length > 0 ? list.join(', ') : fallback;
-}
-
-export function ordinal(n: number): string {
-  const tens = n % 100;
-  if (tens >= 11 && tens <= 13) {
-    return `${n}th`;
-  }
-  return `${n}${({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'}`;
 }
 
 /** Lower case, accents dropped, anything but letters and digits made a single dash. */

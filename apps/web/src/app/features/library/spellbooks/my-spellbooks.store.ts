@@ -11,6 +11,7 @@ import {
 import { SpellBookDto } from '../../../core/api/generated/models/spell-book-dto';
 import { toApiProblem } from '../../../core/errors/api-problem';
 import { NotifierService } from '../../../core/errors/notifier.service';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 /**
  * The reader's spell books, shared by every « add to a spell book » button of a page: they are read
@@ -19,6 +20,8 @@ import { NotifierService } from '../../../core/errors/notifier.service';
  */
 @Injectable()
 export class MySpellBooksStore {
+  private readonly t = inject(I18n).t;
+
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   private readonly notifier = inject(NotifierService);
@@ -47,7 +50,7 @@ export class MySpellBooksStore {
         error: (error: unknown) => {
           // Asked again by the next button that needs them.
           this.requested = false;
-          this.notifier.error(toApiProblem(error), 'Chargement des grimoires');
+          this.notifier.error(toApiProblem(error), this.t().library.spellbooks.loadingBooks);
         },
       });
   }
@@ -82,13 +85,16 @@ export class MySpellBooksStore {
             current.id === id ? withSpell(current, spellIndex, adding) : current,
           ),
         );
-        this.notifier.success(adding ? `Ajouté à ${book.name}` : `Retiré de ${book.name}`);
+        const texts = this.t().library.spellbooks;
+        this.notifier.success(
+          adding ? texts.addedTo(book.name ?? '') : texts.removedFrom(book.name ?? ''),
+        );
       },
       error: (error: unknown) => {
         this.settle(key);
         this.notifier.error(
           toApiProblem(error),
-          adding ? 'Ajout au grimoire' : 'Retrait du grimoire',
+          adding ? this.t().library.spellbooks.adding : this.t().library.spellbooks.removing,
         );
       },
     });

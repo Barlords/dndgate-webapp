@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { crumb } from './layout/breadcrumb.service';
 
 // Pages not built yet resolve to the "lost" page; the tasks that create them swap the import.
 const notBuilt = () => import('./features/not-found.page').then((m) => m.NotFoundPage);
@@ -41,13 +42,13 @@ export const routes: Routes = [
   },
   {
     path: 'library',
-    data: { breadcrumb: 'Bibliothèque' },
+    data: { breadcrumb: crumb((t) => t.library.shell.crumb) },
     loadChildren: () => import('./features/library/library.routes').then((m) => m.LIBRARY_ROUTES),
   },
   {
     path: 'tavern',
     canActivate: [authGuard],
-    data: { breadcrumb: 'Taverne' },
+    data: { breadcrumb: crumb((t) => t.tavern.shell.crumb) },
     loadChildren: () => import('./features/tavern/tavern.routes').then((m) => m.TAVERN_ROUTES),
   },
   { path: 'adventures/:id', redirectTo: 'tavern/adventures/:id' },

@@ -5,6 +5,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Button } from '../button/button';
 import { FormField } from '../form-field/form-field';
 import { Parchment } from '../parchment/parchment';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 /** What the reader must type to confirm: a name to retype (`expected`) or a password. */
 export interface ConfirmDialogInput {
@@ -50,7 +51,7 @@ function normalize(text: string): string {
           </dg-form-field>
         }
         <div class="dg-confirm__actions">
-          <dg-button variant="ghost" (click)="cancel()">Annuler</dg-button>
+          <dg-button variant="ghost" (click)="cancel()">{{ t().common.actions.cancel }}</dg-button>
           <dg-button
             type="submit"
             [variant]="data.input ? 'danger' : 'primary'"
@@ -100,6 +101,8 @@ function normalize(text: string): string {
   `,
 })
 export class ConfirmDialog {
+  protected readonly t = inject(I18n).t;
+
   protected readonly data = inject<ConfirmDialogData>(DIALOG_DATA);
   private readonly ref = inject<DialogRef<ConfirmDialogResult>>(DialogRef);
 

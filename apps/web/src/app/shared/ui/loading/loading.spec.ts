@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { DEFAULT_LOADING_MESSAGE, Loading } from './loading';
+import { Loading } from './loading';
 
 describe('Loading', () => {
   let fixture: ComponentFixture<Loading>;
@@ -17,7 +17,7 @@ describe('Loading', () => {
 
     expect(host.getAttribute('role')).toBe('status');
     expect(host.querySelector('dg-spinner')).not.toBeNull();
-    expect(message()?.textContent).toBe(DEFAULT_LOADING_MESSAGE);
+    expect(message()?.textContent?.trim()).toBe('Sélection des livres…');
     expect(message()?.getAttribute('aria-hidden')).toBe('true');
     expect(host.querySelector('.dg-visually-hidden')?.textContent).toBe('Chargement…');
   });

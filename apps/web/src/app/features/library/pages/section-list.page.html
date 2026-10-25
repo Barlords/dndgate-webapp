@@ -23,14 +23,14 @@
   @if (failed()) {
     <div class="list__state">
       <dg-load-error
-        message="Impossible de charger cette rubrique."
+        [message]="t().library.list.loadError"
         [problem]="loadProblem()"
         (retry)="retry()"
       />
     </div>
   } @else if (entries() === null) {
     <div class="list__state">
-      <dg-loading label="Chargement de la rubrique" [message]="loadingMessage()" />
+      <dg-loading [label]="t().library.list.loading" [message]="section().loadingMessage" />
     </div>
   } @else {
     <dg-entry-table
@@ -38,7 +38,7 @@
       [section]="section()"
       [entries]="tabEntries()"
       [rowActions]="bookable() ? bookAction : null"
-      actionsLabel="Grimoire"
+      [actionsLabel]="t().library.list.spellbookColumn"
     />
   }
 </dg-parchment>

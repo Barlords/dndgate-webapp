@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Emblem } from '../shared/ui/emblem/emblem';
+import { I18n } from '../core/i18n/i18n.service';
 
 /** Shown for any address no route knows (and, for now, for pages not built yet). */
 @Component({
@@ -10,8 +11,8 @@ import { Emblem } from '../shared/ui/emblem/emblem';
   template: `
     <main class="not-found">
       <dg-emblem />
-      <h1>Cette page s'est perdue dans les brumes.</h1>
-      <a routerLink="/">Retour à l'accueil</a>
+      <h1>{{ t().common.notFound.title }}</h1>
+      <a routerLink="/">{{ t().common.notFound.back }}</a>
     </main>
   `,
   styles: `
@@ -40,4 +41,6 @@ import { Emblem } from '../shared/ui/emblem/emblem';
     }
   `,
 })
-export class NotFoundPage {}
+export class NotFoundPage {
+  protected readonly t = inject(I18n).t;
+}

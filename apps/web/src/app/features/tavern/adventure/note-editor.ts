@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, input, output } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
@@ -11,7 +11,7 @@ import {
 import { map, startWith } from 'rxjs';
 import { Button } from '../../../shared/ui/button/button';
 import { FormField } from '../../../shared/ui/form-field/form-field';
-import { VISIBILITY_LABEL } from '../adventure-status';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 export const NOTE_MAX = 5000;
 export const NOTE_FIRST_DATE = '1900-01-01';
@@ -94,41 +94,44 @@ function dateInRange(control: AbstractControl): ValidationErrors | null {
   template: `
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
       <div class="row">
-        <dg-form-field label="Date" [control]="form.controls.date">
+        <dg-form-field [label]="t().tavern.notes.date" [control]="form.controls.date">
           <input formControlName="date" type="date" min="1900-01-01" max="2200-12-31" />
         </dg-form-field>
         @if (withVisibility()) {
-          <dg-form-field label="Visibilité" [control]="form.controls.visibility">
+          <dg-form-field [label]="t().tavern.notes.visibility" [control]="form.controls.visibility">
             <select formControlName="visibility">
-              <option value="PUBLIC">{{ labels.PUBLIC }}</option>
-              <option value="PRIVATE">{{ labels.PRIVATE }}</option>
+              <option value="PUBLIC">{{ t().tavern.visibility['PUBLIC'] }}</option>
+              <option value="PRIVATE">{{ t().tavern.visibility['PRIVATE'] }}</option>
             </select>
           </dg-form-field>
         }
       </div>
-      <dg-form-field label="Note" [control]="form.controls.content">
+      <dg-form-field [label]="t().tavern.notes.note" [control]="form.controls.content">
         <textarea formControlName="content" rows="5"></textarea>
       </dg-form-field>
       <p class="counter">{{ length() }} / {{ max }}</p>
       <div class="actions">
-        <dg-button type="submit" [loading]="busy()">{{ submitLabel() }}</dg-button>
-        <dg-button variant="ghost" [disabled]="busy()" (click)="cancelled.emit()"
-          >Annuler</dg-button
-        >
+        <dg-button type="submit" [loading]="busy()">{{
+          submitLabel() ?? t().tavern.notes.write
+        }}</dg-button>
+        <dg-button variant="ghost" [disabled]="busy()" (click)="cancelled.emit()">{{
+          t().common.actions.cancel
+        }}</dg-button>
       </div>
     </form>
   `,
 })
 export class NoteEditor {
+  protected readonly t = inject(I18n).t;
+
   /** The note to edit; without it, a blank note dated today. */
   readonly initial = input<NoteValue | null>(null);
-  readonly submitLabel = input('Inscrire');
+  readonly submitLabel = input<string | null>(null);
   readonly busy = input(false);
   readonly withVisibility = input(false);
   readonly saved = output<NoteValue>();
   readonly cancelled = output<void>();
 
-  protected readonly labels = VISIBILITY_LABEL;
   protected readonly max = NOTE_MAX;
 
   protected readonly form = new FormGroup({

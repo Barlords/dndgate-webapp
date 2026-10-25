@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Params, RouterLink } from '@angular/router';
-import { map, Subject, switchMap } from 'rxjs';
+import { map, skip, Subject, switchMap } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
 import { toApiProblem } from '../../../core/errors/api-problem';
 import { LoadError } from '../../../shared/ui/load-error/load-error';
-import { DEFAULT_LOADING_MESSAGE, Loading } from '../../../shared/ui/loading/loading';
+import { Loading } from '../../../shared/ui/loading/loading';
 import { Parchment } from '../../../shared/ui/parchment/parchment';
 import { RulesetRegistry } from '../rulesets/ruleset-registry';
 import { EntrySummary, Ruleset, RulesetSection } from '../rulesets/ruleset.model';
@@ -14,6 +14,7 @@ import { MySpellBooksStore } from '../spellbooks/my-spellbooks.store';
 import { EntryTable } from './entry-table.component';
 import { LOADING, LoadState, loadWithRetry } from './load-state';
 import { UntranslatedNote } from './untranslated-note.component';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 /**
  * The entries of one section: its tabs, when it has some, over the table of the entries (search,
@@ -38,6 +39,9 @@ import { UntranslatedNote } from './untranslated-note.component';
   styleUrl: './section-list.page.scss',
 })
 export class SectionListPage {
+  private readonly i18n = inject(I18n);
+  protected readonly t = this.i18n.t;
+
   private readonly route = inject(ActivatedRoute);
   private readonly registry = inject(RulesetRegistry);
   private readonly auth = inject(AuthService);
@@ -61,9 +65,6 @@ export class SectionListPage {
   /** Each row of a spell list gets a button to add the spell to the reader's spell books. */
   protected readonly bookable = computed(
     () => this.auth.isAuthenticated() && this.section().id === this.ruleset().spellSectionId,
-  );
-  protected readonly loadingMessage = computed(
-    () => this.section().loadingMessage ?? DEFAULT_LOADING_MESSAGE,
   );
 
   /** The tab shown, when the section has tabs; a value of the URL that is not one is ignored. */
@@ -95,6 +96,10 @@ export class SectionListPage {
         takeUntilDestroyed(),
       )
       .subscribe((loaded) => this.loaded.set(loaded));
+    // The entries come in the reader's language: read again when it changes.
+    toObservable(this.i18n.language)
+      .pipe(skip(1), takeUntilDestroyed())
+      .subscribe(() => this.retries.next());
   }
 
   protected retry(): void {

@@ -14,6 +14,7 @@ import { ViewMode } from '../../../shared/ui/view-toggle/view-toggle';
 import { LOADING, LoadState, loadWithRetry } from '../../library/pages/load-state';
 import { CharacterPortrait } from '../adventure/characters/character-portrait';
 import { ListHeader } from '../list-header';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 /**
  * « Mes personnages »: every character of the reader, those of their adventures and those kept
@@ -92,9 +93,9 @@ import { ListHeader } from '../list-header';
   template: `
     <dg-parchment>
       <dg-list-header
-        heading="Mes personnages"
+        [heading]="t().tavern.myCharacters.title"
         storageKey="dg.tavern.characters.view"
-        createLabel="Créer un personnage"
+        [createLabel]="t().tavern.myCharacters.create"
         [(mode)]="view"
         (create)="create()"
       />
@@ -105,10 +106,10 @@ import { ListHeader } from '../list-header';
               <table class="table">
                 <thead>
                   <tr>
-                    <th scope="col">Nom</th>
-                    <th scope="col">Race</th>
-                    <th scope="col">Classe</th>
-                    <th scope="col">Aventure</th>
+                    <th scope="col">{{ t().tavern.columns.name }}</th>
+                    <th scope="col">{{ t().tavern.myCharacters.race }}</th>
+                    <th scope="col">{{ t().tavern.myCharacters.class }}</th>
+                    <th scope="col">{{ t().tavern.myCharacters.adventure }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -124,10 +125,10 @@ import { ListHeader } from '../list-header';
                       <td>
                         @if (character.adventureId) {
                           <a [routerLink]="['/tavern/adventures', character.adventureId]">
-                            Voir l’aventure
+                            {{ t().tavern.myCharacters.seeAdventure }}
                           </a>
                         } @else {
-                          <span class="muted">Hors aventure</span>
+                          <span class="muted">{{ t().tavern.myCharacters.noAdventure }}</span>
                         }
                       </td>
                     </tr>
@@ -147,7 +148,11 @@ import { ListHeader } from '../list-header';
                     <span class="name">{{ character.name }}</span>
                     <p class="kind">{{ character.race }} · {{ character.martialClass }}</p>
                     <p class="where">
-                      {{ character.adventureId ? 'Dans une aventure' : 'Hors aventure' }}
+                      {{
+                        character.adventureId
+                          ? t().tavern.myCharacters.inAdventure
+                          : t().tavern.myCharacters.noAdventure
+                      }}
                     </p>
                   </a>
                 </li>
@@ -155,25 +160,30 @@ import { ListHeader } from '../list-header';
             </ul>
           }
         } @else {
-          <p>Tu n’as pas encore de personnage.</p>
+          <p>{{ t().tavern.myCharacters.empty }}</p>
         }
       } @else if (loaded().failed) {
         <div class="state">
           <dg-load-error
-            message="Impossible de charger tes personnages."
+            [message]="t().tavern.myCharacters.loadError"
             [problem]="problem()"
             (retry)="retries.next()"
           />
         </div>
       } @else {
         <div class="state">
-          <dg-loading label="Chargement des personnages" message="Les héros se rassemblent…" />
+          <dg-loading
+            [label]="t().tavern.myCharacters.loading"
+            [message]="t().tavern.myCharacters.loadingFlavour"
+          />
         </div>
       }
     </dg-parchment>
   `,
 })
 export class MyCharactersPage {
+  protected readonly t = inject(I18n).t;
+
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   private readonly router = inject(Router);

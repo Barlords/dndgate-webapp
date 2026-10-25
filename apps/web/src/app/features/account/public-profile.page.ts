@@ -24,6 +24,7 @@ import { Paginator } from '../../shared/ui/paginator/paginator';
 import { Loading } from '../../shared/ui/loading/loading';
 import { StarRating } from '../../shared/ui/star-rating/star-rating';
 import { AccountLayout } from './account-layout';
+import { I18n } from '../../core/i18n/i18n.service';
 
 const PAGE_SIZE = 10;
 
@@ -81,14 +82,14 @@ interface Profile {
       @if (profile(); as shown) {
         <div class="summary">
           @if (shown.mean.average === null) {
-            <p>Pas encore d'avis</p>
+            <p>{{ t().account.publicProfile.noRating }}</p>
           } @else {
             <dg-star-rating [value]="shown.mean.average" [readonly]="true" />
-            <p>{{ shown.mean.count }} avis</p>
+            <p>{{ t().account.publicProfile.ratingCount(shown.mean.count ?? 0) }}</p>
           }
         </div>
         @if (mine() && ratings(); as page) {
-          <h2>Avis reçus</h2>
+          <h2>{{ t().account.publicProfile.received }}</h2>
           <ul>
             @for (rating of page.content ?? []; track rating.id) {
               <li>
@@ -107,12 +108,12 @@ interface Profile {
           />
         }
       } @else if (failed()) {
-        <p role="alert">Ce joueur est introuvable.</p>
+        <p role="alert">{{ t().account.publicProfile.notFound }}</p>
       } @else {
         <div class="dg-account__actions">
           <dg-loading
-            label="Chargement du joueur"
-            message="On cherche ce joueur dans la taverne…"
+            [label]="t().account.publicProfile.loading"
+            [message]="t().account.publicProfile.loadingFlavour"
           />
         </div>
       }
@@ -120,6 +121,8 @@ interface Profile {
   `,
 })
 export class PublicProfilePage {
+  protected readonly t = inject(I18n).t;
+
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   private readonly auth = inject(AuthService);
@@ -134,7 +137,7 @@ export class PublicProfilePage {
 
   protected readonly heading = computed(() => {
     const account = this.profile()?.account;
-    return account === undefined ? 'Joueur' : displayName(account);
+    return account === undefined ? this.t().account.names.player : displayName(account, this.t());
   });
   protected readonly mine = computed(() => this.auth.account()?.id === this.accountId());
 
@@ -160,7 +163,7 @@ export class PublicProfilePage {
               const problem = toApiProblem(error);
               this.failed.set(true);
               if (problem.status !== 404) {
-                this.notifier.error(problem, 'Chargement du joueur');
+                this.notifier.error(problem, this.t().account.publicProfile.loadingPlayer);
               }
               return EMPTY;
             }),
@@ -185,7 +188,10 @@ export class PublicProfilePage {
           }).pipe(
             // A failed page must not end the pager: the reader can try another one.
             catchError((error: unknown) => {
-              this.notifier.error(toApiProblem(error), 'Chargement des avis');
+              this.notifier.error(
+                toApiProblem(error),
+                this.t().account.publicProfile.loadingRatings,
+              );
               return EMPTY;
             }),
           ),

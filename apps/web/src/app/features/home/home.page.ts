@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { AuthService } from '../../core/auth/auth.service';
 import { Brand } from '../../shared/ui/brand/brand';
 import { HomeHalfComponent, HomeSide } from './home-half.component';
+import { I18n } from '../../core/i18n/i18n.service';
 
 /**
  * The home page: the window split into the Library (left) and the Tavern (right). Lighting one
@@ -17,9 +18,9 @@ import { HomeHalfComponent, HomeSide } from './home-half.component';
     <dg-home-half
       side="library"
       link="/library"
-      title="BIBLIOTHÈQUE"
-      subtitle="Sorts, classes, monstres et règles"
-      cta="ENTRER"
+      [title]="t().account.home.libraryTitle"
+      [subtitle]="t().account.home.librarySubtitle"
+      [cta]="t().account.home.libraryCta"
       [active]="active() === 'library'"
       [dimmed]="active() === 'tavern'"
       (activeChange)="activate('library', $event)"
@@ -27,9 +28,9 @@ import { HomeHalfComponent, HomeSide } from './home-half.component';
     <dg-home-half
       side="tavern"
       link="/tavern"
-      title="TAVERNE"
-      subtitle="Tes aventures, ta table, tes compagnons"
-      cta="S’ATTABLER"
+      [title]="t().account.home.tavernTitle"
+      [subtitle]="t().account.home.tavernSubtitle"
+      [cta]="t().account.home.tavernCta"
       [hint]="tavernHint()"
       [active]="active() === 'tavern'"
       [dimmed]="active() === 'library'"
@@ -39,12 +40,14 @@ import { HomeHalfComponent, HomeSide } from './home-half.component';
   styleUrl: './home.page.scss',
 })
 export class HomePage {
+  protected readonly t = inject(I18n).t;
+
   private readonly auth = inject(AuthService);
 
   protected readonly active = signal<HomeSide | null>(null);
   // The tavern guard sends a signed-out visitor to the login page first: say so to screen readers.
   protected readonly tavernHint = computed(() =>
-    this.auth.isAuthenticated() ? '' : 'connexion requise',
+    this.auth.isAuthenticated() ? '' : this.t().account.home.signInRequired,
   );
 
   protected activate(side: HomeSide, active: boolean): void {

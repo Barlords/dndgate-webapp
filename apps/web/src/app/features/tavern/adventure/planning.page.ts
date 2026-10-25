@@ -31,6 +31,7 @@ import { DatePicker } from '../../../shared/ui/date-picker/date-picker';
 import { compareIso, formatDate } from '../../../shared/ui/date-picker/iso-date';
 import { Loading } from '../../../shared/ui/loading/loading';
 import { AdventureContext } from './adventure-context.service';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 type PlanningState = 'loading' | 'none' | 'ready' | 'failed';
 
@@ -158,18 +159,20 @@ type PlanningState = 'loading' | 'none' | 'ready' | 'failed';
     }
   `,
   template: `
-    <h1>Planning</h1>
+    <h1>{{ t().tavern.planning.title }}</h1>
     <ng-template #editor>
-      <p class="lead">Choisis les dates que tu proposes à la table (100 au plus).</p>
+      <p class="lead">{{ t().tavern.planning.lead }}</p>
       <dg-date-picker mode="multiple" [selected]="draft()" (selectedChange)="draft.set($event)" />
       @if (draftProblem()) {
-        <p class="problem" role="alert">Choisis au moins une date.</p>
+        <p class="problem" role="alert">{{ t().tavern.planning.pickOne }}</p>
       }
       <div class="actions">
         <dg-button [loading]="savingPlanning()" (click)="savePlanning()">
-          Enregistrer les dates
+          {{ t().tavern.planning.saveDates }}
         </dg-button>
-        <dg-button variant="ghost" (click)="editing.set(false)">Annuler</dg-button>
+        <dg-button variant="ghost" (click)="editing.set(false)">{{
+          t().common.actions.cancel
+        }}</dg-button>
       </div>
     </ng-template>
     @switch (state()) {
@@ -178,21 +181,23 @@ type PlanningState = 'loading' | 'none' | 'ready' | 'failed';
         @if (editing()) {
           <ng-container *ngTemplateOutlet="editor" />
         } @else {
-          <h2>Dates proposées</h2>
+          <h2>{{ t().tavern.planning.proposed }}</h2>
           <ul class="proposed">
             @for (date of dates(); track date) {
               <li>{{ format(date) }}</li>
             }
           </ul>
           @if (context.isMaster()) {
-            <dg-button variant="ghost" (click)="edit()">Modifier les dates</dg-button>
+            <dg-button variant="ghost" (click)="edit()">{{
+              t().tavern.planning.editDates
+            }}</dg-button>
           }
         }
 
         @if (context.isParticipant() && !editing()) {
-          <h2>Mes disponibilités</h2>
+          <h2>{{ t().tavern.planning.mine }}</h2>
           @if (votesState() === 'ready') {
-            <p class="lead">Coche les dates où tu es disponible.</p>
+            <p class="lead">{{ t().tavern.planning.tick }}</p>
             <ul class="choices">
               @for (date of dates(); track date) {
                 <li>
@@ -208,27 +213,29 @@ type PlanningState = 'loading' | 'none' | 'ready' | 'failed';
               }
             </ul>
             @if (voteProblem()) {
-              <p class="problem" role="alert">Coche au moins une date.</p>
+              <p class="problem" role="alert">{{ t().tavern.planning.tickOne }}</p>
             }
             <dg-button [loading]="voting()" (click)="vote(plan)">
-              Enregistrer mes disponibilités
+              {{ t().tavern.planning.saveMine }}
             </dg-button>
 
-            <h2>Disponibilités de la table</h2>
+            <h2>{{ t().tavern.planning.table }}</h2>
             @if (votes().length) {
               <div
                 class="scroll"
                 tabindex="0"
                 role="region"
-                aria-label="Disponibilités de la table"
+                [attr.aria-label]="t().tavern.planning.table"
               >
                 <table>
                   <caption class="sr">
-                    Disponibilités par joueur et par date
+                    {{
+                      t().tavern.planning.caption
+                    }}
                   </caption>
                   <thead>
                     <tr>
-                      <th scope="col">Joueur</th>
+                      <th scope="col">{{ t().tavern.planning.player }}</th>
                       @for (date of dates(); track date) {
                         <th scope="col" [class.best]="best().has(date)">{{ format(date) }}</th>
                       }
@@ -241,11 +248,13 @@ type PlanningState = 'loading' | 'none' | 'ready' | 'failed';
                         @for (date of dates(); track date) {
                           @if (entry.availabilityDates?.includes(date)) {
                             <td class="yes">
-                              <span aria-hidden="true">✓</span><span class="sr">Disponible</span>
+                              <span aria-hidden="true">✓</span
+                              ><span class="sr">{{ t().tavern.planning.available }}</span>
                             </td>
                           } @else {
                             <td>
-                              <span aria-hidden="true">·</span><span class="sr">Indisponible</span>
+                              <span aria-hidden="true">·</span
+                              ><span class="sr">{{ t().tavern.planning.unavailable }}</span>
                             </td>
                           }
                         }
@@ -254,12 +263,12 @@ type PlanningState = 'loading' | 'none' | 'ready' | 'failed';
                   </tbody>
                   <tfoot>
                     <tr>
-                      <th scope="row">Total</th>
+                      <th scope="row">{{ t().tavern.planning.total }}</th>
                       @for (date of dates(); track date) {
                         <td [class.best]="best().has(date)">
                           {{ totals().get(date) }}
                           @if (best().has(date)) {
-                            <span class="sr">Meilleure date</span>
+                            <span class="sr">{{ t().tavern.planning.best }}</span>
                           }
                         </td>
                       }
@@ -268,12 +277,12 @@ type PlanningState = 'loading' | 'none' | 'ready' | 'failed';
                 </table>
               </div>
             } @else {
-              <p>Personne n’a encore donné ses disponibilités.</p>
+              <p>{{ t().tavern.planning.noVotes }}</p>
             }
           } @else if (votesState() === 'failed') {
             <div class="state">
               <dg-load-error
-                message="Impossible de charger les disponibilités."
+                [message]="t().tavern.planning.votesLoadError"
                 [problem]="votesProblem()"
                 (retry)="loadVotes(plan)"
               />
@@ -281,8 +290,8 @@ type PlanningState = 'loading' | 'none' | 'ready' | 'failed';
           } @else {
             <div class="state">
               <dg-loading
-                label="Chargement des disponibilités"
-                message="Les compagnons consultent leurs agendas…"
+                [label]="t().tavern.planning.votesLoading"
+                [message]="t().tavern.planning.votesLoadingFlavour"
               />
             </div>
           }
@@ -290,20 +299,20 @@ type PlanningState = 'loading' | 'none' | 'ready' | 'failed';
       }
       @case ('none') {
         <div class="state">
-          <p>Aucune date proposée pour le moment.</p>
+          <p>{{ t().tavern.planning.none }}</p>
         </div>
         @if (context.isMaster()) {
           @if (editing()) {
             <ng-container *ngTemplateOutlet="editor" />
           } @else {
-            <dg-button (click)="edit()">Proposer des dates</dg-button>
+            <dg-button (click)="edit()">{{ t().tavern.planning.propose }}</dg-button>
           }
         }
       }
       @case ('failed') {
         <div class="state">
           <dg-load-error
-            message="Impossible de charger le planning."
+            [message]="t().tavern.planning.loadError"
             [problem]="loadProblem()"
             (retry)="loadPlanning()"
           />
@@ -312,8 +321,8 @@ type PlanningState = 'loading' | 'none' | 'ready' | 'failed';
       @default {
         <div class="state">
           <dg-loading
-            label="Chargement du planning"
-            message="Le calendrier du royaume se déplie…"
+            [label]="t().tavern.planning.loading"
+            [message]="t().tavern.planning.loadingFlavour"
           />
         </div>
       }
@@ -321,6 +330,8 @@ type PlanningState = 'loading' | 'none' | 'ready' | 'failed';
   `,
 })
 export class PlanningPage {
+  protected readonly t = inject(I18n).t;
+
   protected readonly context = inject(AdventureContext);
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
@@ -383,7 +394,7 @@ export class PlanningPage {
   }
 
   protected format(date: string): string {
-    return formatDate(date);
+    return formatDate(date, this.t().common.locale);
   }
 
   protected pseudo(id: string): string {
@@ -456,12 +467,12 @@ export class PlanningPage {
     call.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: ({ body: saved }) => {
         this.savingPlanning.set(false);
-        this.notifier.success('Dates enregistrées.');
+        this.notifier.success(this.t().tavern.planning.datesSaved);
         this.show(saved);
       },
       error: (error: unknown) => {
         this.savingPlanning.set(false);
-        this.notifier.error(toApiProblem(error), 'Enregistrement des dates');
+        this.notifier.error(toApiProblem(error), this.t().tavern.planning.savingDates);
       },
     });
   }
@@ -487,12 +498,12 @@ export class PlanningPage {
       .subscribe({
         next: () => {
           this.voting.set(false);
-          this.notifier.success('Disponibilités enregistrées.');
+          this.notifier.success(this.t().tavern.planning.votesSaved);
           this.loadVotes(planning);
         },
         error: (error: unknown) => {
           this.voting.set(false);
-          this.notifier.error(toApiProblem(error), 'Enregistrement des disponibilités');
+          this.notifier.error(toApiProblem(error), this.t().tavern.planning.savingVotes);
         },
       });
   }

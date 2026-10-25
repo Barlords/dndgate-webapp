@@ -26,23 +26,33 @@ import human from './__fixtures__/2024/species-human.json';
 import alignment from './__fixtures__/2024/alignments-lawful-good.json';
 import language from './__fixtures__/2024/languages-common.json';
 import fireball from './__fixtures__/2024/spells-fireball.json';
+import { I18n } from '../../../../core/i18n/i18n.service';
 
 const API = 'https://www.dnd5eapi.co/api/2024';
-const GRAPHQL = 'https://www.dnd5eapi.co/graphql/2024';
+// The ruleset is read in English (see `beforeEach`): every request names it.
+const GRAPHQL = 'https://www.dnd5eapi.co/graphql/2024?lang=en';
 
 describe('Dnd5e2024Ruleset', () => {
   let ruleset: Dnd5e2024Ruleset;
   let http: HttpTestingController;
 
+  /** The sections are written in the reader's language: these tests read what a French one reads. */
+  const inFrench = () => TestBed.inject(I18n).use('fr');
+
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting()],
     });
+    // The data and the texts as the API writes them: an English reader asks no translation.
+    TestBed.inject(I18n).use('en');
     ruleset = TestBed.inject(Dnd5e2024Ruleset);
     http = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    http.verify();
+    localStorage.clear();
+  });
 
   function listGraphql(sectionId: string, data: object): EntrySummary[] {
     let entries: EntrySummary[] = [];
@@ -58,6 +68,7 @@ describe('Dnd5e2024Ruleset', () => {
   });
 
   it('exposes species and no rules', () => {
+    inFrench();
     expect(ruleset.sections.map((s) => [s.id, s.label, s.group])).toEqual([
       ['classes', 'Classes', 'players'],
       ['species', 'Espèces', 'players'],
@@ -74,6 +85,7 @@ describe('Dnd5e2024Ruleset', () => {
   });
 
   it('gives every section its own loading flavour', () => {
+    inFrench();
     const messages = ruleset.sections.map((s) => s.loadingMessage);
     expect(messages.every((message) => message !== undefined && message.endsWith('…'))).toBe(true);
     expect(ruleset.sections.find((s) => s.id === 'spells')?.loadingMessage).toBe(
@@ -173,7 +185,7 @@ describe('Dnd5e2024Ruleset', () => {
     for (const [section, resource, body] of lists) {
       let entries: EntrySummary[] = [];
       ruleset.list(section).subscribe((value) => (entries = value));
-      http.expectOne(`${API}/${resource}`).flush(body);
+      http.expectOne(`${API}/${resource}?lang=en`).flush(body);
       expect(entries.map((e) => e.index)).toEqual(body.results.map((r) => r.index));
       expect(entries[0].fields).toEqual({});
     }
@@ -182,8 +194,8 @@ describe('Dnd5e2024Ruleset', () => {
   it('merges alignments and languages in the personality section', () => {
     let entries: EntrySummary[] = [];
     ruleset.list('personality').subscribe((value) => (entries = value));
-    http.expectOne(`${API}/alignments`).flush(alignmentsList);
-    http.expectOne(`${API}/languages`).flush(languagesList);
+    http.expectOne(`${API}/alignments?lang=en`).flush(alignmentsList);
+    http.expectOne(`${API}/languages?lang=en`).flush(languagesList);
     expect(entries).toHaveLength(alignmentsList.results.length + languagesList.results.length);
     expect(entries[0].fields['kind']).toBe('Alignment');
     expect(entries.at(-1)?.fields['kind']).toBe('Language');
@@ -207,18 +219,18 @@ describe('Dnd5e2024Ruleset', () => {
 
     it('reads a spell with its 2024 description', () => {
       const result = detailOf('spells', 'fireball');
-      http.expectOne(`${API}/spells/fireball`).flush(fireball);
+      http.expectOne(`${API}/spells/fireball?lang=en`).flush(fireball);
       expect(result()?.subtitle).toBe('3rd-level evocation');
     });
 
     it('reads a monster, a class with its levels, a background, a feat and a mastery', () => {
       const monster = detailOf('monsters', 'goblin-warrior');
-      http.expectOne(`${API}/monsters/goblin-warrior`).flush(goblin);
+      http.expectOne(`${API}/monsters/goblin-warrior?lang=en`).flush(goblin);
       expect(monster()?.name).toBe('Goblin Warrior');
 
       const cls = detailOf('classes', 'wizard');
-      http.expectOne(`${API}/classes/wizard`).flush(wizard);
-      http.expectOne(`${API}/classes/wizard/levels`).flush(wizardLevels);
+      http.expectOne(`${API}/classes/wizard?lang=en`).flush(wizard);
+      http.expectOne(`${API}/classes/wizard/levels?lang=en`).flush(wizardLevels);
       const features = http.expectOne(GRAPHQL);
       expect(features.request.body.variables).toEqual({ class: 'wizard' });
       features.flush(wizardFeatures);
@@ -228,29 +240,29 @@ describe('Dnd5e2024Ruleset', () => {
       );
 
       const background = detailOf('backgrounds', 'acolyte');
-      http.expectOne(`${API}/backgrounds/acolyte`).flush(acolyte);
+      http.expectOne(`${API}/backgrounds/acolyte?lang=en`).flush(acolyte);
       expect(background()?.name).toBe('Acolyte');
 
       const feat = detailOf('feats', 'alert');
-      http.expectOne(`${API}/feats/alert`).flush(alert);
+      http.expectOne(`${API}/feats/alert?lang=en`).flush(alert);
       expect(feat()?.subtitle).toBe('Origin feat');
 
       const mastery = detailOf('weapon-mastery-properties', 'cleave');
-      http.expectOne(`${API}/weapon-mastery-properties/cleave`).flush(cleave);
+      http.expectOne(`${API}/weapon-mastery-properties/cleave?lang=en`).flush(cleave);
       expect(mastery()?.name).toBe('Cleave');
     });
 
     it('reads a magic item whose index holds parentheses', () => {
       const result = detailOf('magic-items', 'stone-of-good-luck-(luckstone)');
-      http.expectOne(`${API}/magic-items/stone-of-good-luck-(luckstone)`).flush(bag);
+      http.expectOne(`${API}/magic-items/stone-of-good-luck-(luckstone)?lang=en`).flush(bag);
       expect(result()?.name).toBe('Bag of Holding');
     });
 
     it('reads a species with its traits, leaving out one that is gone', () => {
       const result = detailOf('species', 'elf');
-      http.expectOne(`${API}/species/elf`).flush(elf);
+      http.expectOne(`${API}/species/elf?lang=en`).flush(elf);
       for (const trait of elf.traits) {
-        const request = http.expectOne(`${API}/traits/${trait.index}`);
+        const request = http.expectOne(`${API}/traits/${trait.index}?lang=en`);
         if (trait.index === 'trance') {
           request.flush({ error: 'Not found' }, { status: 404, statusText: 'Not Found' });
         } else {
@@ -269,9 +281,9 @@ describe('Dnd5e2024Ruleset', () => {
     it('fails the whole species when a trait fails for another reason than 404', () => {
       const failures: unknown[] = [];
       ruleset.detail('species', 'human').subscribe({ error: (e) => failures.push(e) });
-      http.expectOne(`${API}/species/human`).flush(human);
+      http.expectOne(`${API}/species/human?lang=en`).flush(human);
       human.traits.forEach((trait, i) => {
-        const request = http.expectOne(`${API}/traits/${trait.index}`);
+        const request = http.expectOne(`${API}/traits/${trait.index}?lang=en`);
         if (i === 0) {
           request.flush('x', { status: 500, statusText: 'Error' });
         } else {
@@ -284,7 +296,7 @@ describe('Dnd5e2024Ruleset', () => {
 
     it('reads a species that has no traits without further requests', () => {
       const result = detailOf('species', 'dragonborn');
-      http.expectOne(`${API}/species/dragonborn`).flush({
+      http.expectOne(`${API}/species/dragonborn?lang=en`).flush({
         index: 'dragonborn',
         name: 'Dragonborn',
         type: 'Humanoid',
@@ -296,10 +308,10 @@ describe('Dnd5e2024Ruleset', () => {
 
     it('routes a personality entry to its resource by prefix', () => {
       const a = detailOf('personality', 'alignment.lawful-good');
-      http.expectOne(`${API}/alignments/lawful-good`).flush(alignment);
+      http.expectOne(`${API}/alignments/lawful-good?lang=en`).flush(alignment);
       expect(a()?.subtitle).toBe('Alignment');
       const l = detailOf('personality', 'language.common');
-      http.expectOne(`${API}/languages/common`).flush(language);
+      http.expectOne(`${API}/languages/common?lang=en`).flush(language);
       expect(l()?.subtitle).toBe('Language');
     });
 
@@ -309,7 +321,7 @@ describe('Dnd5e2024Ruleset', () => {
         ruleset.detail(section, index).subscribe({ error: (e) => failures.push(e) });
       watch('spells', 'nope');
       http
-        .expectOne(`${API}/spells/nope`)
+        .expectOne(`${API}/spells/nope?lang=en`)
         .flush({ error: 'Not found' }, { status: 404, statusText: 'Not Found' });
       watch('personality', 'weird');
       watch('rules', 'combat');
@@ -333,7 +345,7 @@ describe('Dnd5e2024Ruleset', () => {
       const failures: unknown[] = [];
       ruleset.detail('spells', 'fireball').subscribe({ error: (e) => failures.push(e) });
       http
-        .expectOne(`${API}/spells/fireball`)
+        .expectOne(`${API}/spells/fireball?lang=en`)
         .flush('x', { status: 500, statusText: 'Server Error' });
       expect(failures[0]).not.toBeInstanceOf(RulesetEntryNotFoundError);
     });

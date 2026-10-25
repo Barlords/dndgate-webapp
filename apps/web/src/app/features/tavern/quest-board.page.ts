@@ -22,8 +22,8 @@ import { Parchment } from '../../shared/ui/parchment/parchment';
 import { Loading } from '../../shared/ui/loading/loading';
 import { ViewMode } from '../../shared/ui/view-toggle/view-toggle';
 import { AdventureCard } from './adventure-card';
-import { STATUS_LABEL, Status, VISIBILITY_LABEL, Visibility } from './adventure-status';
 import { ListHeader } from './list-header';
+import { I18n } from '../../core/i18n/i18n.service';
 
 export const QUESTS_PAGE_SIZE = 20;
 
@@ -53,9 +53,9 @@ type Board =
   template: `
     <dg-parchment>
       <dg-list-header
-        heading="Aventures"
+        [heading]="t().tavern.board.title"
         storageKey="dg.tavern.adventures.view"
-        createLabel="Créer mon aventure"
+        [createLabel]="t().tavern.board.create"
         [(mode)]="view"
         (create)="createAdventure()"
       />
@@ -67,13 +67,13 @@ type Board =
               <table class="table">
                 <thead>
                   <tr>
-                    <th scope="col">Nom</th>
-                    <th scope="col">Statut</th>
-                    <th scope="col">Lieu</th>
-                    <th scope="col">Joueurs</th>
-                    <th scope="col">Visibilité</th>
+                    <th scope="col">{{ t().tavern.columns.name }}</th>
+                    <th scope="col">{{ t().tavern.columns.status }}</th>
+                    <th scope="col">{{ t().tavern.columns.place }}</th>
+                    <th scope="col">{{ t().tavern.columns.players }}</th>
+                    <th scope="col">{{ t().tavern.columns.visibility }}</th>
                     <th scope="col" class="table__actions">
-                      <span class="dg-visually-hidden">Actions</span>
+                      <span class="dg-visually-hidden">{{ t().tavern.columns.actions }}</span>
                     </th>
                   </tr>
                 </thead>
@@ -83,7 +83,7 @@ type Board =
                       <td>
                         <a [routerLink]="['/tavern/adventures', quest.id]">{{ quest.name }}</a>
                         @if (quest.masterVacant) {
-                          <span class="muted"> · MJ recherché</span>
+                          <span class="muted">{{ t().tavern.board.masterWanted }}</span>
                         }
                       </td>
                       <td>{{ statusLabel(quest.status) }}</td>
@@ -92,7 +92,7 @@ type Board =
                       <td>{{ visibilityLabel(quest.visibility) }}</td>
                       <td class="table__actions">
                         <dg-button [loading]="joining() === quest.id" (click)="join(quest.id!)">
-                          Rejoindre
+                          {{ t().tavern.board.join }}
                         </dg-button>
                       </td>
                     </tr>
@@ -106,7 +106,7 @@ type Board =
                 <li>
                   <dg-adventure-card [adventure]="quest">
                     <dg-button [loading]="joining() === quest.id" (click)="join(quest.id!)">
-                      Rejoindre
+                      {{ t().tavern.board.join }}
                     </dg-button>
                   </dg-adventure-card>
                 </li>
@@ -119,12 +119,12 @@ type Board =
             (pageChange)="page.set($event)"
           />
         } @else {
-          <p>Aucune aventure ne t’attend pour le moment. Crée la tienne !</p>
+          <p>{{ t().tavern.board.empty }}</p>
         }
       } @else if (current.state === 'failed') {
         <div class="state">
           <dg-load-error
-            message="Impossible de charger les aventures."
+            [message]="t().tavern.board.loadError"
             [problem]="current.problem"
             (retry)="reload()"
           />
@@ -132,8 +132,8 @@ type Board =
       } @else {
         <div class="state">
           <dg-loading
-            label="Chargement des aventures"
-            message="Le tavernier épingle les avis de quête…"
+            [label]="t().tavern.board.loading"
+            [message]="t().tavern.board.loadingFlavour"
           />
         </div>
       }
@@ -141,6 +141,8 @@ type Board =
   `,
 })
 export class QuestBoardPage {
+  protected readonly t = inject(I18n).t;
+
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   private readonly router = inject(Router);
@@ -174,11 +176,11 @@ export class QuestBoardPage {
   }
 
   protected statusLabel(status: string | undefined): string {
-    return STATUS_LABEL[status as Status] ?? '';
+    return this.t().tavern.status[status ?? ''] ?? '';
   }
 
   protected visibilityLabel(visibility: string | undefined): string {
-    return VISIBILITY_LABEL[visibility as Visibility] ?? '';
+    return this.t().tavern.visibility[visibility ?? ''] ?? '';
   }
 
   protected createAdventure(): void {
@@ -200,7 +202,7 @@ export class QuestBoardPage {
         },
         error: (error: unknown) => {
           this.joining.set(null);
-          this.notifier.error(toApiProblem(error), 'Rejoindre l’aventure');
+          this.notifier.error(toApiProblem(error), this.t().tavern.board.joining);
           // It may have started or filled up meanwhile: show the board as it is now.
           this.reload();
         },

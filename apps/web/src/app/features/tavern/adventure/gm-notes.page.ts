@@ -41,9 +41,9 @@ import { NOTES_PAGE_SIZE, NotesPage } from './notes-page';
   `,
   template: `
     <div class="head">
-      <h1>Notes du MJ</h1>
+      <h1>{{ t().tavern.gmNotes.title }}</h1>
       @if (canWrite() && !creating()) {
-        <dg-button (click)="creating.set(true)">Ajouter une note</dg-button>
+        <dg-button (click)="creating.set(true)">{{ t().tavern.notes.add }}</dg-button>
       }
     </div>
     @if (creating()) {
@@ -74,13 +74,15 @@ import { NOTES_PAGE_SIZE, NotesPage } from './notes-page';
             (pageChange)="load($event, true)"
           />
         } @else {
-          <div class="state"><p>Aucune note du MJ pour le moment.</p></div>
+          <div class="state">
+            <p>{{ t().tavern.gmNotes.empty }}</p>
+          </div>
         }
       }
       @case ('failed') {
         <div class="state">
           <dg-load-error
-            message="Impossible de charger les notes du MJ."
+            [message]="t().tavern.gmNotes.loadError"
             [problem]="loadProblem()"
             (retry)="load(0, false)"
           />
@@ -89,8 +91,8 @@ import { NOTES_PAGE_SIZE, NotesPage } from './notes-page';
       @default {
         <div class="state">
           <dg-loading
-            label="Chargement des notes du MJ"
-            message="Le MJ fouille derrière son écran…"
+            [label]="t().tavern.gmNotes.loading"
+            [message]="t().tavern.gmNotes.loadingFlavour"
           />
         </div>
       }
@@ -102,7 +104,9 @@ export class GmNotesPage extends NotesPage {
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
 
   protected readonly canWrite = this.context.isMaster;
-  protected readonly deleteTitle = 'Supprimer la note du MJ';
+  protected get deleteTitle(): string {
+    return this.t().tavern.gmNotes.deleteTitle;
+  }
 
   protected fetch(adventureId: string, page: number) {
     return getAdventureNotesByAdventureId(this.http, this.rootUrl, {

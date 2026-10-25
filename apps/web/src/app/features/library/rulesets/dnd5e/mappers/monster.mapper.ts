@@ -1,5 +1,5 @@
 import { DetailBlock, EntryDetail, EntrySummary } from '../../ruleset.model';
-import { ApiRef, capitalize, joinNames, signed } from './common';
+import { ApiRef, capitalize, EntryTexts, joinNames, signed, SOURCE_TEXTS } from './common';
 
 export interface GqlMonster {
   index: string;
@@ -78,7 +78,7 @@ function modifier(score: number): string {
   return signed(Math.floor((score - 10) / 2));
 }
 
-function armorClass(monster: ApiMonster): string {
+function armorClass(monster: ApiMonster, t: EntryTexts): string {
   return monster.armor_class
     .map((ac) => {
       const armors = (ac.armor ?? []).map((armor) => armor.name.toLowerCase());
@@ -86,7 +86,7 @@ function armorClass(monster: ApiMonster): string {
       if (source === undefined) {
         return String(ac.value);
       }
-      return `${ac.value} (${source === 'natural' ? 'natural armor' : source})`;
+      return `${ac.value} (${source === 'natural' ? t.naturalArmor : source})`;
     })
     .join(', ');
 }
@@ -97,21 +97,20 @@ function entries(title: string, list: ApiMonsterAction[] | undefined): DetailBlo
     : [];
 }
 
-function xp(monster: ApiMonster): string {
-  return monster.xp_in_lair
-    ? `${monster.xp} XP, or ${monster.xp_in_lair} XP in lair`
-    : `${monster.xp} XP`;
+function xp(monster: ApiMonster, t: EntryTexts): string {
+  return monster.xp_in_lair ? t.xpInLair(monster.xp, monster.xp_in_lair) : t.xp(monster.xp);
 }
 
-export function mapMonster(monster: ApiMonster): EntryDetail {
-  const abilities: [string, number][] = [
-    ['STR', monster.strength],
-    ['DEX', monster.dexterity],
-    ['CON', monster.constitution],
-    ['INT', monster.intelligence],
-    ['WIS', monster.wisdom],
-    ['CHA', monster.charisma],
+export function mapMonster(monster: ApiMonster, t: EntryTexts = SOURCE_TEXTS): EntryDetail {
+  const scores = [
+    monster.strength,
+    monster.dexterity,
+    monster.constitution,
+    monster.intelligence,
+    monster.wisdom,
+    monster.charisma,
   ];
+  const abilities = scores.map((score, i): [string, number] => [t.abilityNames[i], score]);
   const speeds = Object.entries(monster.speed)
     .filter(([, value]) => value !== false)
     .map(([mode, value]) => {
@@ -124,10 +123,10 @@ export function mapMonster(monster: ApiMonster): EntryDetail {
     ([sense, value]) => `${capitalize(sense.replace('_', ' '))} ${value}`,
   );
   const defenses = [
-    { label: 'Damage vulnerabilities', value: monster.damage_vulnerabilities.join(', ') },
-    { label: 'Damage resistances', value: monster.damage_resistances.join(', ') },
-    { label: 'Damage immunities', value: monster.damage_immunities.join(', ') },
-    { label: 'Condition immunities', value: joinNames(monster.condition_immunities, '') },
+    { label: t.damageVulnerabilities, value: monster.damage_vulnerabilities.join(', ') },
+    { label: t.damageResistances, value: monster.damage_resistances.join(', ') },
+    { label: t.damageImmunities, value: monster.damage_immunities.join(', ') },
+    { label: t.conditionImmunities, value: joinNames(monster.condition_immunities, '') },
   ].filter((item) => item.value !== '');
   const kind = monster.subtype ? `${monster.type} (${monster.subtype})` : monster.type;
 
@@ -140,14 +139,14 @@ export function mapMonster(monster: ApiMonster): EntryDetail {
       {
         kind: 'stats',
         items: [
-          { label: 'Armor Class', value: armorClass(monster) },
-          { label: 'Hit Points', value: `${monster.hit_points} (${monster.hit_dice})` },
-          { label: 'Speed', value: speeds.join(', ') },
+          { label: t.armorClass, value: armorClass(monster, t) },
+          { label: t.hitPoints, value: `${monster.hit_points} (${monster.hit_dice})` },
+          { label: t.speed, value: speeds.join(', ') },
         ],
       },
       {
         kind: 'stats',
-        title: 'Abilities',
+        title: t.abilities,
         items: abilities.map(([label, score]) => ({
           label,
           value: `${score} (${modifier(score)})`,
@@ -157,19 +156,19 @@ export function mapMonster(monster: ApiMonster): EntryDetail {
         kind: 'stats',
         items: [
           ...defenses,
-          { label: 'Senses', value: senses.join(', ') },
-          { label: 'Languages', value: monster.languages || '—' },
+          { label: t.senses, value: senses.join(', ') },
+          { label: t.languages, value: monster.languages || '—' },
           {
-            label: 'Challenge',
-            value: `${formatChallenge(monster.challenge_rating)} (${xp(monster)})`,
+            label: t.challenge,
+            value: `${formatChallenge(monster.challenge_rating)} (${xp(monster, t)})`,
           },
         ],
       },
-      ...entries('Special abilities', monster.special_abilities),
-      ...entries('Actions', monster.actions),
-      ...entries('Bonus actions', monster.bonus_actions),
-      ...entries('Reactions', monster.reactions),
-      ...entries('Legendary actions', monster.legendary_actions),
+      ...entries(t.specialAbilities, monster.special_abilities),
+      ...entries(t.actions, monster.actions),
+      ...entries(t.bonusActions, monster.bonus_actions),
+      ...entries(t.reactions, monster.reactions),
+      ...entries(t.legendaryActions, monster.legendary_actions),
     ],
   };
 }

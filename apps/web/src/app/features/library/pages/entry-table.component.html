@@ -1,10 +1,10 @@
 <div class="table__toolbar">
   <label class="table__search">
-    <span class="dg-visually-hidden">Rechercher</span>
+    <span class="dg-visually-hidden">{{ t().library.list.search }}</span>
     <input
       #searchField
       type="search"
-      placeholder="Rechercher un nom…"
+      [placeholder]="t().library.list.searchPlaceholder"
       [value]="search()"
       (input)="searchFor(searchField.value)"
     />
@@ -13,7 +13,7 @@
     #panelToggle
     class="table__filters-toggle"
     icon="filter"
-    label="Filtres"
+    [label]="t().library.list.filters"
     [badge]="tickedCount() || null"
     [expanded]="panelOpen()"
     [controls]="panelId"
@@ -22,9 +22,9 @@
 </div>
 
 @if (shown().length === 0) {
-  <p class="table__empty">Aucune entrée ne correspond.</p>
+  <p class="table__empty">{{ t().library.list.noMatch }}</p>
 } @else {
-  <p class="table__count">{{ shown().length }} {{ shown().length > 1 ? 'entrées' : 'entrée' }}</p>
+  <p class="table__count">{{ t().library.list.count(shown().length) }}</p>
   <div class="table__scroll">
     <table class="table">
       <thead>
@@ -52,7 +52,9 @@
           }
           @if (rowActions()) {
             <th scope="col" class="table__actions">
-              <span class="dg-visually-hidden">{{ actionsLabel() }}</span>
+              <span class="dg-visually-hidden">{{
+                actionsLabel() ?? t().library.list.actions
+              }}</span>
             </th>
           }
         </tr>

@@ -1,7 +1,8 @@
 import { CdkTrapFocus } from '@angular/cdk/a11y';
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { IconButton } from '../../../shared/ui/icon-button/icon-button';
 import { ColumnDef, FilterDef } from '../rulesets/ruleset.model';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 export interface FilterOption {
   value: string;
@@ -23,6 +24,8 @@ export const PAGE_SIZES = [25, 50, 100];
   styleUrl: './filter-panel.component.scss',
 })
 export class FilterPanel {
+  protected readonly t = inject(I18n).t;
+
   readonly panelId = input.required<string>();
   readonly open = input.required<boolean>();
   readonly filters = input.required<FilterDef[]>();

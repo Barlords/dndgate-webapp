@@ -1,5 +1,5 @@
 import { DetailBlock, EntryDetail } from '../../../ruleset.model';
-import { ApiRef, names } from '../common';
+import { ApiRef, EntryTexts, names, SOURCE_TEXTS } from '../common';
 
 export interface ApiMagicItem {
   index: string;
@@ -13,29 +13,30 @@ export interface ApiMagicItem {
   desc: string[];
 }
 
-export function mapMagicItem(item: ApiMagicItem): EntryDetail {
+export function mapMagicItem(item: ApiMagicItem, t: EntryTexts = SOURCE_TEXTS): EntryDetail {
   const category = item.equipment_category.name;
-  const limit = item['limited-to'];
-  const attunement = item.attunement ? `Required${limit ? ` (${limit})` : ''}` : 'Not required';
+  const attunement = item.attunement
+    ? t.attunementRequired(item['limited-to'])
+    : t.attunementNotRequired;
   const blocks: DetailBlock[] = [
     {
       kind: 'stats',
       items: [
-        { label: 'Category', value: category },
-        { label: 'Rarity', value: item.rarity.name },
-        { label: 'Attunement', value: attunement },
+        { label: t.category, value: category },
+        { label: t.rarity, value: item.rarity.name },
+        { label: t.attunement, value: attunement },
       ],
     },
     { kind: 'text', paragraphs: item.desc },
   ];
   if (item.variants && item.variants.length > 0) {
-    blocks.push({ kind: 'text', title: 'Variants', paragraphs: names(item.variants) });
+    blocks.push({ kind: 'text', title: t.variants, paragraphs: names(item.variants) });
   }
   return {
     index: item.index,
     name: item.name,
     subtitle: `${category}, ${item.rarity.name}`,
-    tags: item.attunement ? ['Requires attunement'] : [],
+    tags: item.attunement ? [t.requiresAttunement] : [],
     blocks,
   };
 }

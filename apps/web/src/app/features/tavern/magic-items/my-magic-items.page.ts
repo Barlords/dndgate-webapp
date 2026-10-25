@@ -13,7 +13,7 @@ import { Parchment } from '../../../shared/ui/parchment/parchment';
 import { ViewMode } from '../../../shared/ui/view-toggle/view-toggle';
 import { LOADING, LoadState, loadWithRetry } from '../../library/pages/load-state';
 import { ListHeader } from '../list-header';
-import { rarityLabel, typeLabel } from './magic-item-labels';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 const EXCERPT_LENGTH = 140;
 
@@ -102,9 +102,9 @@ const EXCERPT_LENGTH = 140;
   template: `
     <dg-parchment>
       <dg-list-header
-        heading="Mes objets magiques"
+        [heading]="t().tavern.magicItems.title"
         storageKey="dg.tavern.magic-items.view"
-        createLabel="Créer un objet magique"
+        [createLabel]="t().tavern.magicItems.create"
         [(mode)]="view"
         (create)="create()"
       />
@@ -115,10 +115,10 @@ const EXCERPT_LENGTH = 140;
               <table class="table">
                 <thead>
                   <tr>
-                    <th scope="col">Nom</th>
-                    <th scope="col">Type</th>
-                    <th scope="col">Rareté</th>
-                    <th scope="col">Harmonisation</th>
+                    <th scope="col">{{ t().tavern.magicItems.name }}</th>
+                    <th scope="col">{{ t().tavern.magicItems.type }}</th>
+                    <th scope="col">{{ t().tavern.magicItems.rarity }}</th>
+                    <th scope="col">{{ t().tavern.magicItems.attunement }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -129,7 +129,11 @@ const EXCERPT_LENGTH = 140;
                       </td>
                       <td>{{ type(item) }}</td>
                       <td>{{ rarity(item) }}</td>
-                      <td>{{ item.requiresAttunement ? 'Requise' : '—' }}</td>
+                      <td>
+                        {{
+                          item.requiresAttunement ? t().tavern.magicItems.attunementRequired : '—'
+                        }}
+                      </td>
                     </tr>
                   }
                 </tbody>
@@ -145,7 +149,9 @@ const EXCERPT_LENGTH = 140;
                         rarity(item)
                       }}</span>
                       @if (item.requiresAttunement) {
-                        <span class="seal seal--attunement">Harmonisation</span>
+                        <span class="seal seal--attunement">{{
+                          t().tavern.magicItems.attunement
+                        }}</span>
                       }
                     </div>
                     <a class="item__name" [routerLink]="['/tavern/magic-items', item.id]">{{
@@ -159,25 +165,30 @@ const EXCERPT_LENGTH = 140;
             </ul>
           }
         } @else {
-          <p>Tu n’as pas encore d’objet magique.</p>
+          <p>{{ t().tavern.magicItems.empty }}</p>
         }
       } @else if (loaded().failed) {
         <div class="state">
           <dg-load-error
-            message="Impossible de charger tes objets magiques."
+            [message]="t().tavern.magicItems.loadError"
             [problem]="problem()"
             (retry)="retries.next()"
           />
         </div>
       } @else {
         <div class="state">
-          <dg-loading label="Chargement des objets magiques" message="Inventaire du coffre…" />
+          <dg-loading
+            [label]="t().tavern.magicItems.loading"
+            [message]="t().tavern.magicItems.loadingFlavour"
+          />
         </div>
       }
     </dg-parchment>
   `,
 })
 export class MyMagicItemsPage {
+  protected readonly t = inject(I18n).t;
+
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   private readonly router = inject(Router);
@@ -198,11 +209,11 @@ export class MyMagicItemsPage {
   }
 
   protected type(item: MagicItemDto): string {
-    return typeLabel(item.type);
+    return this.t().tavern.magicItems.types[item.type ?? ''] ?? '';
   }
 
   protected rarity(item: MagicItemDto): string {
-    return rarityLabel(item.rarity);
+    return this.t().tavern.magicItems.rarities[item.rarity ?? ''] ?? '';
   }
 
   protected excerpt(item: MagicItemDto): string {

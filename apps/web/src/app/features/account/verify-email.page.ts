@@ -18,6 +18,7 @@ import { Button } from '../../shared/ui/button/button';
 import { FormField } from '../../shared/ui/form-field/form-field';
 import { Loading } from '../../shared/ui/loading/loading';
 import { AccountLayout } from './account-layout';
+import { I18n } from '../../core/i18n/i18n.service';
 
 type State = 'checking' | 'done' | 'invalid' | 'taken' | 'failed';
 
@@ -26,39 +27,45 @@ type State = 'checking' | 'done' | 'invalid' | 'taken' | 'failed';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReactiveFormsModule, RouterLink, AccountLayout, FormField, Button, Loading],
   template: `
-    <dg-account-layout heading="Validation du compte">
+    <dg-account-layout [heading]="t().account.verify.title">
       @switch (state()) {
         @case ('checking') {
           <div class="dg-account__actions">
-            <dg-loading label="Validation en cours" message="Le scribe vérifie le sceau…" />
+            <dg-loading
+              [label]="t().account.verify.checking"
+              [message]="t().account.verify.checkingFlavour"
+            />
           </div>
         }
         @case ('done') {
-          <p role="status">Ton compte est validé.</p>
-          <div class="dg-account__actions"><a routerLink="/login">Se connecter</a></div>
+          <p role="status">{{ t().account.verify.done }}</p>
+          <div class="dg-account__actions">
+            <a routerLink="/login">{{ t().account.signup.signIn }}</a>
+          </div>
         }
         @case ('taken') {
-          <p role="alert">Ce pseudo a été pris entre-temps : inscris-toi avec un autre.</p>
-          <div class="dg-account__actions"><a routerLink="/signup">S'inscrire</a></div>
+          <p role="alert">{{ t().account.verify.taken }}</p>
+          <div class="dg-account__actions">
+            <a routerLink="/signup">{{ t().account.verify.signup }}</a>
+          </div>
         }
         @case ('failed') {
-          <p role="alert">La validation n'a pas pu aboutir pour le moment. Réessaie plus tard.</p>
+          <p role="alert">{{ t().account.verify.failed }}</p>
         }
         @default {
-          <p role="alert">Ce lien n'est plus valable.</p>
+          <p role="alert">{{ t().account.verify.expired }}</p>
           @if (resent()) {
             <p role="status">
-              Si une inscription est en attente pour cette adresse, un nouvel e-mail vient de
-              partir.
+              {{ t().account.verify.resent }}
             </p>
           }
           <form [formGroup]="resendForm" (ngSubmit)="resend()" novalidate>
-            <dg-form-field label="Adresse e-mail" [control]="resendForm.controls.email">
+            <dg-form-field [label]="t().account.fields.email" [control]="resendForm.controls.email">
               <input formControlName="email" type="email" autocomplete="email" />
             </dg-form-field>
             <div class="dg-account__actions">
               <dg-button type="submit" variant="ghost" [loading]="resending()">
-                Renvoyer l'e-mail
+                {{ t().account.signup.resend }}
               </dg-button>
             </div>
           </form>
@@ -68,6 +75,8 @@ type State = 'checking' | 'done' | 'invalid' | 'taken' | 'failed';
   `,
 })
 export class VerifyEmailPage implements OnInit {
+  protected readonly t = inject(I18n).t;
+
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   private readonly route = inject(ActivatedRoute);
@@ -107,7 +116,7 @@ export class VerifyEmailPage implements OnInit {
             this.state.set('taken');
           } else {
             this.state.set('failed');
-            this.notifier.error(problem, 'Validation du compte');
+            this.notifier.error(problem, this.t().account.verify.context);
           }
         },
       });
@@ -129,7 +138,7 @@ export class VerifyEmailPage implements OnInit {
         },
         error: (error: unknown) => {
           this.resending.set(false);
-          this.notifier.error(toApiProblem(error), 'Renvoi de l’e-mail');
+          this.notifier.error(toApiProblem(error), this.t().account.signup.resending);
         },
       });
   }

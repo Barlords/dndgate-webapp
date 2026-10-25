@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
 import { Icon } from '../icon/icon';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 /**
  * Previous / next pager over a list paged by the API. `page` counts from 0 like the API; the page
@@ -11,23 +12,23 @@ import { Icon } from '../icon/icon';
   imports: [Icon],
   template: `
     @if (totalPages() > 1) {
-      <nav class="dg-paginator" aria-label="Pagination">
+      <nav class="dg-paginator" [attr.aria-label]="t().common.paginator.label">
         <button
           type="button"
           class="dg-paginator__step"
-          aria-label="Page précédente"
+          [attr.aria-label]="t().common.paginator.previous"
           [disabled]="page() <= 0"
           (click)="pageChange.emit(page() - 1)"
         >
           <dg-icon name="chevron-left" />
         </button>
         <span class="dg-paginator__current" aria-current="page">
-          Page {{ page() + 1 }} sur {{ totalPages() }}
+          {{ t().common.paginator.current(page() + 1, totalPages()) }}
         </span>
         <button
           type="button"
           class="dg-paginator__step"
-          aria-label="Page suivante"
+          [attr.aria-label]="t().common.paginator.next"
           [disabled]="page() >= totalPages() - 1"
           (click)="pageChange.emit(page() + 1)"
         >
@@ -99,6 +100,8 @@ import { Icon } from '../icon/icon';
   `,
 })
 export class Paginator {
+  protected readonly t = inject(I18n).t;
+
   readonly page = input.required<number>();
   readonly totalPages = input.required<number>();
   readonly pageChange = output<number>();

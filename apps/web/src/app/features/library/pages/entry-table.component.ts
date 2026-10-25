@@ -24,6 +24,7 @@ import {
   Ruleset,
   RulesetSection,
 } from '../rulesets/ruleset.model';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 const COLLATOR = new Intl.Collator('fr', { numeric: true, sensitivity: 'base' });
 let nextId = 0;
@@ -37,12 +38,13 @@ function value(entry: EntrySummary, key: string): FieldValue | undefined {
   return key === 'name' ? entry.name : entry.fields[key];
 }
 
-function display(field: FieldValue | undefined): string {
+/** A field as the reader reads it; `yesNo` writes a boolean in their language. */
+function display(field: FieldValue | undefined, yesNo: { yes: string; no: string }): string {
   if (field == null) {
     return '';
   }
   if (typeof field === 'boolean') {
-    return field ? 'Oui' : 'Non';
+    return field ? yesNo.yes : yesNo.no;
   }
   return Array.isArray(field) ? field.join(', ') : String(field);
 }
@@ -51,15 +53,21 @@ function matches(field: FieldValue | undefined, option: string): boolean {
   return Array.isArray(field) ? field.includes(option) : String(field) === option;
 }
 
-/** Numbers by value, anything else by text; an entry without the field comes last. */
+/** Numbers and booleans by value, anything else by text; an entry without the field comes last. */
 function compare(a: FieldValue | undefined, b: FieldValue | undefined): number {
   if (a === undefined || b === undefined) {
     return a === b ? 0 : a === undefined ? 1 : -1;
   }
+  if (typeof a === 'boolean' && typeof b === 'boolean') {
+    return Number(a) - Number(b);
+  }
   return typeof a === 'number' && typeof b === 'number'
     ? a - b
-    : COLLATOR.compare(display(a), display(b));
+    : COLLATOR.compare(display(a, YES_NO), display(b, YES_NO));
 }
+
+/** Booleans are compared by value: these words are never shown. */
+const YES_NO = { yes: 'true', no: 'false' };
 
 /**
  * The entries of a section as a table: search by name, sort by the sortable columns and
@@ -79,6 +87,8 @@ function compare(a: FieldValue | undefined, b: FieldValue | undefined): number {
   host: { '(document:keydown.escape)': 'closePanel()' },
 })
 export class EntryTable {
+  protected readonly t = inject(I18n).t;
+
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly storage = inject(SafeStorage);
@@ -88,7 +98,7 @@ export class EntryTable {
   readonly entries = input.required<EntrySummary[]>();
   readonly rowActions = input<TemplateRef<{ $implicit: EntrySummary }> | null>(null);
   /** Read to assistive technologies as the heading of the actions column. */
-  readonly actionsLabel = input('Actions');
+  readonly actionsLabel = input<string | null>(null);
 
   protected readonly panelId = `dg-entry-filters-${nextId++}`;
   /** Closed again when the table shows another section (the page is kept between sections). */
@@ -189,7 +199,9 @@ export class EntryTable {
 
   protected cell(entry: EntrySummary, column: ColumnDef): string {
     const shown = value(entry, column.key);
-    return shown != null && column.format ? column.format(shown) : display(shown);
+    return shown != null && column.format
+      ? column.format(shown)
+      : display(shown, this.t().common.actions);
   }
 
   protected ariaSort(column: ColumnDef): string | null {

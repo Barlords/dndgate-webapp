@@ -16,6 +16,7 @@ import { toApiProblem } from '../../core/errors/api-problem';
 import { NotifierService } from '../../core/errors/notifier.service';
 import { Loading } from '../../shared/ui/loading/loading';
 import { AccountLayout } from './account-layout';
+import { I18n } from '../../core/i18n/i18n.service';
 
 type State = 'checking' | 'done' | 'invalid' | 'taken' | 'failed';
 
@@ -24,32 +25,35 @@ type State = 'checking' | 'done' | 'invalid' | 'taken' | 'failed';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, AccountLayout, Loading],
   template: `
-    <dg-account-layout heading="Changement d'adresse">
+    <dg-account-layout [heading]="t().account.confirmEmail.title">
       @switch (state()) {
         @case ('checking') {
           <div class="dg-account__actions">
-            <dg-loading label="Confirmation en cours" message="Le scribe met à jour le registre…" />
+            <dg-loading
+              [label]="t().account.confirmEmail.checking"
+              [message]="t().account.confirmEmail.checkingFlavour"
+            />
           </div>
         }
         @case ('done') {
-          <p role="status">Ta nouvelle adresse est confirmée.</p>
+          <p role="status">{{ t().account.confirmEmail.done }}</p>
         }
         @case ('taken') {
-          <p role="alert">Cette adresse est déjà utilisée par un autre compte.</p>
+          <p role="alert">{{ t().account.confirmEmail.taken }}</p>
         }
         @case ('failed') {
-          <p role="alert">La confirmation n'a pas pu aboutir pour le moment. Réessaie plus tard.</p>
+          <p role="alert">{{ t().account.confirmEmail.failed }}</p>
         }
         @default {
-          <p role="alert">Ce lien n'est plus valable.</p>
+          <p role="alert">{{ t().account.confirmEmail.expired }}</p>
         }
       }
       @if (state() !== 'checking') {
         <div class="dg-account__actions">
           @if (auth.isAuthenticated()) {
-            <a routerLink="/account">Retour à mon compte</a>
+            <a routerLink="/account">{{ t().account.confirmEmail.backToAccount }}</a>
           } @else {
-            <a routerLink="/login">Se connecter</a>
+            <a routerLink="/login">{{ t().account.signup.signIn }}</a>
           }
         </div>
       }
@@ -57,6 +61,8 @@ type State = 'checking' | 'done' | 'invalid' | 'taken' | 'failed';
   `,
 })
 export class ConfirmEmailPage implements OnInit {
+  protected readonly t = inject(I18n).t;
+
   protected readonly auth = inject(AuthService);
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
@@ -95,7 +101,7 @@ export class ConfirmEmailPage implements OnInit {
             this.state.set('taken');
           } else {
             this.state.set('failed');
-            this.notifier.error(problem, 'Confirmation de l’adresse');
+            this.notifier.error(problem, this.t().account.confirmEmail.context);
           }
         },
       });

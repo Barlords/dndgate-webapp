@@ -1,5 +1,14 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { Icon } from '../icon/icon';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 const STARS = [1, 2, 3, 4, 5] as const;
 
@@ -13,7 +22,7 @@ const STARS = [1, 2, 3, 4, 5] as const;
   imports: [Icon],
   template: `
     @if (readonly()) {
-      <span class="dg-star-rating" role="img" [attr.aria-label]="'Note : ' + shown() + ' sur 5'">
+      <span class="dg-star-rating" role="img" [attr.aria-label]="t().common.rating.value(shown())">
         @for (star of stars; track star) {
           <span class="dg-star" [class.dg-star--on]="star <= shown()">
             <dg-icon name="star" [filled]="star <= shown()" />
@@ -24,7 +33,7 @@ const STARS = [1, 2, 3, 4, 5] as const;
       <span
         class="dg-star-rating dg-star-rating--editable"
         role="radiogroup"
-        aria-label="Note"
+        [attr.aria-label]="t().common.rating.label"
         (mouseleave)="hovered.set(null)"
       >
         @for (star of stars; track star) {
@@ -34,7 +43,7 @@ const STARS = [1, 2, 3, 4, 5] as const;
             class="dg-star"
             [class.dg-star--on]="star <= shown()"
             [attr.aria-checked]="star === rounded()"
-            [attr.aria-label]="star + ' sur 5'"
+            [attr.aria-label]="t().common.rating.outOfFive(star)"
             (mouseenter)="hovered.set(star)"
             (click)="choose(star)"
           >
@@ -86,6 +95,8 @@ const STARS = [1, 2, 3, 4, 5] as const;
   `,
 })
 export class StarRating {
+  protected readonly t = inject(I18n).t;
+
   readonly value = input<number | null>(null);
   readonly readonly = input(false);
   readonly valueChange = output<number>();

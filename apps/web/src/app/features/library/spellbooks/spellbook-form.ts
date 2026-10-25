@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, OnInit, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, OnInit, output } from '@angular/core';
 import {
   AbstractControl,
   FormControl,
@@ -11,6 +11,7 @@ import { ApiProblem } from '../../../core/errors/api-problem';
 import { applyFieldErrors } from '../../../core/errors/form-errors';
 import { Button } from '../../../shared/ui/button/button';
 import { FormField } from '../../../shared/ui/form-field/form-field';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 export const NAME_MAX = 255;
 export const DESCRIPTION_MAX = 5000;
@@ -57,14 +58,17 @@ function notBlank(control: AbstractControl): ValidationErrors | null {
   `,
   template: `
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-      <dg-form-field label="Nom" [control]="form.controls.name">
+      <dg-form-field [label]="t().library.spellbooks.name" [control]="form.controls.name">
         <input formControlName="name" type="text" />
       </dg-form-field>
-      <dg-form-field label="Description" [control]="form.controls.description">
+      <dg-form-field
+        [label]="t().library.spellbooks.description"
+        [control]="form.controls.description"
+      >
         <textarea formControlName="description" rows="4"></textarea>
       </dg-form-field>
       @if (rulesets().length > 0) {
-        <dg-form-field label="Jeu de règles" [control]="form.controls.ruleset">
+        <dg-form-field [label]="t().library.spellbooks.ruleset" [control]="form.controls.ruleset">
           <select formControlName="ruleset">
             @for (choice of rulesets(); track choice.id) {
               <option [value]="choice.id">{{ choice.label }}</option>
@@ -73,17 +77,23 @@ function notBlank(control: AbstractControl): ValidationErrors | null {
         </dg-form-field>
       }
       <div class="form__actions">
-        <dg-button type="submit" [loading]="busy()">{{ submitLabel() }}</dg-button>
-        <dg-button variant="ghost" (click)="cancelled.emit()">Annuler</dg-button>
+        <dg-button type="submit" [loading]="busy()">{{
+          submitLabel() ?? t().common.actions.create
+        }}</dg-button>
+        <dg-button variant="ghost" (click)="cancelled.emit()">{{
+          t().common.actions.cancel
+        }}</dg-button>
       </div>
     </form>
   `,
 })
 export class SpellBookForm implements OnInit {
+  protected readonly t = inject(I18n).t;
+
   /** The rulesets to choose from when creating; empty when editing (the ruleset is fixed). */
   readonly rulesets = input<RulesetChoice[]>([]);
   readonly initial = input<SpellBookValue>({ name: '', description: '', ruleset: '' });
-  readonly submitLabel = input('Créer');
+  readonly submitLabel = input<string | null>(null);
   readonly busy = input(false);
   readonly saved = output<SpellBookValue>();
   readonly cancelled = output<void>();

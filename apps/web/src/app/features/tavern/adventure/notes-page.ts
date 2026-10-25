@@ -16,6 +16,7 @@ import { ConfirmService } from '../../../shared/ui/confirm-dialog/confirm.servic
 import { AdventureContext } from './adventure-context.service';
 import { NoteEditor, NoteValue } from './note-editor';
 import { NoteView } from './note-timeline';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 export const NOTES_PAGE_SIZE = 20;
 
@@ -33,6 +34,7 @@ type LoadState = 'loading' | 'ready' | 'failed';
  */
 @Directive()
 export abstract class NotesPage {
+  protected readonly t = inject(I18n).t;
   protected readonly context = inject(AdventureContext);
   private readonly confirmer = inject(ConfirmService);
   private readonly notifier = inject(NotifierService);
@@ -97,7 +99,7 @@ export abstract class NotesPage {
         },
         error: (error: unknown) => {
           if (quiet) {
-            this.notifier.error(toApiProblem(error), 'Chargement des notes');
+            this.notifier.error(toApiProblem(error), this.t().tavern.notes.loading);
           } else {
             this.loadProblem.set(toApiProblem(error));
             this.state.set('failed');
@@ -125,9 +127,9 @@ export abstract class NotesPage {
           this.saving.set(false);
           const problem = toApiProblem(error);
           if (problem.status === 409) {
-            this.creator()?.reject('Cette aventure a atteint la limite de 500 notes de ce type.');
+            this.creator()?.reject(this.t().tavern.notes.limitReached);
           } else {
-            this.notifier.error(problem, 'Ajout de la note');
+            this.notifier.error(problem, this.t().tavern.notes.adding);
           }
         },
       });
@@ -149,7 +151,7 @@ export abstract class NotesPage {
           if (problem.status === 409) {
             this.notifier.conflict(() => this.reload());
           } else {
-            this.notifier.error(problem, 'Modification de la note');
+            this.notifier.error(problem, this.t().tavern.notes.editing);
           }
         },
       });
@@ -159,8 +161,8 @@ export abstract class NotesPage {
     this.confirmer
       .confirm({
         title: this.deleteTitle,
-        message: 'Cette suppression est irréversible.',
-        confirmLabel: 'Supprimer',
+        message: this.t().tavern.notes.deleteMessage,
+        confirmLabel: this.t().common.actions.delete,
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((confirmed) => {
@@ -171,11 +173,11 @@ export abstract class NotesPage {
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({
             next: () => {
-              this.notifier.success('Note supprimée.');
+              this.notifier.success(this.t().tavern.notes.deleted);
               this.load(this.page(), true);
             },
             error: (error: unknown) =>
-              this.notifier.error(toApiProblem(error), 'Suppression de la note'),
+              this.notifier.error(toApiProblem(error), this.t().tavern.notes.deleting),
           });
       });
   }

@@ -1,4 +1,5 @@
-import { allowedTransitions, isClosed, STATUS_LABEL } from './adventure-status';
+import { fr } from '../../core/i18n/fr';
+import { allowedTransitions, isClosed } from './adventure-status';
 
 describe('adventure status', () => {
   it('allowed transitions follow the README state machine', () => {
@@ -16,7 +17,7 @@ describe('adventure status', () => {
   });
 
   it('labels every status in French', () => {
-    expect(STATUS_LABEL).toEqual({
+    expect(fr.tavern.status).toEqual({
       NOT_STARTED: 'Pas commencée',
       ONGOING: 'En cours',
       FINISH: 'Terminée',

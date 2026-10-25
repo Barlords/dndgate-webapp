@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { Icon } from '../../../../shared/ui/icon/icon';
 import { CharacterPictureDirective } from './character-picture.directive';
+import { I18n } from '../../../../core/i18n/i18n.service';
 
 /**
  * A character's portrait in a gilded frame. A parchment plate with a silhouette stands in while
@@ -66,7 +67,7 @@ import { CharacterPictureDirective } from './character-picture.directive';
         <img
           [dgCharacterPicture]="characterId()"
           #picture="dgCharacterPicture"
-          [alt]="'Portrait de ' + name()"
+          [alt]="t().tavern.portrait(name())"
           [class.hidden]="picture.status() !== 'ready'"
         />
         @if (picture.status() !== 'ready') {
@@ -77,6 +78,8 @@ import { CharacterPictureDirective } from './character-picture.directive';
   `,
 })
 export class CharacterPortrait {
+  protected readonly t = inject(I18n).t;
+
   readonly characterId = input.required<string>();
   readonly name = input('');
 }

@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
+import { I18n } from '../../../core/i18n/i18n.service';
 import { ApiProblem } from '../../../core/errors/api-problem';
 import { Button } from '../button/button';
 
@@ -14,10 +15,10 @@ import { Button } from '../button/button';
     <p role="alert">{{ message() }}</p>
     @if (problem()?.correlationId; as reference) {
       <p class="load-error__reference">
-        Référence : <code>{{ reference }}</code>
+        {{ t().common.errors.reference }} <code>{{ reference }}</code>
       </p>
     }
-    <dg-button variant="ghost" (click)="retry.emit()">Réessayer</dg-button>
+    <dg-button variant="ghost" (click)="retry.emit()">{{ t().common.actions.retry }}</dg-button>
   `,
   styles: `
     :host {
@@ -35,6 +36,8 @@ import { Button } from '../button/button';
   `,
 })
 export class LoadError {
+  protected readonly t = inject(I18n).t;
+
   readonly message = input.required<string>();
   readonly problem = input<ApiProblem | null>(null);
   readonly retry = output<void>();

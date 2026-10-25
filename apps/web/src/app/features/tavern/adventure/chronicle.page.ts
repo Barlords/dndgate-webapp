@@ -38,9 +38,9 @@ import { NOTES_PAGE_SIZE, NotesPage } from './notes-page';
   `,
   template: `
     <div class="head">
-      <h1>Chronique</h1>
+      <h1>{{ t().tavern.chronicle.title }}</h1>
       @if (canWrite() && !creating()) {
-        <dg-button (click)="creating.set(true)">Ajouter une note</dg-button>
+        <dg-button (click)="creating.set(true)">{{ t().tavern.notes.add }}</dg-button>
       }
     </div>
     @if (creating()) {
@@ -69,13 +69,15 @@ import { NOTES_PAGE_SIZE, NotesPage } from './notes-page';
             (pageChange)="load($event, true)"
           />
         } @else {
-          <div class="state"><p>La chronique est encore vierge.</p></div>
+          <div class="state">
+            <p>{{ t().tavern.chronicle.empty }}</p>
+          </div>
         }
       }
       @case ('failed') {
         <div class="state">
           <dg-load-error
-            message="Impossible de charger la chronique."
+            [message]="t().tavern.chronicle.loadError"
             [problem]="loadProblem()"
             (retry)="load(0, false)"
           />
@@ -84,8 +86,8 @@ import { NOTES_PAGE_SIZE, NotesPage } from './notes-page';
       @default {
         <div class="state">
           <dg-loading
-            label="Chargement de la chronique"
-            message="Le chroniqueur déroule ses parchemins…"
+            [label]="t().tavern.chronicle.loading"
+            [message]="t().tavern.chronicle.loadingFlavour"
           />
         </div>
       }
@@ -97,7 +99,9 @@ export class ChroniclePage extends NotesPage {
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
 
   protected readonly canWrite = this.context.isParticipant;
-  protected readonly deleteTitle = 'Supprimer la note de la chronique';
+  protected get deleteTitle(): string {
+    return this.t().tavern.chronicle.deleteTitle;
+  }
 
   protected fetch(adventureId: string, page: number) {
     return getHistoricalNotesByAdventureId(this.http, this.rootUrl, {

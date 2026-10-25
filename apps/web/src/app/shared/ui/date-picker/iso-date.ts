@@ -1,27 +1,40 @@
 /** Calendar dates as `YYYY-MM-DD` strings, handled in UTC so no timezone can shift a day. */
 const DAY_MS = 86_400_000;
 
-const LONG_FORMAT = new Intl.DateTimeFormat('fr-FR', {
+const LONG_FORMAT: Intl.DateTimeFormatOptions = {
   weekday: 'short',
   day: 'numeric',
   month: 'short',
   year: 'numeric',
   timeZone: 'UTC',
-});
+};
 
-const FULL_FORMAT = new Intl.DateTimeFormat('fr-FR', {
+const FULL_FORMAT: Intl.DateTimeFormatOptions = {
   weekday: 'long',
   day: 'numeric',
   month: 'long',
   year: 'numeric',
   timeZone: 'UTC',
-});
+};
 
-const MONTH_FORMAT = new Intl.DateTimeFormat('fr-FR', {
+const MONTH_FORMAT: Intl.DateTimeFormatOptions = {
   month: 'long',
   year: 'numeric',
   timeZone: 'UTC',
-});
+};
+
+/** One formatter per locale and format, made the first time it is needed. */
+const formatters = new Map<string, Intl.DateTimeFormat>();
+
+function formatter(locale: string, name: string, options: Intl.DateTimeFormatOptions) {
+  const key = `${locale}|${name}`;
+  let found = formatters.get(key);
+  if (!found) {
+    found = new Intl.DateTimeFormat(locale, options);
+    formatters.set(key, found);
+  }
+  return found;
+}
 
 function pad(value: number, width: number): string {
   return String(value).padStart(width, '0');
@@ -68,19 +81,19 @@ export function mondayIndex(iso: string): number {
   return (new Date(toTime(iso)).getUTCDay() + 6) % 7;
 }
 
-/** « sam. 14 nov. 2026 » */
-export function formatDate(iso: string): string {
-  return LONG_FORMAT.format(toTime(iso));
+/** « sam. 14 nov. 2026 » in `fr-FR`. */
+export function formatDate(iso: string, locale = 'fr-FR'): string {
+  return formatter(locale, 'long', LONG_FORMAT).format(toTime(iso));
 }
 
-/** « samedi 14 novembre 2026 » */
-export function formatDateLong(iso: string): string {
-  return FULL_FORMAT.format(toTime(iso));
+/** « samedi 14 novembre 2026 » in `fr-FR`. */
+export function formatDateLong(iso: string, locale = 'fr-FR'): string {
+  return formatter(locale, 'full', FULL_FORMAT).format(toTime(iso));
 }
 
-/** « novembre 2026 » */
-export function formatMonth(iso: string): string {
-  return MONTH_FORMAT.format(toTime(iso));
+/** « novembre 2026 » in `fr-FR`. */
+export function formatMonth(iso: string, locale = 'fr-FR'): string {
+  return formatter(locale, 'month', MONTH_FORMAT).format(toTime(iso));
 }
 
 export function compareIso(a: string, b: string): number {

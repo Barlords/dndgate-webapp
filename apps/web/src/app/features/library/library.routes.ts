@@ -5,6 +5,7 @@ import { CrumbLabel } from '../../layout/breadcrumb.service';
 import { LibraryShell } from './library-shell';
 import { RulesetRegistry } from './rulesets/ruleset-registry';
 import { SelectedRulesetService } from './rulesets/selected-ruleset.service';
+import { crumb } from '../../layout/breadcrumb.service';
 
 const notFound = () => import('../not-found.page').then((m) => m.NotFoundPage);
 
@@ -45,7 +46,7 @@ export const LIBRARY_ROUTES: Routes = [
       {
         path: 'grimoires',
         canActivate: [authGuard],
-        data: { breadcrumb: 'Mes grimoires' },
+        data: { breadcrumb: crumb((t) => t.library.spellbooks.title) },
         children: [
           {
             path: '',
@@ -56,7 +57,7 @@ export const LIBRARY_ROUTES: Routes = [
           {
             path: ':id',
             // Replaced by the book's name once it has loaded.
-            data: { breadcrumb: 'Grimoire' },
+            data: { breadcrumb: crumb((t) => t.library.spellbooks.crumb) },
             loadComponent: () =>
               import('./spellbooks/spellbook-detail.page').then((m) => m.SpellBookDetailPage),
           },

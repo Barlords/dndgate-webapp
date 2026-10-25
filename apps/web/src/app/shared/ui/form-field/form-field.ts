@@ -11,37 +11,39 @@ import {
   ViewEncapsulation,
 } from '@angular/core';
 import { AbstractControl, ValidationErrors } from '@angular/forms';
+import { Dictionary } from '../../../core/i18n/dictionary';
+import { I18n } from '../../../core/i18n/i18n.service';
 
 let nextId = 0;
 
-/** French message for one validation error; `server` carries the text the API gave. */
-function describe(key: string, error: unknown): string {
+/** The message of one validation error, in the reader's language; `server` carries the API's. */
+function describe(key: string, error: unknown, t: Dictionary['common']['validation']): string {
   const details = (error ?? {}) as Record<string, unknown>;
   switch (key) {
     case 'required':
-      return 'Ce champ est obligatoire.';
+      return t.required;
     case 'minlength':
-      return `Saisis au moins ${details['requiredLength']} caractères.`;
+      return t.minLength(Number(details['requiredLength']));
     case 'maxlength':
-      return `${details['requiredLength']} caractères au maximum.`;
+      return t.maxLength(Number(details['requiredLength']));
     case 'min':
-      return `Saisis un nombre supérieur ou égal à ${details['min']}.`;
+      return t.min(Number(details['min']));
     case 'max':
-      return `Saisis un nombre inférieur ou égal à ${details['max']}.`;
+      return t.max(Number(details['max']));
     case 'dateRange':
-      return 'La date doit être comprise entre 1900 et 2200.';
+      return t.dateRange;
     case 'maxbytes':
-      return `${details['max']} octets au maximum (les accents en comptent plusieurs).`;
+      return t.maxBytes(Number(details['max']));
     case 'mismatch':
-      return 'Les deux mots de passe ne correspondent pas.';
+      return t.mismatch;
     case 'pattern':
-      return 'Le format attendu n’est pas respecté.';
+      return t.pattern;
     case 'email':
-      return 'Cette adresse e-mail n’est pas valide.';
+      return t.email;
     case 'server':
-      return typeof error === 'string' ? error : 'Cette valeur n’est pas valide.';
+      return typeof error === 'string' ? error : t.invalid;
     default:
-      return 'Cette valeur n’est pas valide.';
+      return t.invalid;
   }
 }
 
@@ -70,6 +72,8 @@ function describe(key: string, error: unknown): string {
   styleUrl: './form-field.scss',
 })
 export class FormField {
+  private readonly t = inject(I18n).t;
+
   readonly label = input.required<string>();
   readonly control = input.required<AbstractControl>();
 
@@ -89,7 +93,7 @@ export class FormField {
     const local = control.touched || control.dirty;
     return Object.entries(errors)
       .filter(([key]) => local || key === 'server')
-      .map(([key, error]) => describe(key, error));
+      .map(([key, error]) => describe(key, error, this.t().common.validation));
   });
 
   constructor() {

@@ -27,12 +27,7 @@ import { LoadError } from '../../../shared/ui/load-error/load-error';
 import { Loading } from '../../../shared/ui/loading/loading';
 import { Parchment } from '../../../shared/ui/parchment/parchment';
 import { BLANK_MAGIC_ITEM, MagicItemForm, MagicItemValue } from './magic-item-form';
-
-const LIMIT_REACHED: ApiProblem = {
-  status: 409,
-  detail: 'tu as atteint la limite de 500 objets magiques.',
-  errors: [],
-};
+import { I18n } from '../../../core/i18n/i18n.service';
 
 type PageState = 'loading' | 'ready' | 'missing' | 'failed';
 
@@ -54,33 +49,39 @@ function toValue(item: MagicItemDto): MagicItemValue {
   styleUrl: '../tavern-page.scss',
   template: `
     <dg-parchment>
-      <h1>{{ itemId === null ? 'Nouvel objet magique' : 'Modifier l’objet magique' }}</h1>
+      <h1>
+        {{ itemId === null ? t().tavern.magicItems.newTitle : t().tavern.magicItems.editTitle }}
+      </h1>
       @switch (state()) {
         @case ('ready') {
           <dg-magic-item-form
             [initial]="initial()"
-            [submitLabel]="itemId === null ? 'Créer l’objet' : 'Enregistrer'"
+            [submitLabel]="
+              itemId === null ? t().tavern.magicItems.createSubmit : t().common.actions.save
+            "
             [busy]="saving()"
             (saved)="save($event)"
           >
             @if (itemId !== null) {
               <dg-button variant="danger" [loading]="deleting()" (click)="remove()">
-                Supprimer
+                {{ t().common.actions.delete }}
               </dg-button>
             }
           </dg-magic-item-form>
-          <p><a routerLink="/tavern/magic-items">Retour à mes objets magiques</a></p>
+          <p>
+            <a routerLink="/tavern/magic-items">{{ t().tavern.magicItems.back }}</a>
+          </p>
         }
         @case ('missing') {
           <div class="state">
-            <p role="alert">Cet objet magique est introuvable.</p>
-            <a routerLink="/tavern/magic-items">Retour à mes objets magiques</a>
+            <p role="alert">{{ t().tavern.magicItems.notFound }}</p>
+            <a routerLink="/tavern/magic-items">{{ t().tavern.magicItems.back }}</a>
           </div>
         }
         @case ('failed') {
           <div class="state">
             <dg-load-error
-              message="Impossible de charger l’objet magique."
+              [message]="t().tavern.magicItems.itemLoadError"
               [problem]="loadProblem()"
               (retry)="load()"
             />
@@ -88,7 +89,10 @@ function toValue(item: MagicItemDto): MagicItemValue {
         }
         @default {
           <div class="state">
-            <dg-loading label="Chargement de l’objet magique" message="Le coffre s’entrouvre…" />
+            <dg-loading
+              [label]="t().tavern.magicItems.itemLoading"
+              [message]="t().tavern.magicItems.itemLoadingFlavour"
+            />
           </div>
         }
       }
@@ -96,6 +100,8 @@ function toValue(item: MagicItemDto): MagicItemValue {
   `,
 })
 export class MagicItemFormPage {
+  protected readonly t = inject(I18n).t;
+
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   private readonly notifier = inject(NotifierService);
@@ -159,16 +165,20 @@ export class MagicItemFormPage {
       .subscribe({
         next: () => {
           this.saving.set(false);
-          this.notifier.success('Objet magique créé.');
+          this.notifier.success(this.t().tavern.magicItems.created);
           void this.router.navigate(['/tavern/magic-items']);
         },
         error: (error: unknown) => {
           this.saving.set(false);
           const problem = toApiProblem(error);
           if (problem.status === 409) {
-            this.notifier.error(LIMIT_REACHED);
+            this.notifier.error({
+              status: 409,
+              detail: this.t().tavern.magicItems.limitReached,
+              errors: [],
+            });
           } else {
-            this.onRefused(problem, 'Création de l’objet magique');
+            this.onRefused(problem, this.t().tavern.magicItems.creating);
           }
         },
       });
@@ -180,7 +190,7 @@ export class MagicItemFormPage {
       .subscribe({
         next: () => {
           this.saving.set(false);
-          this.notifier.success('Objet magique enregistré.');
+          this.notifier.success(this.t().tavern.magicItems.saved);
           void this.router.navigate(['/tavern/magic-items']);
         },
         error: (error: unknown) => {
@@ -190,7 +200,7 @@ export class MagicItemFormPage {
             // Keep what is typed until the reader chooses to reload.
             this.notifier.conflict(() => this.load());
           } else {
-            this.onRefused(problem, 'Enregistrement de l’objet magique');
+            this.onRefused(problem, this.t().tavern.magicItems.saving);
           }
         },
       });
@@ -200,10 +210,10 @@ export class MagicItemFormPage {
     const item = this.item()!;
     this.confirmer
       .typeToConfirm({
-        title: 'Supprimer l’objet magique',
-        message: `Cette suppression est irréversible. Retape le nom de l’objet (« ${item.name} ») pour confirmer.`,
-        confirmLabel: 'Supprimer',
-        inputLabel: 'Nom de l’objet',
+        title: this.t().tavern.magicItems.deleteTitle,
+        message: this.t().tavern.magicItems.deleteMessage(item.name ?? ''),
+        confirmLabel: this.t().common.actions.delete,
+        inputLabel: this.t().tavern.magicItems.deleteInput,
         inputType: 'text',
         expected: item.name,
       })
@@ -218,12 +228,12 @@ export class MagicItemFormPage {
           .subscribe({
             next: () => {
               this.deleting.set(false);
-              this.notifier.success('Objet magique supprimé.');
+              this.notifier.success(this.t().tavern.magicItems.deleted);
               void this.router.navigate(['/tavern/magic-items']);
             },
             error: (error: unknown) => {
               this.deleting.set(false);
-              this.notifier.error(toApiProblem(error), 'Suppression de l’objet magique');
+              this.notifier.error(toApiProblem(error), this.t().tavern.magicItems.deleting);
             },
           });
       });

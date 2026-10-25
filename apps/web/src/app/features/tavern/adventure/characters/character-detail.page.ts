@@ -29,6 +29,7 @@ import { ConfirmService } from '../../../../shared/ui/confirm-dialog/confirm.ser
 import { Loading } from '../../../../shared/ui/loading/loading';
 import { AdventureContext } from '../adventure-context.service';
 import { CharacterPortrait } from './character-portrait';
+import { I18n } from '../../../../core/i18n/i18n.service';
 
 type DetailState = 'loading' | 'ready' | 'missing' | 'failed';
 
@@ -102,44 +103,48 @@ type DetailState = 'loading' | 'ready' | 'missing' | 'failed';
             @if (!inAdventure) {
               <p class="adventure">
                 @if (c.adventureId) {
-                  <a [routerLink]="['/tavern/adventures', c.adventureId]">Voir son aventure</a>
+                  <a [routerLink]="['/tavern/adventures', c.adventureId]">{{
+                    t().tavern.characters.seeAdventure
+                  }}</a>
                 } @else {
-                  Hors aventure
+                  {{ t().tavern.characters.noAdventure }}
                 }
               </p>
             }
             <dl>
-              <dt>Race</dt>
+              <dt>{{ t().tavern.characters.race }}</dt>
               <dd>{{ c.race }}</dd>
-              <dt>Classe</dt>
+              <dt>{{ t().tavern.characters.class }}</dt>
               <dd>{{ c.martialClass }}</dd>
             </dl>
           </div>
         </div>
-        <h2>Personnalité</h2>
+        <h2>{{ t().tavern.characters.personality }}</h2>
         <p class="text">{{ c.personality }}</p>
-        <h2>Histoire</h2>
+        <h2>{{ t().tavern.characters.background }}</h2>
         <p class="text">{{ c.background }}</p>
         @if (isOwner()) {
           <div class="actions">
-            <dg-button (click)="edit()">Modifier</dg-button>
+            <dg-button (click)="edit()">{{ t().common.actions.edit }}</dg-button>
             <dg-button variant="danger" [loading]="deleting()" (click)="remove()">
-              Supprimer
+              {{ t().common.actions.delete }}
             </dg-button>
           </div>
         }
-        <p><a [routerLink]="listLink()">Retour aux personnages</a></p>
+        <p>
+          <a [routerLink]="listLink()">{{ t().tavern.characters.back }}</a>
+        </p>
       }
       @case ('missing') {
         <div class="state">
-          <p role="alert">Ce personnage est introuvable.</p>
-          <a [routerLink]="listLink()">Retour aux personnages</a>
+          <p role="alert">{{ t().tavern.characters.notFound }}</p>
+          <a [routerLink]="listLink()">{{ t().tavern.characters.back }}</a>
         </div>
       }
       @case ('failed') {
         <div class="state">
           <dg-load-error
-            message="Impossible de charger le personnage."
+            [message]="t().tavern.characters.oneLoadError"
             [problem]="loadProblem()"
             (retry)="load()"
           />
@@ -147,13 +152,18 @@ type DetailState = 'loading' | 'ready' | 'missing' | 'failed';
       }
       @default {
         <div class="state">
-          <dg-loading label="Chargement du personnage" message="Le héros ajuste son équipement…" />
+          <dg-loading
+            [label]="t().tavern.characters.oneLoading"
+            [message]="t().tavern.characters.oneLoadingFlavour"
+          />
         </div>
       }
     }
   `,
 })
 export class CharacterDetailPage {
+  protected readonly t = inject(I18n).t;
+
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   /** Null under « Mes personnages ». */
@@ -232,10 +242,10 @@ export class CharacterDetailPage {
     const character = this.character()!;
     this.confirmer
       .typeToConfirm({
-        title: 'Supprimer le personnage',
-        message: `Cette suppression est irréversible. Retape le nom du personnage (« ${character.name} ») pour confirmer.`,
-        confirmLabel: 'Supprimer',
-        inputLabel: 'Nom du personnage',
+        title: this.t().tavern.characters.deleteTitle,
+        message: this.t().tavern.characters.deleteMessage(character.name ?? ''),
+        confirmLabel: this.t().common.actions.delete,
+        inputLabel: this.t().tavern.characters.deleteInput,
         inputType: 'text',
         expected: character.name,
       })
@@ -253,12 +263,12 @@ export class CharacterDetailPage {
           .subscribe({
             next: () => {
               this.deleting.set(false);
-              this.notifier.success('Personnage supprimé.');
+              this.notifier.success(this.t().tavern.characters.deleted);
               void this.router.navigate(this.listLink());
             },
             error: (error: unknown) => {
               this.deleting.set(false);
-              this.notifier.error(toApiProblem(error), 'Suppression du personnage');
+              this.notifier.error(toApiProblem(error), this.t().tavern.characters.deleting);
             },
           });
       });

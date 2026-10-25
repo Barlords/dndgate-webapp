@@ -1,5 +1,5 @@
 import { EntryDetail, EntrySummary } from '../../ruleset.model';
-import { ApiRef, names, ordinal, paragraphs } from './common';
+import { ApiRef, EntryTexts, names, paragraphs, SOURCE_TEXTS } from './common';
 
 /** One spell of the GraphQL list. */
 export interface GqlSpell {
@@ -61,37 +61,34 @@ export function shortCastingTime(castingTime: string): string {
   return castingTime.split(',')[0].trim();
 }
 
-export function mapSpell(spell: ApiSpell): EntryDetail {
+export function mapSpell(spell: ApiSpell, t: EntryTexts = SOURCE_TEXTS): EntryDetail {
   const school = spell.school.name;
-  const yesNo = (flag: boolean) => (flag ? 'Yes' : 'No');
+  const yesNo = (flag: boolean) => (flag ? t.yes : t.no);
   const blocks: EntryDetail['blocks'] = [
     {
       kind: 'stats',
       items: [
-        { label: 'Casting time', value: spell.casting_time },
-        { label: 'Range', value: spell.range },
-        { label: 'Components', value: spell.components.join(', ') },
-        { label: 'Duration', value: spell.duration },
-        { label: 'Concentration', value: yesNo(spell.concentration) },
-        { label: 'Ritual', value: yesNo(spell.ritual) },
+        { label: t.castingTime, value: spell.casting_time },
+        { label: t.range, value: spell.range },
+        { label: t.components, value: spell.components.join(', ') },
+        { label: t.duration, value: spell.duration },
+        { label: t.concentration, value: yesNo(spell.concentration) },
+        { label: t.ritual, value: yesNo(spell.ritual) },
       ],
     },
-    { kind: 'text', title: 'Description', paragraphs: paragraphs(spell.desc ?? spell.description) },
+    { kind: 'text', title: t.description, paragraphs: paragraphs(spell.desc ?? spell.description) },
   ];
   const higher = paragraphs(spell.higher_level);
   if (higher.length > 0) {
-    blocks.push({ kind: 'text', title: 'At higher levels', paragraphs: higher });
+    blocks.push({ kind: 'text', title: t.higherLevels, paragraphs: higher });
   }
   if (spell.material) {
-    blocks.push({ kind: 'text', title: 'Materials', paragraphs: [spell.material] });
+    blocks.push({ kind: 'text', title: t.materials, paragraphs: [spell.material] });
   }
   return {
     index: spell.index,
     name: spell.name,
-    subtitle:
-      spell.level === 0
-        ? `${school} cantrip`
-        : `${ordinal(spell.level)}-level ${school.toLowerCase()}`,
+    subtitle: spell.level === 0 ? t.cantripOf(school) : t.spellOf(spell.level, school),
     tags: names(spell.classes),
     blocks,
   };

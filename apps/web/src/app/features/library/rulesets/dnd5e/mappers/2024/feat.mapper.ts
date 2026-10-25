@@ -1,5 +1,5 @@
 import { DetailBlock, EntryDetail } from '../../../ruleset.model';
-import { capitalize, paragraphs } from '../common';
+import { EntryTexts, paragraphs, SOURCE_TEXTS } from '../common';
 
 export interface ApiFeat {
   index: string;
@@ -11,32 +11,32 @@ export interface ApiFeat {
   repeatable?: string;
 }
 
-function prerequisites(feat: ApiFeat): string {
+function prerequisites(feat: ApiFeat, t: EntryTexts): string {
   return [
     feat.prerequisites?.minimum_level !== undefined
-      ? `Level ${feat.prerequisites.minimum_level}+`
+      ? t.minimumLevel(feat.prerequisites.minimum_level)
       : '',
-    feat.prerequisites?.feature_named ? `Feature: ${feat.prerequisites.feature_named}` : '',
+    feat.prerequisites?.feature_named ? t.featureNamed(feat.prerequisites.feature_named) : '',
     feat.prerequisite_options?.desc ?? '',
   ]
     .filter((part) => part !== '')
     .join('; ');
 }
 
-export function mapFeat(feat: ApiFeat): EntryDetail {
+export function mapFeat(feat: ApiFeat, t: EntryTexts = SOURCE_TEXTS): EntryDetail {
   const blocks: DetailBlock[] = [];
-  const required = prerequisites(feat);
+  const required = prerequisites(feat, t);
   if (required !== '') {
-    blocks.push({ kind: 'stats', items: [{ label: 'Prerequisites', value: required }] });
+    blocks.push({ kind: 'stats', items: [{ label: t.prerequisites, value: required }] });
   }
   blocks.push({ kind: 'text', paragraphs: paragraphs(feat.description) });
   if (feat.repeatable) {
-    blocks.push({ kind: 'text', title: 'Repeatable', paragraphs: [feat.repeatable] });
+    blocks.push({ kind: 'text', title: t.repeatable, paragraphs: [feat.repeatable] });
   }
   return {
     index: feat.index,
     name: feat.name,
-    subtitle: `${capitalize(feat.type.replaceAll('-', ' '))} feat`,
+    subtitle: t.featOf(feat.type.replaceAll('-', ' ')),
     tags: [],
     blocks,
   };

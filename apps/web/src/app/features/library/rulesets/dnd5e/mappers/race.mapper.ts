@@ -1,5 +1,5 @@
 import { DetailBlock, EntryDetail } from '../../ruleset.model';
-import { ApiRef, joinNames, names, signed } from './common';
+import { ApiRef, EntryTexts, joinNames, names, signed, SOURCE_TEXTS } from './common';
 
 export interface ApiRace {
   index: string;
@@ -22,7 +22,11 @@ export interface ApiTrait {
   desc: string[];
 }
 
-export function mapRace(race: ApiRace, traits: ApiTrait[]): EntryDetail {
+export function mapRace(
+  race: ApiRace,
+  traits: ApiTrait[],
+  t: EntryTexts = SOURCE_TEXTS,
+): EntryDetail {
   const bonuses = race.ability_bonuses
     .map((bonus) => `${bonus.ability_score.name} ${signed(bonus.bonus)}`)
     .join(', ');
@@ -31,35 +35,35 @@ export function mapRace(race: ApiRace, traits: ApiTrait[]): EntryDetail {
       kind: 'stats',
       layout: 'rows',
       items: [
-        { label: 'Ability score increase', value: bonuses || 'None' },
-        { label: 'Size', value: race.size },
-        { label: 'Speed', value: `${race.speed} ft.` },
-        { label: 'Languages', value: joinNames(race.languages) },
+        { label: t.abilityScoreIncrease, value: bonuses || t.none },
+        { label: t.size, value: race.size },
+        { label: t.speed, value: t.feet(race.speed) },
+        { label: t.languages, value: joinNames(race.languages, t.none) },
       ],
     },
-    { kind: 'text', title: 'Age', paragraphs: [race.age] },
-    { kind: 'text', title: 'Alignment', paragraphs: [race.alignment] },
-    { kind: 'text', title: 'Size', paragraphs: [race.size_description] },
-    { kind: 'text', title: 'Languages', paragraphs: [race.language_desc] },
+    { kind: 'text', title: t.age, paragraphs: [race.age] },
+    { kind: 'text', title: t.alignment, paragraphs: [race.alignment] },
+    { kind: 'text', title: t.size, paragraphs: [race.size_description] },
+    { kind: 'text', title: t.languages, paragraphs: [race.language_desc] },
   ];
   if (traits.length > 0) {
     blocks.push({
       kind: 'entries',
-      title: 'Traits',
+      title: t.traits,
       items: traits.map((trait) => ({ name: trait.name, text: trait.desc.join('\n\n') })),
     });
   }
   if (race.subraces && race.subraces.length > 0) {
     blocks.push({
       kind: 'text',
-      title: 'Subraces',
+      title: t.subraces,
       paragraphs: [names(race.subraces).join(', ')],
     });
   }
   return {
     index: race.index,
     name: race.name,
-    subtitle: `${race.size} humanoid`,
+    subtitle: t.humanoid(race.size),
     tags: [],
     blocks,
   };

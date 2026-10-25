@@ -33,9 +33,9 @@ import { ConfirmService } from '../../../shared/ui/confirm-dialog/confirm.servic
 import { Loading } from '../../../shared/ui/loading/loading';
 import { isClosed, Status } from '../adventure-status';
 import { AdventureContext } from './adventure-context.service';
+import { I18n } from '../../../core/i18n/i18n.service';
 
-const DATE_TIME = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeStyle: 'short' });
-const COPY_FAILED = 'Copie impossible ici : sélectionne le code et copie-le à la main.';
+const DATE_TIME: Intl.DateTimeFormatOptions = { dateStyle: 'long', timeStyle: 'short' };
 
 type ClaimState = 'idle' | 'loading' | 'ready' | 'failed';
 
@@ -103,58 +103,53 @@ type ClaimState = 'idle' | 'loading' | 'ready' | 'failed';
     }
   `,
   template: `
-    <h1>Maître du jeu</h1>
+    <h1>{{ t().tavern.master.title }}</h1>
     @switch (context.state()) {
       @case ('ready') {
         @if (closed()) {
-          <p class="lead">
-            Cette aventure est terminée ou abandonnée : le rôle de MJ ne peut plus changer de mains.
-          </p>
+          <p class="lead">{{ t().tavern.master.closed }}</p>
         } @else if (context.isMaster()) {
-          <p class="lead">Tu es le MJ de cette aventure.</p>
-          <h2>Inviter un MJ</h2>
-          <p>
-            Génère un code à usage unique, valable 7 jours, à transmettre à la personne qui
-            reprendra le rôle. Un nouveau code remplace l’ancien.
-          </p>
+          <p class="lead">{{ t().tavern.master.youAre }}</p>
+          <h2>{{ t().tavern.master.invite }}</h2>
+          <p>{{ t().tavern.master.inviteText }}</p>
           @if (invitation(); as invite) {
             <div class="code-box" role="status">
-              <span>Code d’invitation (affiché une seule fois)</span>
+              <span>{{ t().tavern.master.code }}</span>
               <strong class="code">{{ invite.code }}</strong>
-              <span>Valable jusqu’au {{ format(invite.expiresAt) }}</span>
+              <span>{{ t().tavern.master.validUntil(format(invite.expiresAt)) }}</span>
               <div class="actions">
-                <dg-button variant="ghost" (click)="copy(invite.code!)">Copier</dg-button>
+                <dg-button variant="ghost" (click)="copy(invite.code!)">{{
+                  t().tavern.master.copy
+                }}</dg-button>
               </div>
               @if (copyMessage()) {
                 <p role="status">{{ copyMessage() }}</p>
               }
-              <p class="warning">Générer un nouveau code invalidera celui-ci.</p>
+              <p class="warning">{{ t().tavern.master.newCodeWarning }}</p>
             </div>
           }
           <div class="actions">
             <dg-button [loading]="busy() === 'invite'" (click)="invite()">
-              {{ invitation() ? 'Générer un nouveau code' : 'Générer un code' }}
+              {{ invitation() ? t().tavern.master.generateAgain : t().tavern.master.generate }}
             </dg-button>
             <dg-button variant="ghost" [loading]="busy() === 'revoke'" (click)="revoke()">
-              Révoquer l’invitation
+              {{ t().tavern.master.revoke }}
             </dg-button>
           </div>
-          <h2>Quitter le rôle</h2>
-          <p>
-            Tu deviendras joueur s’il reste une place. L’aventure n’aura plus de MJ jusqu’à ce qu’un
-            joueur reprenne le rôle par un vote, ou qu’un code soit accepté.
-          </p>
+          <h2>{{ t().tavern.master.stepDown }}</h2>
+          <p>{{ t().tavern.master.stepDownText }}</p>
           <dg-button variant="danger" [loading]="busy() === 'step-down'" (click)="stepDown()">
-            Quitter le rôle de MJ
+            {{ t().tavern.master.stepDownButton }}
           </dg-button>
         } @else if (context.isPlayer() && context.adventure()!.masterVacant) {
           @switch (claimState()) {
             @case ('ready') {
               @if (claim(); as open) {
-                <h2>Demande en cours</h2>
+                <h2>{{ t().tavern.master.claimTitle }}</h2>
                 <p>
-                  Candidat : {{ pseudo(open.candidateId!) }}. Tous les autres joueurs doivent
-                  accepter avant le {{ format(open.expiresAt) }}, un seul refus y met fin.
+                  {{
+                    t().tavern.master.claimText(pseudo(open.candidateId!), format(open.expiresAt))
+                  }}
                 </p>
                 <ul class="voters">
                   @for (voter of open.voters ?? []; track voter.accountId) {
@@ -166,34 +161,34 @@ type ClaimState = 'idle' | 'loading' | 'ready' | 'failed';
                 </ul>
                 @if (isCandidate()) {
                   <dg-button variant="ghost" [loading]="busy() === 'cancel'" (click)="cancel()">
-                    Retirer ma demande
+                    {{ t().tavern.master.withdraw }}
                   </dg-button>
                 } @else if (isVoter()) {
-                  <p>Ta réponse peut être changée tant que le vote est ouvert.</p>
+                  <p>{{ t().tavern.master.canChange }}</p>
                   <div class="actions">
                     <dg-button [loading]="busy() === 'approve'" (click)="vote(true)">
-                      Accepter
+                      {{ t().tavern.master.accept }}
                     </dg-button>
                     <dg-button
                       variant="danger"
                       [loading]="busy() === 'refuse'"
                       (click)="vote(false)"
                     >
-                      Refuser
+                      {{ t().tavern.master.refuse }}
                     </dg-button>
                   </div>
                 }
               } @else {
-                <p class="lead">Cette aventure n’a plus de MJ.</p>
+                <p class="lead">{{ t().tavern.master.vacant }}</p>
                 <dg-button [loading]="busy() === 'claim'" (click)="claimRole()">
-                  Demander à devenir MJ
+                  {{ t().tavern.master.claim }}
                 </dg-button>
               }
             }
             @case ('failed') {
               <div class="state">
                 <dg-load-error
-                  message="Impossible de charger le vote."
+                  [message]="t().tavern.master.claimLoadError"
                   [problem]="loadProblem()"
                   (retry)="loadClaim()"
                 />
@@ -201,23 +196,31 @@ type ClaimState = 'idle' | 'loading' | 'ready' | 'failed';
             }
             @default {
               <div class="state">
-                <dg-loading label="Chargement du vote" message="Dépouillement des votes…" />
+                <dg-loading
+                  [label]="t().tavern.master.claimLoading"
+                  [message]="t().tavern.master.claimLoadingFlavour"
+                />
               </div>
             }
           }
         } @else {
-          <p class="lead">Rien à faire ici pour le moment.</p>
+          <p class="lead">{{ t().tavern.master.nothing }}</p>
         }
       }
       @case ('loading') {
         <div class="state">
-          <dg-loading label="Chargement de l’aventure" message="Le conteur rassemble ses notes…" />
+          <dg-loading
+            [label]="t().tavern.adventure.loading"
+            [message]="t().tavern.adventure.loadingFlavour"
+          />
         </div>
       }
     }
   `,
 })
 export class MasterPage {
+  protected readonly t = inject(I18n).t;
+
   protected readonly context = inject(AdventureContext);
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
@@ -264,7 +267,7 @@ export class MasterPage {
   }
 
   protected format(iso: string | undefined): string {
-    return iso ? DATE_TIME.format(new Date(iso)) : '';
+    return iso ? new Date(iso).toLocaleString(this.t().common.locale, DATE_TIME) : '';
   }
 
   protected pseudo(id: string): string {
@@ -272,10 +275,11 @@ export class MasterPage {
   }
 
   protected answer(approved: boolean | null | undefined): string {
+    const texts = this.t().tavern.master;
     if (approved === true) {
-      return 'Accepte';
+      return texts.accepted;
     }
-    return approved === false ? 'Refuse' : 'En attente';
+    return approved === false ? texts.refused : texts.waiting;
   }
 
   protected loadClaim(): void {
@@ -311,7 +315,7 @@ export class MasterPage {
       revokeMasterInvitation(this.http, this.rootUrl, { id: this.adventureId() }),
       () => {
         this.invitation.set(null);
-        this.notifier.success('L’invitation est révoquée.');
+        this.notifier.success(this.t().tavern.master.revoked);
       },
     );
   }
@@ -319,12 +323,12 @@ export class MasterPage {
   protected copy(code: string): void {
     const clipboard = typeof navigator === 'undefined' ? undefined : navigator.clipboard;
     if (!clipboard) {
-      this.copyMessage.set(COPY_FAILED);
+      this.copyMessage.set(this.t().tavern.master.copyFailed);
       return;
     }
     clipboard.writeText(code).then(
-      () => this.copyMessage.set('Code copié.'),
-      () => this.copyMessage.set(COPY_FAILED),
+      () => this.copyMessage.set(this.t().tavern.master.copied),
+      () => this.copyMessage.set(this.t().tavern.master.copyFailed),
     );
   }
 
@@ -332,12 +336,12 @@ export class MasterPage {
     const name = this.context.adventure()!.name!;
     this.confirm
       .typeToConfirm({
-        title: 'Quitter le rôle de MJ',
-        message: 'Retape le nom de l’aventure pour confirmer. Les joueurs seront prévenus.',
+        title: this.t().tavern.master.stepDownButton,
+        message: this.t().tavern.master.stepDownMessage,
         expected: name,
-        inputLabel: 'Nom de l’aventure',
+        inputLabel: this.t().tavern.master.stepDownInput,
         inputType: 'text',
-        confirmLabel: 'Quitter le rôle de MJ',
+        confirmLabel: this.t().tavern.master.stepDownButton,
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((confirmation) => {
@@ -350,7 +354,7 @@ export class MasterPage {
         });
         this.run('step-down', request, () => {
           this.invitation.set(null);
-          this.notifier.success('Tu n’es plus le MJ de cette aventure.');
+          this.notifier.success(this.t().tavern.master.steppedDown);
           this.context.reload();
         });
       });
@@ -368,7 +372,7 @@ export class MasterPage {
       cancelMasterClaim(this.http, this.rootUrl, { id: this.adventureId() }),
       () => {
         this.claim.set(null);
-        this.notifier.success('Ta demande est retirée.');
+        this.notifier.success(this.t().tavern.master.withdrawn);
       },
     );
   }
@@ -388,7 +392,7 @@ export class MasterPage {
     } else {
       this.claim.set(null);
       if (claim.status === 'ACCEPTED') {
-        this.notifier.success('Le rôle de MJ a changé de mains.');
+        this.notifier.success(this.t().tavern.master.handedOver);
       }
       this.context.reload();
     }
@@ -425,7 +429,7 @@ export class MasterPage {
         this.loadClaim();
       }
     } else {
-      this.notifier.error(problem, 'Rôle de MJ');
+      this.notifier.error(problem, this.t().tavern.master.role);
     }
   }
 }

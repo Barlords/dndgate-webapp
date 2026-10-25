@@ -1,4 +1,4 @@
-import { inject, Injectable } from '@angular/core';
+import { computed, inject, Injectable } from '@angular/core';
 import { forkJoin, map, Observable, of, switchMap, throwError } from 'rxjs';
 import {
   EntryDetail,
@@ -10,16 +10,21 @@ import {
 import { Dnd5eClient } from './dnd5e-client';
 import { fetchTraits, listPersonality, listRefs, personalityDetail } from './dnd5e-resources';
 import {
-  MONSTERS_SECTION,
-  PERSONALITY_SECTION,
+  monstersSection,
+  personalitySection,
   plain,
   SPELLS_QUERY,
-  SPELLS_SECTION,
+  spellsSection,
 } from './dnd5e-sections';
 import { ApiBackground, mapBackground } from './mappers/2024/background.mapper';
 import { ApiFeat, mapFeat } from './mappers/2024/feat.mapper';
 import { ApiMagicItem, mapMagicItem } from './mappers/2024/magic-item.mapper';
-import { mapAlignment, mapLanguage } from './mappers/2024/personality.mapper';
+import {
+  ApiAlignment,
+  ApiLanguage,
+  mapAlignment,
+  mapLanguage,
+} from './mappers/2024/personality.mapper';
 import { ApiSpecies, ApiSpeciesTrait, mapSpecies } from './mappers/2024/species.mapper';
 import { ApiWeaponMastery, mapWeaponMastery } from './mappers/2024/weapon-mastery.mapper';
 import {
@@ -29,9 +34,11 @@ import {
   GqlClassFeatures,
   mapClass,
 } from './mappers/class.mapper';
-import { ApiRef } from './mappers/common';
+import { ApiRef, EntryTexts } from './mappers/common';
 import { ApiMonster, GqlMonster, mapMonster, mapMonsterSummary } from './mappers/monster.mapper';
 import { ApiSpell, GqlSpell, mapSpell, mapSpellSummary } from './mappers/spell.mapper';
+import { I18n } from '../../../../core/i18n/i18n.service';
+import { Dictionary } from '../../../../core/i18n/dictionary';
 
 const VERSION = '2024';
 
@@ -48,30 +55,39 @@ const REST_LISTS = [
   'magic-items',
 ];
 
-const SECTIONS: readonly RulesetSection[] = [
-  plain('classes', 'Classes', 'players', 'sword', 'Les maîtres de guilde ouvrent leurs registres…'),
-  plain('species', 'Espèces', 'players', 'users', 'Recensement des peuples du royaume…'),
-  plain('backgrounds', 'Historiques', 'players', 'book', 'Le barde rassemble ses souvenirs…'),
-  plain('feats', 'Dons', 'players', 'star', 'Les vétérans racontent leurs exploits…'),
-  PERSONALITY_SECTION,
-  SPELLS_SECTION,
-  plain(
-    'weapon-mastery-properties',
-    "Maîtrises d'armes",
-    'players',
-    'sword',
-    "Le maître d'armes aiguise ses lames…",
-  ),
-  MONSTERS_SECTION,
-  plain('magic-items', 'Objets magiques', 'master', 'crown', 'Inventaire du trésor du dragon…'),
-];
+function sections(t: Dictionary): readonly RulesetSection[] {
+  const { sections: label, sectionLoading: loading } = t.library;
+  return [
+    plain(t, 'classes', label.classes, 'players', 'sword', loading.classes),
+    plain(t, 'species', label.species, 'players', 'users', loading.peoples),
+    plain(t, 'backgrounds', label.backgrounds, 'players', 'book', loading.backgrounds),
+    plain(t, 'feats', label.feats, 'players', 'star', loading.feats),
+    personalitySection(t),
+    spellsSection(t),
+    plain(
+      t,
+      'weapon-mastery-properties',
+      label.weaponMasteries,
+      'players',
+      'sword',
+      loading.weaponMasteries,
+    ),
+    monstersSection(t),
+    plain(t, 'magic-items', label.magicItems, 'master', 'crown', loading.magicItems),
+  ];
+}
 
 /** "DnD 5e — SRD 2024", read from dnd5eapi.co. It has no rules section. */
 @Injectable({ providedIn: 'root' })
 export class Dnd5e2024Ruleset implements Ruleset {
   readonly id = 'dnd5e-2024';
   readonly label = 'DnD 5e — SRD 2024';
-  readonly sections = SECTIONS;
+  private readonly i18n = inject(I18n);
+  private readonly sectionList = computed(() => sections(this.i18n.t()));
+  /** In the reader's language, made again when it changes. */
+  get sections(): readonly RulesetSection[] {
+    return this.sectionList();
+  }
   readonly spellSectionId = 'spells';
 
   private readonly client = inject(Dnd5eClient);
@@ -109,9 +125,13 @@ export class Dnd5e2024Ruleset implements Ruleset {
   detail(sectionId: string, index: string): Observable<EntryDetail> {
     switch (sectionId) {
       case 'spells':
-        return this.client.rest<ApiSpell>(VERSION, `spells/${index}`).pipe(map(mapSpell));
+        return this.client
+          .rest<ApiSpell>(VERSION, `spells/${index}`)
+          .pipe(map((spell) => mapSpell(spell, this.texts())));
       case 'monsters':
-        return this.client.rest<ApiMonster>(VERSION, `monsters/${index}`).pipe(map(mapMonster));
+        return this.client
+          .rest<ApiMonster>(VERSION, `monsters/${index}`)
+          .pipe(map((monster) => mapMonster(monster, this.texts())));
       case 'classes':
         return forkJoin([
           this.client.rest<ApiClass>(VERSION, `classes/${index}`),
@@ -124,36 +144,46 @@ export class Dnd5e2024Ruleset implements Ruleset {
               class: index,
             },
           ),
-        ]).pipe(map(([cls, levels, features]) => mapClass(cls, levels, features)));
+        ]).pipe(map(([cls, levels, features]) => mapClass(cls, levels, features, this.texts())));
       case 'species':
         return this.client
           .rest<ApiSpecies>(VERSION, `species/${index}`)
           .pipe(
             switchMap((species) =>
               fetchTraits<ApiSpeciesTrait>(this.client, VERSION, species.traits).pipe(
-                map((traits) => mapSpecies(species, traits)),
+                map((traits) => mapSpecies(species, traits, this.texts())),
               ),
             ),
           );
       case 'backgrounds':
         return this.client
           .rest<ApiBackground>(VERSION, `backgrounds/${index}`)
-          .pipe(map(mapBackground));
+          .pipe(map((background) => mapBackground(background, this.texts())));
       case 'feats':
-        return this.client.rest<ApiFeat>(VERSION, `feats/${index}`).pipe(map(mapFeat));
+        return this.client
+          .rest<ApiFeat>(VERSION, `feats/${index}`)
+          .pipe(map((feat) => mapFeat(feat, this.texts())));
       case 'weapon-mastery-properties':
         return this.client
           .rest<ApiWeaponMastery>(VERSION, `weapon-mastery-properties/${index}`)
-          .pipe(map(mapWeaponMastery));
+          .pipe(map((mastery) => mapWeaponMastery(mastery, this.texts())));
       case 'magic-items':
         return this.client
           .rest<ApiMagicItem>(VERSION, `magic-items/${index}`)
-          .pipe(map(mapMagicItem));
+          .pipe(map((item) => mapMagicItem(item, this.texts())));
       case 'personality':
-        return personalityDetail(this.client, VERSION, index, { mapAlignment, mapLanguage });
+        return personalityDetail<ApiAlignment, ApiLanguage>(this.client, VERSION, index, {
+          mapAlignment: (alignment) => mapAlignment(alignment, this.texts()),
+          mapLanguage: (language) => mapLanguage(language, this.texts()),
+        });
       default:
         return throwError(() => new RulesetEntryNotFoundError(`No section ${sectionId}`));
     }
+  }
+
+  /** The texts of the entries, in the reader's language. */
+  private texts(): EntryTexts {
+    return this.i18n.t().library.entry;
   }
 
   private refs(resource: string): Observable<ApiRef[]> {

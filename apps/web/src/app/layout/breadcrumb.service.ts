@@ -1,19 +1,28 @@
 import {
   computed,
+  effect,
   EnvironmentInjector,
   inject,
   Injectable,
   runInInjectionContext,
   signal,
+  untracked,
 } from '@angular/core';
 import { ActivatedRouteSnapshot, NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs';
+import { I18n } from '../core/i18n/i18n.service';
+import { Text } from '../core/i18n/dictionary';
 
 /**
  * What a route puts in `data.breadcrumb`: a fixed label, or a function of the route (run in an
  * injection context) for a label that depends on its parameters; `undefined` means no crumb.
  */
 export type CrumbLabel = string | ((route: ActivatedRouteSnapshot) => string | undefined);
+
+/** A crumb written with the dictionary: in the reader's language, again when it changes. */
+export function crumb(text: Text): CrumbLabel {
+  return () => text(inject(I18n).t());
+}
 
 export interface Crumb {
   label: string;
@@ -28,6 +37,7 @@ export interface Crumb {
 export class BreadcrumbService {
   private readonly router = inject(Router);
   private readonly injector = inject(EnvironmentInjector);
+  private readonly i18n = inject(I18n);
 
   private readonly trail = signal<Crumb[]>([]);
   private readonly currentUrl = signal(this.router.url);
@@ -55,6 +65,11 @@ export class BreadcrumbService {
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe(() => {
       this.currentUrl.set(this.router.url);
       this.trail.set(this.build(this.router.routerState.snapshot.root));
+    });
+    // The crumbs are written in the reader's language: written again when it changes.
+    effect(() => {
+      this.i18n.language();
+      untracked(() => this.trail.set(this.build(this.router.routerState.snapshot.root)));
     });
   }
 

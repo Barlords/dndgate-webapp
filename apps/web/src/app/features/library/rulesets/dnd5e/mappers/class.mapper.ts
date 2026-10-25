@@ -1,5 +1,5 @@
 import { DetailBlock, EntryDetail, TableCell } from '../../ruleset.model';
-import { ApiRef, joinNames, ordinal, paragraphs, slug } from './common';
+import { ApiRef, EntryTexts, joinNames, paragraphs, slug, SOURCE_TEXTS } from './common';
 
 export interface ApiClass {
   index: string;
@@ -87,7 +87,7 @@ interface FeatureEntries {
  * ("Extra Attack (2)", "Indomitable (2 uses)"), with the same text: such repeats become one entry
  * naming all of its levels, whose anchor every one of them leads to.
  */
-function featureEntries(features: readonly GqlFeature[]): FeatureEntries {
+function featureEntries(features: readonly GqlFeature[], t: EntryTexts): FeatureEntries {
   const merged = new Map<
     string,
     { name: string; levels: number[]; text: string; anchor: string }
@@ -113,7 +113,7 @@ function featureEntries(features: readonly GqlFeature[]): FeatureEntries {
     }
   }
   const items = [...merged.values()].map(({ name, levels, text, anchor }) => ({
-    name: `${name} (level${levels.length > 1 ? 's' : ''} ${levels.join(', ')})`,
+    name: `${name} (${t.atLevels(levels)})`,
     text,
     anchor,
   }));
@@ -132,21 +132,24 @@ interface FeatureBlocks {
  * 2014 names it after the kind of subclass, "Arcane Tradition feature"; SRD 2024 indexes it
  * `<class>-subclass`) leads to that heading; any other to its entry.
  */
-function featureBlocks(extra: GqlClassFeatures | undefined): FeatureBlocks {
+function featureBlocks(extra: GqlClassFeatures | undefined, t: EntryTexts): FeatureBlocks {
   if (extra === undefined) {
     return { blocks: [], anchorOf: () => undefined };
   }
   const blocks: DetailBlock[] = [];
-  const own = featureEntries(extra.features.filter((feature) => feature.subclass === null));
+  const own = featureEntries(
+    extra.features.filter((feature) => feature.subclass === null),
+    t,
+  );
   if (own.items.length > 0) {
-    blocks.push({ kind: 'entries', title: 'Class features', items: own.items });
+    blocks.push({ kind: 'entries', title: t.classFeatures, items: own.items });
   }
   const subclasses = extra.class?.subclasses ?? [];
   if (subclasses.length > 0) {
-    blocks.push({ kind: 'text', title: 'Subclasses', anchor: SUBCLASSES_ANCHOR, paragraphs: [] });
+    blocks.push({ kind: 'text', title: t.subclasses, anchor: SUBCLASSES_ANCHOR, paragraphs: [] });
   }
   for (const subclass of subclasses) {
-    const kind = subclass.subclass_flavor ?? 'Subclass';
+    const kind = subclass.subclass_flavor ?? t.subclass;
     blocks.push({
       kind: 'text',
       title: `${kind}: ${subclass.name}`,
@@ -160,9 +163,9 @@ function featureBlocks(extra: GqlClassFeatures | undefined): FeatureBlocks {
     if (features.length > 0) {
       blocks.push({
         kind: 'entries',
-        title: `${subclass.name} features`,
+        title: t.subclassFeatures(subclass.name),
         nested: true,
-        items: featureEntries(features).items,
+        items: featureEntries(features, t).items,
       });
     }
   }
@@ -184,7 +187,11 @@ function featureBlocks(extra: GqlClassFeatures | undefined): FeatureBlocks {
  * The levels table: level, proficiency bonus, features (each a link when `anchorOf` knows where it
  * is described), and the spellcasting columns in use.
  */
-function levelsTable(levels: ApiClassLevel[], anchorOf: FeatureBlocks['anchorOf']): DetailBlock[] {
+function levelsTable(
+  levels: ApiClassLevel[],
+  anchorOf: FeatureBlocks['anchorOf'],
+  t: EntryTexts,
+): DetailBlock[] {
   if (levels.length === 0) {
     return [];
   }
@@ -194,12 +201,12 @@ function levelsTable(levels: ApiClassLevel[], anchorOf: FeatureBlocks['anchorOf'
     levels.some((level) => (level.spellcasting?.[`spell_slots_level_${slot}`] ?? 0) > 0),
   );
   const columns = [
-    'Level',
-    'Proficiency bonus',
-    'Features',
-    ...(cantrips ? ['Cantrips'] : []),
-    ...(prepared ? ['Prepared spells'] : []),
-    ...slots.map((slot) => `${ordinal(slot)}`),
+    t.level,
+    t.proficiencyBonus,
+    t.features,
+    ...(cantrips ? [t.cantrips] : []),
+    ...(prepared ? [t.preparedSpells] : []),
+    ...slots.map((slot) => t.slot(slot)),
   ];
   const rows = levels.map((level): TableCell[] => [
     String(level.level),
@@ -211,7 +218,7 @@ function levelsTable(levels: ApiClassLevel[], anchorOf: FeatureBlocks['anchorOf'
     ...(prepared ? [String(level.spellcasting?.['prepared_spells'] ?? 0)] : []),
     ...slots.map((slot) => String(level.spellcasting?.[`spell_slots_level_${slot}`] ?? 0)),
   ]);
-  return [{ kind: 'table', title: 'Class levels', columns, rows }];
+  return [{ kind: 'table', title: t.classLevels, columns, rows }];
 }
 
 /**
@@ -226,7 +233,7 @@ const SAVING_THROW_PREFIX = 'saving-throw-';
  * are not repeated among the proficiencies. Without the class's own list, they are read from the
  * identifiers of the proficiencies (`saving-throw-int` gives INT).
  */
-function splitProficiencies(cls: ApiClass): { saves: string; others: string } {
+function splitProficiencies(cls: ApiClass, t: EntryTexts): { saves: string; others: string } {
   const all = cls.proficiencies ?? [];
   const isSave = (ref: ApiRef) => ref.index.startsWith(SAVING_THROW_PREFIX);
   const others = all.filter((ref) => !isSave(ref));
@@ -235,44 +242,45 @@ function splitProficiencies(cls: ApiClass): { saves: string; others: string } {
     return { index: ability, name: ability.toUpperCase() };
   });
   const saves = cls.saving_throws?.length > 0 ? cls.saving_throws : fromProficiencies;
-  return { saves: joinNames(saves), others: joinNames(others) };
+  return { saves: joinNames(saves, t.none), others: joinNames(others, t.none) };
 }
 
 export function mapClass(
   cls: ApiClass,
   levels: ApiClassLevel[],
   extra?: GqlClassFeatures,
+  t: EntryTexts = SOURCE_TEXTS,
 ): EntryDetail {
   const equipment = (cls.starting_equipment ?? []).map(
     (item) => `${item.equipment.name}${item.quantity > 1 ? ` x${item.quantity}` : ''}`,
   );
   const equipmentChoices = (cls.starting_equipment_options ?? []).map((option) => option.desc);
-  const proficiencies = splitProficiencies(cls);
+  const proficiencies = splitProficiencies(cls, t);
   const stats = [
-    { label: 'Hit die', value: `d${cls.hit_die}` },
-    ...(cls.primary_ability ? [{ label: 'Primary ability', value: cls.primary_ability.desc }] : []),
-    { label: 'Saving throws', value: proficiencies.saves },
-    { label: 'Proficiencies', value: proficiencies.others },
+    { label: t.hitDie, value: `d${cls.hit_die}` },
+    ...(cls.primary_ability ? [{ label: t.primaryAbility, value: cls.primary_ability.desc }] : []),
+    { label: t.savingThrows, value: proficiencies.saves },
+    { label: t.proficiencies, value: proficiencies.others },
     ...(cls.spellcasting
-      ? [{ label: 'Spellcasting ability', value: cls.spellcasting.spellcasting_ability.name }]
+      ? [{ label: t.spellcastingAbility, value: cls.spellcasting.spellcasting_ability.name }]
       : []),
     ...(cls.subclasses && cls.subclasses.length > 0
-      ? [{ label: 'Subclasses', value: joinNames(cls.subclasses) }]
+      ? [{ label: t.subclasses, value: joinNames(cls.subclasses, t.none) }]
       : []),
   ];
   // One line per stat: the proficiencies alone can fill a whole line.
   const blocks: DetailBlock[] = [{ kind: 'stats', layout: 'rows', items: stats }];
   const skillChoices = (cls.proficiency_choices ?? []).map((choice) => choice.desc);
   if (skillChoices.length > 0) {
-    blocks.push({ kind: 'text', title: 'Proficiency choices', paragraphs: skillChoices });
+    blocks.push({ kind: 'text', title: t.proficiencyChoices, paragraphs: skillChoices });
   }
   blocks.push({
     kind: 'text',
-    title: 'Starting equipment',
+    title: t.startingEquipment,
     paragraphs: [...(equipment.length > 0 ? [equipment.join(', ')] : []), ...equipmentChoices],
   });
-  const features = featureBlocks(extra);
-  blocks.push(...levelsTable(levels, features.anchorOf));
+  const features = featureBlocks(extra, t);
+  blocks.push(...levelsTable(levels, features.anchorOf, t));
   blocks.push(...features.blocks);
   return {
     index: cls.index,

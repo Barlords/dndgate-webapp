@@ -22,10 +22,10 @@ import { Button } from '../../shared/ui/button/button';
 import { ConfirmService } from '../../shared/ui/confirm-dialog/confirm.service';
 import { FormField } from '../../shared/ui/form-field/form-field';
 import { AccountLayout } from './account-layout';
+import { I18n } from '../../core/i18n/i18n.service';
 
 const PSEUDO_PATTERN = /^\s*[\p{L}\p{N}_.-]{3,30}\s*$/u;
 const PASSWORD_MAX_BYTES = 72;
-const WRONG_PASSWORD = 'Mot de passe incorrect.';
 
 /** The API hashes passwords with bcrypt, which reads 72 bytes at most (bytes, not characters). */
 function maxBytes(control: AbstractControl): ValidationErrors | null {
@@ -126,52 +126,53 @@ function sameAsNewPassword(control: AbstractControl): ValidationErrors | null {
     }
   `,
   template: `
-    <dg-account-layout heading="Mon compte" [wide]="true">
+    <dg-account-layout [heading]="t().account.profile.title" [wide]="true">
       <div class="profile">
         <div class="profile__column">
           <section class="profile__identity" aria-labelledby="profile-identity">
-            <h2 id="profile-identity">Identité</h2>
+            <h2 id="profile-identity">{{ t().account.profile.identity }}</h2>
             <form id="identity-form" [formGroup]="identity" (ngSubmit)="saveIdentity()" novalidate>
-              <dg-form-field label="Pseudo" [control]="identity.controls.pseudo">
+              <dg-form-field
+                [label]="t().account.fields.pseudo"
+                [control]="identity.controls.pseudo"
+              >
                 <input formControlName="pseudo" type="text" autocomplete="username" />
               </dg-form-field>
-              <dg-form-field label="Adresse e-mail" [control]="identity.controls.email">
+              <dg-form-field [label]="t().account.fields.email" [control]="identity.controls.email">
                 <input formControlName="email" type="email" autocomplete="email" />
               </dg-form-field>
               @if (pendingEmail(); as pending) {
-                <p class="pending" role="status">en attente de confirmation : {{ pending }}</p>
+                <p class="pending" role="status">{{ t().account.profile.pendingEmail(pending) }}</p>
               }
               @if (identityFailure(); as message) {
                 <p class="dg-account__alert" role="alert">{{ message }}</p>
               }
               <div class="dg-account__actions">
-                <dg-button type="submit" [loading]="savingIdentity()">Enregistrer</dg-button>
+                <dg-button type="submit" [loading]="savingIdentity()">{{
+                  t().account.profile.save
+                }}</dg-button>
               </div>
             </form>
           </section>
 
           <section class="profile__danger" aria-labelledby="profile-danger">
-            <h2 id="profile-danger">Zone dangereuse</h2>
-            <p>
-              Supprimer ton compte l'anonymise : ton pseudo, ton adresse et tes grimoires
-              disparaissent, tes personnages et tes messages restent sous un nom effacé. C'est
-              irréversible.
-            </p>
+            <h2 id="profile-danger">{{ t().account.profile.danger }}</h2>
+            <p>{{ t().account.profile.dangerText }}</p>
             @if (deleteFailure(); as message) {
               <p class="dg-account__alert" role="alert">{{ message }}</p>
             }
             <dg-button variant="danger" [loading]="deleting()" (click)="deleteAccount()">
-              Supprimer mon compte
+              {{ t().account.profile.deleteAccount }}
             </dg-button>
           </section>
         </div>
 
         <div class="profile__column">
           <section class="profile__password" aria-labelledby="profile-password">
-            <h2 id="profile-password">Mot de passe</h2>
+            <h2 id="profile-password">{{ t().account.profile.password }}</h2>
             <form id="password-form" [formGroup]="password" (ngSubmit)="savePassword()" novalidate>
               <dg-form-field
-                label="Mot de passe actuel"
+                [label]="t().account.profile.currentPassword"
                 [control]="password.controls.currentPassword"
               >
                 <input
@@ -180,29 +181,34 @@ function sameAsNewPassword(control: AbstractControl): ValidationErrors | null {
                   autocomplete="current-password"
                 />
               </dg-form-field>
-              <dg-form-field label="Nouveau mot de passe" [control]="password.controls.newPassword">
+              <dg-form-field
+                [label]="t().account.profile.newPassword"
+                [control]="password.controls.newPassword"
+              >
                 <input formControlName="newPassword" type="password" autocomplete="new-password" />
               </dg-form-field>
               <dg-form-field
-                label="Confirmation du nouveau mot de passe"
+                [label]="t().account.profile.newConfirmation"
                 [control]="password.controls.confirmation"
               >
                 <input formControlName="confirmation" type="password" autocomplete="new-password" />
               </dg-form-field>
               <div class="dg-account__actions">
                 <dg-button type="submit" [loading]="savingPassword()">
-                  Changer le mot de passe
+                  {{ t().account.profile.changePassword }}
                 </dg-button>
               </div>
             </form>
           </section>
 
           <section class="profile__sessions" aria-labelledby="profile-sessions">
-            <h2 id="profile-sessions">Sessions</h2>
+            <h2 id="profile-sessions">{{ t().account.profile.sessions }}</h2>
             <div class="sessions">
-              <dg-button variant="ghost" (click)="signOut(false)">Se déconnecter</dg-button>
+              <dg-button variant="ghost" (click)="signOut(false)">{{
+                t().account.profile.signOut
+              }}</dg-button>
               <dg-button variant="ghost" (click)="signOut(true)">
-                Se déconnecter de partout
+                {{ t().account.profile.signOutEverywhere }}
               </dg-button>
             </div>
           </section>
@@ -210,12 +216,14 @@ function sameAsNewPassword(control: AbstractControl): ValidationErrors | null {
       </div>
 
       <div class="dg-account__actions">
-        <dg-button variant="ghost" (click)="back()">Retour</dg-button>
+        <dg-button variant="ghost" (click)="back()">{{ t().account.profile.back }}</dg-button>
       </div>
     </dg-account-layout>
   `,
 })
 export class ProfilePage {
+  protected readonly t = inject(I18n).t;
+
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   private readonly auth = inject(AuthService);
@@ -286,7 +294,7 @@ export class ProfilePage {
       changes.email = email.trim();
     }
     if (changes.pseudo === undefined && changes.email === undefined) {
-      this.notifier.success('Rien à modifier.');
+      this.notifier.success(this.t().account.profile.nothingToChange);
       return;
     }
     this.identityFailure.set(null);
@@ -294,11 +302,11 @@ export class ProfilePage {
     // saves, so that the form keeps to what it changes.
     this.confirm
       .typeToConfirm({
-        title: 'Confirmer les modifications',
-        message: 'Saisis ton mot de passe pour enregistrer ton pseudo et ton adresse.',
-        inputLabel: 'Mot de passe',
+        title: this.t().account.profile.confirmTitle,
+        message: this.t().account.profile.confirmMessage,
+        inputLabel: this.t().account.fields.password,
         inputType: 'password',
-        confirmLabel: 'Enregistrer',
+        confirmLabel: this.t().account.profile.save,
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((currentPassword) => {
@@ -313,8 +321,8 @@ export class ProfilePage {
     this.update(body, this.identity, this.savingIdentity, () => {
       this.notifier.success(
         body.email === undefined
-          ? 'Ton profil est à jour.'
-          : 'Un e-mail de confirmation a été envoyé à ta nouvelle adresse.',
+          ? this.t().account.profile.upToDate
+          : this.t().account.profile.confirmationSent,
       );
     });
   }
@@ -332,7 +340,7 @@ export class ProfilePage {
     this.update({ currentPassword, newPassword }, this.password, this.savingPassword, () => {
       // The API ended every session, this one included.
       this.auth.forgetSession();
-      this.notifier.success('Mot de passe modifié. Reconnecte-toi avec le nouveau.');
+      this.notifier.success(this.t().account.profile.passwordChanged);
       void this.router.navigateByUrl('/login');
     });
   }
@@ -368,15 +376,15 @@ export class ProfilePage {
   ): void {
     if (problem.status === 403 && form === this.identity) {
       // The password was typed in the dialog, which is closed: the section says it.
-      this.identityFailure.set(WRONG_PASSWORD);
+      this.identityFailure.set(this.t().account.profile.wrongPassword);
     } else if (problem.status === 403) {
-      this.fail(form, 'currentPassword', WRONG_PASSWORD);
+      this.fail(form, 'currentPassword', this.t().account.profile.wrongPassword);
     } else if (problem.status === 409 && body.email !== undefined) {
-      this.fail(form, 'email', 'Cette adresse est déjà utilisée.');
+      this.fail(form, 'email', this.t().account.profile.emailTaken);
     } else if (problem.status === 409) {
-      this.fail(form, 'pseudo', 'Ce pseudo est déjà pris.');
+      this.fail(form, 'pseudo', this.t().account.profile.pseudoTaken);
     } else if (!(problem.status === 400 && applyFieldErrors(form, problem))) {
-      this.notifier.error(problem, 'Modification du compte');
+      this.notifier.error(problem, this.t().account.profile.updating);
     }
   }
 
@@ -408,11 +416,11 @@ export class ProfilePage {
     this.deleteFailure.set(null);
     this.confirm
       .typeToConfirm({
-        title: 'Supprimer ton compte',
-        message: 'Cette action est irréversible. Saisis ton mot de passe pour confirmer.',
-        inputLabel: 'Mot de passe',
+        title: this.t().account.profile.deleteTitle,
+        message: this.t().account.profile.deleteMessage,
+        inputLabel: this.t().account.fields.password,
         inputType: 'password',
-        confirmLabel: 'Supprimer mon compte',
+        confirmLabel: this.t().account.profile.deleteAccount,
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((confirmation) => {
@@ -430,16 +438,16 @@ export class ProfilePage {
         next: () => {
           this.deleting.set(false);
           this.auth.forgetSession();
-          this.notifier.success('Ton compte a été supprimé.');
+          this.notifier.success(this.t().account.profile.deleted);
           void this.router.navigateByUrl('/');
         },
         error: (error: unknown) => {
           this.deleting.set(false);
           const problem = toApiProblem(error);
           if (problem.status === 403) {
-            this.deleteFailure.set(WRONG_PASSWORD);
+            this.deleteFailure.set(this.t().account.profile.wrongPassword);
           } else {
-            this.notifier.error(problem, 'Suppression du compte');
+            this.notifier.error(problem, this.t().account.profile.deleting);
           }
         },
       });

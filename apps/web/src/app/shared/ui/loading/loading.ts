@@ -1,13 +1,11 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { I18n } from '../../../core/i18n/i18n.service';
 import { Spinner } from '../spinner/spinner';
-
-/** What a page loader says when its page has nothing more fitting. */
-export const DEFAULT_LOADING_MESSAGE = 'Sélection des livres…';
 
 /**
  * The loader of a whole page or panel: a large spinner over a line of flavour text ("Demande en
  * cours à Mystra…"). The flavour is decoration; `label` is the plain words announced to assistive
- * technologies. Buttons keep the small `dg-spinner`.
+ * technologies. Buttons keep the small `dg-spinner`. Without them, both are the dictionary's.
  */
 @Component({
   selector: 'dg-loading',
@@ -16,8 +14,8 @@ export const DEFAULT_LOADING_MESSAGE = 'Sélection des livres…';
   host: { role: 'status' },
   template: `
     <dg-spinner label="" />
-    <p class="loading__message" aria-hidden="true">{{ message() }}</p>
-    <span class="dg-visually-hidden">{{ label() }}</span>
+    <p class="loading__message" aria-hidden="true">{{ shownMessage() }}</p>
+    <span class="dg-visually-hidden">{{ shownLabel() }}</span>
   `,
   styles: `
     :host {
@@ -45,6 +43,13 @@ export const DEFAULT_LOADING_MESSAGE = 'Sélection des livres…';
   `,
 })
 export class Loading {
-  readonly label = input('Chargement…');
-  readonly message = input(DEFAULT_LOADING_MESSAGE);
+  protected readonly t = inject(I18n).t;
+
+  readonly label = input<string | null>(null);
+  readonly message = input<string | null | undefined>(null);
+
+  protected readonly shownLabel = computed(() => this.label() ?? this.t().common.loading.label);
+  protected readonly shownMessage = computed(
+    () => this.message() ?? this.t().common.loading.message,
+  );
 }

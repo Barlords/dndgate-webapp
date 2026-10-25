@@ -1,36 +1,27 @@
+import { Dictionary } from '../../../../core/i18n/dictionary';
 import { formatChallenge } from './mappers/monster.mapper';
-import { RulesetSection } from '../ruleset.model';
+import { ColumnDef, RulesetSection } from '../ruleset.model';
 
-// Sections that SRD 2014 and SRD 2024 define the same way.
+// Sections that SRD 2014 and SRD 2024 define the same way, written in the reader's language: each
+// is made from the dictionary of the moment (see the rulesets' `sections`).
 
-export const NAME_COLUMN = { key: 'name', label: 'Nom', sortable: true };
+export function nameColumn(t: Dictionary): ColumnDef {
+  return { key: 'name', label: t.library.columns.name, sortable: true };
+}
 
 export function plain(
+  t: Dictionary,
   id: string,
   label: string,
   group: RulesetSection['group'],
   icon: RulesetSection['icon'],
   loadingMessage?: string,
 ): RulesetSection {
-  return { id, label, group, icon, columns: [NAME_COLUMN], filters: [], loadingMessage };
-}
-
-export function options(values: string[]): { value: string; label: string }[] {
-  return values.map((value) => ({ value, label: value }));
+  return { id, label, group, icon, columns: [nameColumn(t)], filters: [], loadingMessage };
 }
 
 /** The spells of a ruleset, through GraphQL (the same query in SRD 2014 and 2024). */
 export const SPELLS_QUERY = `{ spells(limit: 1000) { index name level school { name } classes { index name } ritual concentration components casting_time } }`;
-
-const YES_NO = [
-  { value: 'true', label: 'Oui' },
-  { value: 'false', label: 'Non' },
-];
-
-const SPELL_LEVELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((level) => ({
-  value: String(level),
-  label: level === 0 ? 'Tour de magie' : `Niveau ${level}`,
-}));
 
 const CHALLENGE_FRACTIONS: [number, string][] = [
   [0, '0'],
@@ -47,98 +38,130 @@ const CHALLENGE_RATINGS = [
   ),
 ].map(([value, label]) => ({ value: String(value), label }));
 
-/** Alignments and languages, one tab each (see `listPersonality`). */
-export const PERSONALITY_SECTION: RulesetSection = {
-  ...plain(
-    'personality',
-    'Personnalité',
-    'players',
-    'user',
-    'Le sage déchiffre les langues anciennes…',
-  ),
-  tabs: {
-    key: 'kind',
-    label: 'Type',
-    options: [
-      { value: 'Alignment', label: 'Alignements' },
-      { value: 'Language', label: 'Langues' },
-    ],
-  },
-};
+/** The kinds of creatures the monster filter offers, as the API writes them. */
+const MONSTER_TYPES = [
+  'aberration',
+  'beast',
+  'celestial',
+  'construct',
+  'dragon',
+  'elemental',
+  'fey',
+  'fiend',
+  'giant',
+  'humanoid',
+  'monstrosity',
+  'ooze',
+  'plant',
+  'swarm',
+  'undead',
+];
 
-export const SPELLS_SECTION: RulesetSection = {
-  id: 'spells',
-  label: 'Sorts',
-  group: 'players',
-  icon: 'wand',
-  // By level, then alphabetically within a level.
-  defaultSort: 'level',
-  loadingMessage: 'Demande en cours à Mystra…',
-  columns: [
-    NAME_COLUMN,
-    { key: 'level', label: 'Niveau', sortable: true },
-    { key: 'school', label: 'École', sortable: true },
-    { key: 'classes', label: 'Classes', sortable: false },
-    { key: 'castingTime', label: 'Incantation', sortable: true },
-    { key: 'components', label: 'Composantes', sortable: false },
-    { key: 'ritual', label: 'Rituel', sortable: true },
-    { key: 'concentration', label: 'Concentration', sortable: true },
-  ],
-  filters: [
-    { key: 'level', label: 'Niveau', options: SPELL_LEVELS },
-    // The schools, classes and casting times are the names the list has, in the language it came
-    // in (and the casting times differ between SRD 2014 and 2024): no fixed list of English words.
-    { key: 'school', label: 'École' },
-    { key: 'classes', label: 'Classe' },
-    { key: 'castingTime', label: "Temps d'incantation" },
-    {
-      key: 'components',
-      label: 'Composantes',
+function yesNo(t: Dictionary) {
+  return [
+    { value: 'true', label: t.common.actions.yes },
+    { value: 'false', label: t.common.actions.no },
+  ];
+}
+
+/** Alignments and languages, one tab each (see `listPersonality`). */
+export function personalitySection(t: Dictionary): RulesetSection {
+  const texts = t.library;
+  return {
+    ...plain(
+      t,
+      'personality',
+      texts.sections.personality,
+      'players',
+      'user',
+      texts.sectionLoading.personality,
+    ),
+    tabs: {
+      key: 'kind',
+      label: texts.personalityTabs.label,
       options: [
-        { value: 'V', label: 'Verbale (V)' },
-        { value: 'S', label: 'Somatique (S)' },
-        { value: 'M', label: 'Matérielle (M)' },
+        { value: 'Alignment', label: texts.personalityTabs.alignments },
+        { value: 'Language', label: texts.personalityTabs.languages },
       ],
     },
-    { key: 'ritual', label: 'Rituel', options: YES_NO },
-    { key: 'concentration', label: 'Concentration', options: YES_NO },
-  ],
-};
+  };
+}
 
-export const MONSTERS_SECTION: RulesetSection = {
-  id: 'monsters',
-  label: 'Monstres',
-  group: 'master',
-  icon: 'skull',
-  loadingMessage: 'En attente du retour des explorateurs…',
-  columns: [
-    NAME_COLUMN,
-    { key: 'type', label: 'Type', sortable: true },
-    { key: 'size', label: 'Taille', sortable: true },
-    { key: 'cr', label: 'FP', sortable: true, format: (value) => formatChallenge(Number(value)) },
-  ],
-  filters: [
-    {
-      key: 'type',
-      label: 'Type',
-      options: options([
-        'aberration',
-        'beast',
-        'celestial',
-        'construct',
-        'dragon',
-        'elemental',
-        'fey',
-        'fiend',
-        'giant',
-        'humanoid',
-        'monstrosity',
-        'ooze',
-        'plant',
-        'swarm',
-        'undead',
-      ]),
-    },
-    { key: 'cr', label: 'FP', options: CHALLENGE_RATINGS },
-  ],
-};
+export function spellsSection(t: Dictionary): RulesetSection {
+  const { columns, filters } = t.library;
+  return {
+    id: 'spells',
+    label: t.library.sections.spells,
+    group: 'players',
+    icon: 'wand',
+    // By level, then alphabetically within a level.
+    defaultSort: 'level',
+    loadingMessage: t.library.sectionLoading.spells,
+    columns: [
+      nameColumn(t),
+      { key: 'level', label: columns.level, sortable: true },
+      { key: 'school', label: columns.school, sortable: true },
+      { key: 'classes', label: columns.classes, sortable: false },
+      { key: 'castingTime', label: columns.castingTime, sortable: true },
+      { key: 'components', label: columns.components, sortable: false },
+      { key: 'ritual', label: columns.ritual, sortable: true },
+      { key: 'concentration', label: columns.concentration, sortable: true },
+    ],
+    filters: [
+      {
+        key: 'level',
+        label: filters.level,
+        options: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((level) => ({
+          value: String(level),
+          label: level === 0 ? filters.cantrip : filters.spellLevel(level),
+        })),
+      },
+      // The schools, classes and casting times are the names the list has, in the language it
+      // came in (and the casting times differ between SRD 2014 and 2024): no fixed list of words.
+      { key: 'school', label: filters.school },
+      { key: 'classes', label: filters.classes },
+      { key: 'castingTime', label: filters.castingTime },
+      {
+        key: 'components',
+        label: filters.components,
+        options: [
+          { value: 'V', label: filters.verbal },
+          { value: 'S', label: filters.somatic },
+          { value: 'M', label: filters.material },
+        ],
+      },
+      { key: 'ritual', label: filters.ritual, options: yesNo(t) },
+      { key: 'concentration', label: filters.concentration, options: yesNo(t) },
+    ],
+  };
+}
+
+export function monstersSection(t: Dictionary): RulesetSection {
+  const { columns, filters, monsterTypes } = t.library;
+  return {
+    id: 'monsters',
+    label: t.library.sections.monsters,
+    group: 'master',
+    icon: 'skull',
+    loadingMessage: t.library.sectionLoading.monsters,
+    columns: [
+      nameColumn(t),
+      { key: 'type', label: columns.type, sortable: true },
+      { key: 'size', label: columns.size, sortable: true },
+      {
+        key: 'cr',
+        label: columns.challenge,
+        sortable: true,
+        format: (value) => formatChallenge(Number(value)),
+      },
+    ],
+    filters: [
+      {
+        key: 'type',
+        label: filters.type,
+        options: MONSTER_TYPES.map((type) => ({ value: type, label: monsterTypes[type] ?? type })),
+      },
+      { key: 'cr', label: filters.challenge, options: CHALLENGE_RATINGS },
+    ],
+  };
+}
