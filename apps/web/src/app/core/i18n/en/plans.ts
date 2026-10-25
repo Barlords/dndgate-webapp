@@ -53,6 +53,12 @@ export const plans: Dictionary['plans'] = {
   seeOffers: 'See the plans',
   billingUnavailable: 'Payment is not available at the moment.',
   redirectMissing: 'The payment could not be opened. Try again in a moment.',
+  hint: {
+    account: (planName) => `Included from the ${planName} plan.`,
+    adventure: (planName) =>
+      `Included from the ${planName} plan (or if your GM has an equipped table).`,
+    unknown: 'Not included in your plan.',
+  },
   page: {
     navLabel: 'Plans',
     title: 'The plans',

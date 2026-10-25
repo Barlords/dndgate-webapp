@@ -281,7 +281,7 @@ export const tavern: Dictionary['tavern'] = {
     preview: 'Preview of the portrait',
     pictureTooBig: 'The picture weighs more than 5 MB.',
     pictureFormat: 'The picture must be a PNG or a JPEG.',
-    pictureRequired: 'Choose a picture for your character.',
+    pictureOptional: 'Without a picture, your character gets the default portrait.',
   },
   notes: {
     add: 'Add a note',

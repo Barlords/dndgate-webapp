@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { AdventureDto } from '../../../../core/api/generated/models/adventure-dto';
 import { NotifierService } from '../../../../core/errors/notifier.service';
 import { BreadcrumbService } from '../../../../layout/breadcrumb.service';
+import { AdventureEntitlementsDto } from '../../../../core/api/generated/models/adventure-entitlements-dto';
 import { adventure, setupTavern, TavernTestbed } from '../../tavern.testing';
 import {
   character,
@@ -26,8 +27,12 @@ describe('CharacterForm (creation and edition pages)', () => {
   const getOne = (r: Req) => r.method === 'GET' && /\/game-characters\/c1$/.test(r.url);
   const patch = (r: Req) => r.method === 'PATCH' && /\/game-characters\/c1$/.test(r.url);
 
-  async function open(url: string, overrides: Partial<AdventureDto> = {}) {
-    tavern = await setupTavern();
+  async function open(
+    url: string,
+    overrides: Partial<AdventureDto> = {},
+    entitlements?: AdventureEntitlementsDto | null,
+  ) {
+    tavern = await setupTavern(entitlements);
     await tavern.go(url);
     tavern.backend.expectOne(getAdventure).flush(adventure({ players: ['me'], ...overrides }));
     await tavern.render();
@@ -103,12 +108,26 @@ describe('CharacterForm (creation and edition pages)', () => {
       tavern.backend.expectNone(post);
     });
 
-    it('requires a picture', async () => {
+    it('a_character_can_be_created_without_picture', async () => {
       fill(valid);
       tavern.button('Créer le personnage').click();
       await tavern.render();
-      tavern.backend.expectNone(post);
-      expect(alerts()).toEqual(['Choisis une image pour ton personnage.']);
+      const request = tavern.backend.expectOne(post);
+      const body = request.request.body as FormData;
+      expect(body.has('picturePresentation')).toBe(false);
+      expect(JSON.parse(await (body.get('createGameCharacterRequest') as Blob).text())).toEqual({
+        ...valid,
+        adventureId: 'a1',
+      });
+      expect(alerts()).toEqual([]);
+      request.flush(character({ id: 'c9', pictureUrl: null }), {
+        status: 201,
+        statusText: 'Created',
+      });
+      await tavern.render();
+      tavern.backend
+        .expectOne((r) => r.method === 'GET' && /\/game-characters\/c9$/.test(r.url))
+        .flush(character({ id: 'c9', pictureUrl: null }));
     });
 
     it('checks the lengths of the fields', async () => {
@@ -184,6 +203,41 @@ describe('CharacterForm (creation and edition pages)', () => {
       expect(TestBed.inject(NotifierService).toasts()[0].message).toContain(
         'Création du personnage',
       );
+    });
+  });
+
+  describe('without the picture feature', () => {
+    const plans = (r: Req) => r.method === 'GET' && /\/plans$/.test(r.url);
+    const CATALOG = {
+      currency: 'EUR',
+      defaultPlan: 'adventurer',
+      plans: [
+        { id: 'adventurer', features: { characterPictures: false } },
+        { id: 'hero', features: { characterPictures: true } },
+      ],
+    };
+
+    it('the_picture_field_is_replaced_by_the_hint_without_the_feature', async () => {
+      await open('/tavern/adventures/a1/characters/new', {}, { features: [], limits: {} });
+      tavern.backend.expectOne(plans).flush(CATALOG);
+      await tavern.render();
+      const main = tavern.main();
+      expect(main.querySelector('input[type="file"]')).toBeNull();
+      const hint = main.querySelector('dg-plan-hint')!;
+      expect(hint.textContent).toContain(
+        'Inclus à partir de l’offre Héros (ou si ton MJ a une table équipée).',
+      );
+      expect(hint.querySelector('a')?.getAttribute('href')).toBe('/plans');
+      fill(valid);
+      tavern.button('Créer le personnage').click();
+      const body = tavern.backend.expectOne(post).request.body as FormData;
+      expect(body.has('picturePresentation')).toBe(false);
+    });
+
+    it('an unknown offer does not hide the picture field', async () => {
+      await open('/tavern/adventures/a1/characters/new', {}, null);
+      expect(tavern.main().querySelector('input[type="file"]')).not.toBeNull();
+      expect(tavern.main().querySelector('dg-plan-hint')).toBeNull();
     });
   });
 

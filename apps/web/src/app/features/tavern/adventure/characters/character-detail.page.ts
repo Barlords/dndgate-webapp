@@ -97,7 +97,11 @@ type DetailState = 'loading' | 'ready' | 'missing' | 'failed';
       @case ('ready') {
         @let c = character()!;
         <div class="sheet">
-          <dg-character-portrait [characterId]="c.id!" [name]="c.name ?? ''" />
+          <dg-character-portrait
+            [characterId]="c.id!"
+            [name]="c.name ?? ''"
+            [hasPicture]="!!c.pictureUrl"
+          />
           <div class="identity">
             <h1>{{ c.name }}</h1>
             <p class="owner">

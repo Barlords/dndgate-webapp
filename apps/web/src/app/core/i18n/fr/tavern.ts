@@ -282,7 +282,7 @@ export const tavern = {
     preview: 'Aperçu du portrait',
     pictureTooBig: 'L’image pèse plus de 5 Mo.',
     pictureFormat: 'L’image doit être un PNG ou un JPEG.',
-    pictureRequired: 'Choisis une image pour ton personnage.',
+    pictureOptional: 'Sans image, ton personnage aura le portrait par défaut.',
   },
   notes: {
     add: 'Ajouter une note',

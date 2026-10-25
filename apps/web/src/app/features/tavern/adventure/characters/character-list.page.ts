@@ -128,6 +128,7 @@ type ListState = 'loading' | 'ready' | 'failed';
                   <dg-character-portrait
                     [characterId]="character.id!"
                     [name]="character.name ?? ''"
+                    [hasPicture]="!!character.pictureUrl"
                   />
                   <span class="name">{{ character.name }}</span>
                   <p class="kind">{{ character.race }} · {{ character.martialClass }}</p>

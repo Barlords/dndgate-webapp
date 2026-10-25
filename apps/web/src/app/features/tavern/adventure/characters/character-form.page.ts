@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { forkJoin, Subscription } from 'rxjs';
 import { ApiConfiguration } from '../../../../core/api/generated/api-configuration';
 import {
   createGameCharacter,
@@ -24,6 +24,8 @@ import { AuthService } from '../../../../core/auth/auth.service';
 import { ApiProblem, toApiProblem } from '../../../../core/errors/api-problem';
 import { NotifierService } from '../../../../core/errors/notifier.service';
 import { BreadcrumbService } from '../../../../layout/breadcrumb.service';
+import { Billing } from '../../../../core/plans/billing.service';
+import { PlanCatalog } from '../../../../core/plans/plan-catalog.service';
 import { LoadError } from '../../../../shared/ui/load-error/load-error';
 import { Loading } from '../../../../shared/ui/loading/loading';
 import { AdventureContext } from '../adventure-context.service';
@@ -61,6 +63,9 @@ type LoadState = 'loading' | 'ready' | 'missing' | 'failed';
           <dg-character-form
             [initial]="initial()"
             [withPicture]="!characterId"
+            [pictureAllowed]="pictureAllowed()"
+            [hintScope]="context ? 'adventure' : 'account'"
+            [currentPlanId]="planId()"
             [submitLabel]="
               characterId ? t().common.actions.save : t().tavern.characters.createSubmit
             "
@@ -107,14 +112,30 @@ export class CharacterFormPage {
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   /** Null under « Mes personnages »: the character is then created outside any adventure. */
-  private readonly context = inject(AdventureContext, { optional: true });
+  protected readonly context = inject(AdventureContext, { optional: true });
   private readonly auth = inject(AuthService);
   private readonly notifier = inject(NotifierService);
   private readonly breadcrumb = inject(BreadcrumbService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
+  private readonly billing = inject(Billing);
+  private readonly catalog = inject(PlanCatalog);
+
   private readonly form = viewChild(CharacterForm);
+
+  /** Outside an adventure, the reader's own plan; null while unknown. */
+  protected readonly planId = signal<string | null>(null);
+  private readonly ownPlanHasPictures = signal<boolean | null>(null);
+  /**
+   * Whether the reader can send a picture. Unknown (loading, or a failed request) counts as yes:
+   * the API refuses what the plan does not include and says so.
+   */
+  protected readonly pictureAllowed = computed(() =>
+    this.context === null
+      ? (this.ownPlanHasPictures() ?? true)
+      : this.context.entitlements() === null || this.context.has('characterPictures'),
+  );
 
   /** The edited character, from the `:characterId` route above this one; null when creating. */
   protected readonly characterId =
@@ -147,6 +168,7 @@ export class CharacterFormPage {
     const context = this.context;
     if (context === null) {
       this.load();
+      this.loadOwnPlan();
       return;
     }
     effect(() => {
@@ -159,6 +181,22 @@ export class CharacterFormPage {
         });
       }
     });
+  }
+
+  private loadOwnPlan(): void {
+    if (this.characterId !== null) {
+      return;
+    }
+    forkJoin([this.billing.loadMine(), this.catalog.load()])
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: ([subscription]) => {
+          this.planId.set(subscription.planId ?? null);
+          const plan = this.catalog.plan(subscription.planId ?? '');
+          this.ownPlanHasPictures.set(plan ? plan.features?.['characterPictures'] === true : null);
+        },
+        error: () => undefined,
+      });
   }
 
   protected load(): void {
@@ -207,7 +245,7 @@ export class CharacterFormPage {
   private create(adventureId: string | undefined, { value, picture }: CharacterSubmission): void {
     createGameCharacter(this.http, this.rootUrl, {
       body: {
-        picturePresentation: picture!,
+        ...(picture === null ? {} : { picturePresentation: picture }),
         // Without an adventure, the character is kept outside any.
         createGameCharacterRequest: adventureId === undefined ? value : { ...value, adventureId },
       },

@@ -52,6 +52,12 @@ export const plans = {
   seeOffers: 'Voir les offres',
   billingUnavailable: 'Le paiement n’est pas disponible pour le moment.',
   redirectMissing: 'Le paiement n’a pas pu être ouvert. Réessaie dans un instant.',
+  hint: {
+    account: (planName: string) => `Inclus à partir de l’offre ${planName}.`,
+    adventure: (planName: string) =>
+      `Inclus à partir de l’offre ${planName} (ou si ton MJ a une table équipée).`,
+    unknown: 'Non inclus dans ton offre.',
+  },
   page: {
     navLabel: 'Offres',
     title: 'Les offres',

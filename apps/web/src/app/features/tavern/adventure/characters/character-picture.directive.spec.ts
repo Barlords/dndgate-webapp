@@ -13,7 +13,7 @@ import { stubObjectUrls } from './characters.testing';
     <span>{{ pic.status() }}</span>`,
 })
 class Host {
-  readonly id = signal('c1');
+  readonly id = signal<string | null>('c1');
 }
 
 describe('CharacterPictureDirective', () => {
@@ -81,5 +81,16 @@ describe('CharacterPictureDirective', () => {
     await render();
     expect(status()).toBe('failed');
     expect(img().hasAttribute('src')).toBe(false);
+  });
+
+  it('fetches nothing for a character without picture', async () => {
+    backend.expectOne(picture('c1')).flush(new Blob(['x']));
+    await render();
+    fixture.componentInstance.id.set(null);
+    await render();
+    backend.expectNone(() => true);
+    expect(status()).toBe('failed');
+    expect(img().hasAttribute('src')).toBe(false);
+    expect(urls.revoked).toEqual(['blob:1']);
   });
 });
