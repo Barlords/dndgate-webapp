@@ -8,6 +8,7 @@ import fr.barlords.dndgateapi.domain.functional.exception.plan.NoBillingAccountE
 import fr.barlords.dndgateapi.domain.functional.exception.plan.PaymentProviderUnavailableException;
 import fr.barlords.dndgateapi.domain.functional.exception.plan.PlanNotPurchasableException;
 import fr.barlords.dndgateapi.domain.functional.exception.plan.SubscriptionAlreadyActiveException;
+import fr.barlords.dndgateapi.domain.functional.exception.plan.SubscriptionSyncConflictException;
 import fr.barlords.dndgateapi.domain.functional.model.account.Account;
 import fr.barlords.dndgateapi.domain.functional.model.plan.BillingEvent;
 import fr.barlords.dndgateapi.domain.functional.model.plan.BillingInterval;
@@ -105,7 +106,7 @@ class BillingServiceTest {
         service = new BillingService(provider, subscriptions, new SubscriptionSynchronizer(provider, subscriptions, catalog, clock),
                 entitlements, catalog, accounts, adventures, characters, spellBooks, magicItems, URLS, clock);
         when(provider.isEnabled()).thenReturn(true);
-        when(subscriptions.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(subscriptions.updateIfUnchanged(any(), any())).thenReturn(true);
         when(accounts.getAccountById(accountId)).thenReturn(Account.builder().id(accountId).email("me@test.fr").build());
 
         logs = new ListAppender<>();
@@ -118,6 +119,8 @@ class BillingServiceTest {
     void tearDown() {
         ((Logger) LoggerFactory.getLogger(SubscriptionSynchronizer.class)).detachAppender(logs);
         ((Logger) LoggerFactory.getLogger(BillingService.class)).detachAppender(logs);
+        // a sync only updates the row it read, never with a merge that could write a stale state or re-insert a row
+        verify(subscriptions, never()).save(any());
     }
 
     private Subscription row(String planId, SubscriptionStatus status) {
@@ -137,7 +140,7 @@ class BillingServiceTest {
 
     private Subscription saved() {
         ArgumentCaptor<Subscription> captor = ArgumentCaptor.forClass(Subscription.class);
-        verify(subscriptions).save(captor.capture());
+        verify(subscriptions).updateIfUnchanged(captor.capture(), any());
         return captor.getValue();
     }
 
@@ -226,7 +229,7 @@ class BillingServiceTest {
         service.startCheckout(accountId, "mid", BillingInterval.MONTHLY);
         verify(provider, times(1)).createCustomer(any(), any());
         verify(subscriptions, times(1)).createCustomerIfAbsent(any(), any(), any());
-        verify(subscriptions, never()).save(any());
+        verify(subscriptions, never()).updateIfUnchanged(any(), any());
         assertTrue(logsAt(Level.WARN).isEmpty());
     }
 
@@ -369,7 +372,7 @@ class BillingServiceTest {
         service.handleWebhook("payload", "sig");
 
         // nothing changed for the account: the row is not even written
-        verify(subscriptions, never()).save(any());
+        verify(subscriptions, never()).updateIfUnchanged(any(), any());
     }
 
     @Test
@@ -397,7 +400,7 @@ class BillingServiceTest {
 
         service.handleWebhook("payload", "sig");
 
-        verify(subscriptions, never()).save(any());
+        verify(subscriptions, never()).updateIfUnchanged(any(), any());
     }
 
     @Test
@@ -413,7 +416,7 @@ class BillingServiceTest {
         service.handleWebhook("payload", "sig");
 
         // the second time the row already says what Stripe says: no second write
-        verify(subscriptions, times(1)).save(any());
+        verify(subscriptions, times(1)).updateIfUnchanged(any(), any());
         assertEquals("mid", first.getPlanId());
     }
 
@@ -429,7 +432,7 @@ class BillingServiceTest {
         service.handleWebhook("other", "sig");
 
         verify(provider, never()).findSubscriptions(any());
-        verify(subscriptions, never()).save(any());
+        verify(subscriptions, never()).updateIfUnchanged(any(), any());
         verify(subscriptions, never()).findByStripeCustomerId(CUSTOMER);
         assertTrue(logsAt(Level.WARN).stream().anyMatch(event -> event.getFormattedMessage().contains("cus_unknown")),
                 "the unknown customer is reported");
@@ -465,5 +468,69 @@ class BillingServiceTest {
         service.handleWebhook("payload", "sig");
 
         assertTrue(logsAt(Level.ERROR).isEmpty());
+    }
+
+    // ================= concurrent syncs =================
+
+    @Test
+    void the_update_is_conditional_on_the_row_read_and_its_time_always_moves_forward() {
+        // the row was written in this very instant: the next write still gets a later time
+        Subscription row = row(null, null).withUpdatedAt(NOW);
+        hasRow(row);
+        when(provider.parseWebhookEvent("payload", "sig")).thenReturn(new BillingEvent(UPDATED, CUSTOMER));
+        when(provider.findSubscriptions(CUSTOMER)).thenReturn(List.of(atStripe("sub_1", "mid", SubscriptionStatus.ACTIVE, 30)));
+
+        service.handleWebhook("payload", "sig");
+
+        ArgumentCaptor<Subscription> next = ArgumentCaptor.forClass(Subscription.class);
+        verify(subscriptions).updateIfUnchanged(next.capture(), org.mockito.ArgumentMatchers.eq(NOW));
+        assertEquals(NOW.plus(1, ChronoUnit.MICROS), next.getValue().getUpdatedAt());
+    }
+
+    @Test
+    void a_row_changed_meanwhile_is_read_again_with_stripe_before_writing() {
+        Subscription first = row(null, null);
+        Subscription changed = row("mid", SubscriptionStatus.ACTIVE).withStripeSubscriptionId("sub_1")
+                .withUpdatedAt(NOW.minus(1, ChronoUnit.HOURS));
+        hasRow(first);
+        when(provider.parseWebhookEvent("payload", "sig")).thenReturn(new BillingEvent("customer.subscription.deleted", CUSTOMER));
+        // the first reading of Stripe is older than the write of the other event
+        when(provider.findSubscriptions(CUSTOMER))
+                .thenReturn(List.of(atStripe("sub_1", "mid", SubscriptionStatus.ACTIVE, 30)))
+                .thenReturn(List.of(atStripe("sub_1", "mid", SubscriptionStatus.CANCELED, 30)));
+        when(subscriptions.updateIfUnchanged(any(), org.mockito.ArgumentMatchers.eq(first.getUpdatedAt()))).thenReturn(false);
+        when(subscriptions.findByAccountId(accountId)).thenReturn(Optional.of(changed));
+
+        service.handleWebhook("payload", "sig");
+
+        ArgumentCaptor<Subscription> next = ArgumentCaptor.forClass(Subscription.class);
+        verify(subscriptions).updateIfUnchanged(next.capture(), org.mockito.ArgumentMatchers.eq(changed.getUpdatedAt()));
+        assertEquals(SubscriptionStatus.CANCELED, next.getValue().getStatus());
+        verify(provider, times(2)).findSubscriptions(CUSTOMER);
+    }
+
+    @Test
+    void a_row_deleted_during_the_sync_is_not_written_again() {
+        hasRow(row(null, null));
+        when(provider.parseWebhookEvent("payload", "sig")).thenReturn(new BillingEvent("customer.subscription.deleted", CUSTOMER));
+        when(provider.findSubscriptions(CUSTOMER)).thenReturn(List.of(atStripe("sub_1", "mid", SubscriptionStatus.CANCELED, 30)));
+        when(subscriptions.updateIfUnchanged(any(), any())).thenReturn(false);
+        when(subscriptions.findByAccountId(accountId)).thenReturn(Optional.empty());
+
+        service.handleWebhook("payload", "sig");
+
+        verify(subscriptions, times(1)).updateIfUnchanged(any(), any());
+        verify(provider, times(1)).findSubscriptions(CUSTOMER);
+    }
+
+    @Test
+    void a_sync_that_keeps_conflicting_fails_so_that_stripe_sends_the_event_again() {
+        hasRow(row(null, null));
+        when(provider.parseWebhookEvent("payload", "sig")).thenReturn(new BillingEvent(UPDATED, CUSTOMER));
+        when(provider.findSubscriptions(CUSTOMER)).thenReturn(List.of(atStripe("sub_1", "mid", SubscriptionStatus.ACTIVE, 30)));
+        when(subscriptions.updateIfUnchanged(any(), any())).thenReturn(false);
+
+        assertThrows(SubscriptionSyncConflictException.class, () -> service.handleWebhook("payload", "sig"));
+        verify(subscriptions, times(3)).updateIfUnchanged(any(), any());
     }
 }

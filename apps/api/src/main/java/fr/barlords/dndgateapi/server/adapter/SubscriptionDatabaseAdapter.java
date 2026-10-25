@@ -62,6 +62,14 @@ public class SubscriptionDatabaseAdapter implements SubscriptionPersistenceSpi {
 
     @Override
     @Transactional
+    public boolean updateIfUnchanged(Subscription next, Instant readUpdatedAt) {
+        return repository.updateIfUnchanged(next.getAccountId(), next.getStripeSubscriptionId(), next.getPlanId(),
+                next.getInterval(), next.getStatus(), next.getCurrentPeriodEnd(), next.isCancelAtPeriodEnd(),
+                next.getUpdatedAt(), readUpdatedAt) == 1;
+    }
+
+    @Override
+    @Transactional
     public void deleteByAccountId(UUID accountId) {
         repository.deleteById(accountId);
     }

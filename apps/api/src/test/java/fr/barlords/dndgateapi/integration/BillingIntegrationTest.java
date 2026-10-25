@@ -221,6 +221,45 @@ class BillingIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     @Test
+    void a_row_that_keeps_changing_during_the_sync_answers_a_server_error_so_that_stripe_retries() {
+        TestAccount account = registerAndLogin();
+        subscribe(account, "test-tight");
+        String customer = "cus_test_" + account.id();
+        when(paymentProviderSpi.isEnabled()).thenReturn(true);
+        when(paymentProviderSpi.parseWebhookEvent("{\"id\":\"evt_race\"}", "t=1,v1=good"))
+                .thenReturn(new BillingEvent("customer.subscription.updated", customer));
+        // another event writes the row each time this one is reading Stripe
+        when(paymentProviderSpi.findSubscriptions(customer)).thenAnswer(invocation -> {
+            jdbc.update("update subscription set updated_at = updated_at + interval '1 second' where account_id = ?", account.id());
+            return List.of(active("test-paid"));
+        });
+
+        assertProblem(webhook("{\"id\":\"evt_race\"}", "t=1,v1=good"), 503, "urn:dndgate:subscription-sync-conflict");
+        Assertions.assertEquals("test-tight", jdbc.queryForObject(
+                "select plan_id from subscription where account_id = ?", String.class, account.id()));
+    }
+
+    @Test
+    void a_row_deleted_during_the_sync_is_not_inserted_again() {
+        TestAccount account = registerAndLogin();
+        subscribe(account, "test-tight");
+        String customer = "cus_test_" + account.id();
+        when(paymentProviderSpi.isEnabled()).thenReturn(true);
+        when(paymentProviderSpi.parseWebhookEvent("{\"id\":\"evt_gone\"}", "t=1,v1=good"))
+                .thenReturn(new BillingEvent("customer.subscription.deleted", customer));
+        when(paymentProviderSpi.findSubscriptions(customer)).thenAnswer(invocation -> {
+            jdbc.update("delete from subscription where account_id = ?", account.id());
+            return List.of(active("test-paid"));
+        });
+
+        ResponseEntity<String> response = webhook("{\"id\":\"evt_gone\"}", "t=1,v1=good");
+
+        Assertions.assertEquals(200, response.getStatusCode().value(), response.getBody());
+        Assertions.assertEquals(0, jdbc.queryForObject(
+                "select count(*) from subscription where account_id = ?", Integer.class, account.id()));
+    }
+
+    @Test
     void a_webhook_event_changes_the_effective_plan() {
         TestAccount account = registerAndLogin();
         subscribe(account, "test-tight");

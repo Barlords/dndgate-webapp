@@ -24,5 +24,13 @@ public interface SubscriptionPersistenceSpi {
      */
     Subscription createCustomerIfAbsent(UUID accountId, String stripeCustomerId, Instant now);
 
+    /**
+     * Writes {@code next} over the row of its account only if that row still has the {@code updated_at} it was read
+     * with. Never creates a row.
+     *
+     * @return false when the row changed or disappeared since it was read
+     */
+    boolean updateIfUnchanged(Subscription next, Instant readUpdatedAt);
+
     void deleteByAccountId(UUID accountId);
 }

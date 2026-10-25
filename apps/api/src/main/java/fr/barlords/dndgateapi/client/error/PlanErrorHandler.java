@@ -7,6 +7,7 @@ import fr.barlords.dndgateapi.domain.functional.exception.plan.PaymentProviderUn
 import fr.barlords.dndgateapi.domain.functional.exception.plan.PlanLimitReachedException;
 import fr.barlords.dndgateapi.domain.functional.exception.plan.PlanNotPurchasableException;
 import fr.barlords.dndgateapi.domain.functional.exception.plan.SubscriptionAlreadyActiveException;
+import fr.barlords.dndgateapi.domain.functional.exception.plan.SubscriptionSyncConflictException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -50,6 +51,12 @@ public class PlanErrorHandler {
     public ProblemDetail handleInvalidWebhookSignatureException() {
         return problem(HttpStatus.BAD_REQUEST, "The webhook signature is missing or does not match",
                 "urn:dndgate:invalid-webhook-signature");
+    }
+
+    /** A server error on purpose: Stripe sends the notification again, and the next sync reads everything again. */
+    @ExceptionHandler(SubscriptionSyncConflictException.class)
+    public ProblemDetail handleSubscriptionSyncConflictException(SubscriptionSyncConflictException e) {
+        return problem(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), "urn:dndgate:subscription-sync-conflict");
     }
 
     @ExceptionHandler(SubscriptionAlreadyActiveException.class)

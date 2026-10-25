@@ -1,5 +1,7 @@
 package fr.barlords.dndgateapi.server.repository;
 
+import fr.barlords.dndgateapi.domain.functional.model.plan.BillingInterval;
+import fr.barlords.dndgateapi.domain.functional.model.plan.SubscriptionStatus;
 import fr.barlords.dndgateapi.server.entity.SubscriptionEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -33,4 +35,23 @@ public interface SubscriptionRepository extends JpaRepository<SubscriptionEntity
             + "on conflict (account_id) do nothing", nativeQuery = true)
     int insertCustomerIfAbsent(@Param("accountId") UUID accountId, @Param("stripeCustomerId") String stripeCustomerId,
                                @Param("updatedAt") Instant updatedAt);
+
+    /**
+     * One statement, a compare-and-set on {@code updated_at}: 1 row written means the row was still the one read,
+     * 0 that it changed or no longer exists. An update never creates a row.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update SubscriptionEntity s set s.stripeSubscriptionId = :stripeSubscriptionId, s.planId = :planId, "
+            + "s.billingInterval = :billingInterval, s.status = :status, s.currentPeriodEnd = :currentPeriodEnd, "
+            + "s.cancelAtPeriodEnd = :cancelAtPeriodEnd, s.updatedAt = :updatedAt "
+            + "where s.accountId = :accountId and s.updatedAt = :readUpdatedAt")
+    int updateIfUnchanged(@Param("accountId") UUID accountId,
+                          @Param("stripeSubscriptionId") String stripeSubscriptionId,
+                          @Param("planId") String planId,
+                          @Param("billingInterval") BillingInterval billingInterval,
+                          @Param("status") SubscriptionStatus status,
+                          @Param("currentPeriodEnd") Instant currentPeriodEnd,
+                          @Param("cancelAtPeriodEnd") boolean cancelAtPeriodEnd,
+                          @Param("updatedAt") Instant updatedAt,
+                          @Param("readUpdatedAt") Instant readUpdatedAt);
 }

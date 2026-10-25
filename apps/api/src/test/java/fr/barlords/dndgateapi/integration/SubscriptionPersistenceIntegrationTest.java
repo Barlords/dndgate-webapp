@@ -88,6 +88,35 @@ class SubscriptionPersistenceIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     @Test
+    void the_conditional_update_only_changes_the_row_that_was_read() {
+        TestAccount account = registerAndLogin();
+        TestAccount withoutRow = registerAndLogin();
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        Subscription read = subscriptions.createCustomerIfAbsent(account.id(), "cus_cas_" + account.id(), now);
+        Subscription next = read.withStripeSubscriptionId("sub_" + UUID.randomUUID()).withPlanId("test-paid")
+                .withInterval(BillingInterval.MONTHLY).withStatus(SubscriptionStatus.ACTIVE)
+                .withCurrentPeriodEnd(now.plus(30, ChronoUnit.DAYS)).withCancelAtPeriodEnd(true)
+                .withUpdatedAt(now.plus(1, ChronoUnit.SECONDS));
+
+        // a stale reading is refused and changes nothing
+        Assertions.assertFalse(subscriptions.updateIfUnchanged(next, now.minus(1, ChronoUnit.SECONDS)));
+        Assertions.assertNull(subscriptions.findByAccountId(account.id()).orElseThrow().getStatus());
+
+        Assertions.assertTrue(subscriptions.updateIfUnchanged(next, read.getUpdatedAt()));
+        Assertions.assertEquals(next, subscriptions.findByAccountId(account.id()).orElseThrow());
+        Assertions.assertEquals("test-paid", entitlements.planOf(account.id()).id());
+
+        // the reading it was based on is now outdated: a second write from it is refused
+        Assertions.assertFalse(subscriptions.updateIfUnchanged(next.withStatus(SubscriptionStatus.CANCELED), read.getUpdatedAt()));
+        Assertions.assertEquals(SubscriptionStatus.ACTIVE, subscriptions.findByAccountId(account.id()).orElseThrow().getStatus());
+
+        // never a new row: an account without one (or whose row was deleted) stays without
+        Assertions.assertFalse(subscriptions.updateIfUnchanged(next.withAccountId(withoutRow.id())
+                .withStripeCustomerId("cus_none_" + withoutRow.id()).withStripeSubscriptionId(null), read.getUpdatedAt()));
+        Assertions.assertTrue(subscriptions.findByAccountId(withoutRow.id()).isEmpty());
+    }
+
+    @Test
     void the_test_helper_replaces_the_subscription_of_the_account() {
         TestAccount account = registerAndLogin();
 
