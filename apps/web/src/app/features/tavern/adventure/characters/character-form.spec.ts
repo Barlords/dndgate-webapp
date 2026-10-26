@@ -180,13 +180,28 @@ describe('CharacterForm (creation and edition pages)', () => {
         .flush(character({ id: 'c9' }));
     });
 
-    it('explains the limit of 10 characters on a 409', async () => {
+    it('a_full_seat_tells_the_player_which_plan_their_master_would_need', async () => {
       fill(valid);
       await choose(fileOf(PNG_BYTES, 'hero.png'));
       tavern.button('Créer le personnage').click();
-      tavern.backend.expectOne(post).flush({}, { status: 409, statusText: 'Conflict' });
+      tavern.backend.expectOne(post).flush(
+        {
+          type: 'urn:dndgate:plan-limit-reached',
+          limit: 'charactersPerPlayerAndAdventure',
+          max: 1,
+          planId: 'adventurer',
+          upgradePlanId: 'dungeon-master',
+          decidedBy: 'master',
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
       await tavern.render();
-      expect(alerts()).toEqual(['Tu as déjà 10 personnages dans cette aventure.']);
+      expect(alerts()).toEqual([]);
+      const [toast] = TestBed.inject(NotifierService).toasts();
+      expect(toast.message).toBe(
+        'Création du personnage : Limite atteinte : Personnages par joueur et par aventure (1 au maximum). Demande à ton MJ : il lui faudrait l’offre Maître du Donjon pour le permettre.',
+      );
+      expect(toast.action).toBeUndefined();
     });
 
     it('puts the field messages of a 400 on the fields', async () => {
@@ -347,10 +362,10 @@ describe('CharacterForm (creation and edition pages)', () => {
         {
           type: 'urn:dndgate:plan-limit-reached',
           limit: 'npcsPerAdventure',
-          max: 5,
+          max: 50,
           planId: 'dungeon-master',
           upgradePlanId: 'legendary',
-          decidedBy: 'account',
+          decidedBy: 'master',
         },
         { status: 409, statusText: 'Conflict' },
       );
@@ -358,7 +373,11 @@ describe('CharacterForm (creation and edition pages)', () => {
       expect(alerts()).toEqual([]);
       const toast = TestBed.inject(NotifierService).toasts()[0];
       expect(toast.kind).toBe('error');
-      expect(toast.message).toContain('PNJ');
+      // The master reads about their own plan: no « ask your master ».
+      expect(toast.message).toBe(
+        'Création du personnage : Limite atteinte : PNJ par aventure (50 au maximum). L’offre Légendaire le permet.',
+      );
+      expect(toast.action?.label).toBe('Voir les offres');
     });
 
     it('the_master_edits_an_npc_whoever_owns_it', async () => {

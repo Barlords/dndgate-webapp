@@ -90,8 +90,6 @@ export const tavern: Dictionary['tavern'] = {
     submit: 'Create the adventure',
     created: 'Adventure created.',
     creating: 'Creating the adventure',
-    limitReached:
-      'you already run 50 active adventures, finish or abandon one before creating another.',
   },
   adventureForm: {
     name: 'Name',
@@ -138,7 +136,6 @@ export const tavern: Dictionary['tavern'] = {
     itemLoadError: 'The magic item cannot be loaded.',
     itemLoading: 'Loading the magic item',
     itemLoadingFlavour: 'The chest opens…',
-    limitReached: 'you have reached the limit of 500 magic items.',
     created: 'Magic item created.',
     saved: 'Magic item saved.',
     deleted: 'Magic item deleted.',
@@ -303,8 +300,6 @@ export const tavern: Dictionary['tavern'] = {
     editTitle: 'Edit the character',
     createSubmit: 'Create the character',
     ownerOnly: 'Only the owner of the character can edit it.',
-    limitInAdventure: 'You already have 10 characters in this adventure.',
-    limitWithoutAdventure: 'You already have 50 characters outside any adventure.',
     created: 'Character created.',
     creating: 'Creating the character',
     saved: 'Character saved.',
@@ -334,7 +329,6 @@ export const tavern: Dictionary['tavern'] = {
     write: 'Write',
     private: 'Private',
     loading: 'Loading the notes',
-    limitReached: 'This adventure has reached the limit of 500 notes of this kind.',
     adding: 'Adding the note',
     editing: 'Editing the note',
     deleteMessage: 'This cannot be undone.',

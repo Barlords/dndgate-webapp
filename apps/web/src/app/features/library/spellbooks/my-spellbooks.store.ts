@@ -92,10 +92,14 @@ export class MySpellBooksStore {
       },
       error: (error: unknown) => {
         this.settle(key);
-        this.notifier.error(
-          toApiProblem(error),
-          adding ? this.t().library.spellbooks.adding : this.t().library.spellbooks.removing,
-        );
+        const texts = this.t().library.spellbooks;
+        const problem = toApiProblem(error);
+        if (adding && problem.status === 409 && !problem.plan) {
+          // The technical ceiling of spells per book, not a plan: the API says it in English.
+          this.notifier.error({ status: 409, detail: texts.spellsLimitReached, errors: [] });
+        } else {
+          this.notifier.error(problem, adding ? texts.adding : texts.removing);
+        }
       },
     });
   }

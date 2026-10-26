@@ -89,8 +89,6 @@ export const tavern = {
     submit: 'Créer l’aventure',
     created: 'Aventure créée.',
     creating: 'Création de l’aventure',
-    limitReached:
-      'tu mènes déjà 50 aventures actives, termine ou abandonne-en une avant d’en créer.',
   },
   adventureForm: {
     name: 'Nom',
@@ -137,7 +135,6 @@ export const tavern = {
     itemLoadError: 'Impossible de charger l’objet magique.',
     itemLoading: 'Chargement de l’objet magique',
     itemLoadingFlavour: 'Le coffre s’entrouvre…',
-    limitReached: 'tu as atteint la limite de 500 objets magiques.',
     created: 'Objet magique créé.',
     saved: 'Objet magique enregistré.',
     deleted: 'Objet magique supprimé.',
@@ -304,8 +301,6 @@ export const tavern = {
     editTitle: 'Modifier le personnage',
     createSubmit: 'Créer le personnage',
     ownerOnly: 'Seul le propriétaire du personnage peut le modifier.',
-    limitInAdventure: 'Tu as déjà 10 personnages dans cette aventure.',
-    limitWithoutAdventure: 'Tu as déjà 50 personnages hors aventure.',
     created: 'Personnage créé.',
     creating: 'Création du personnage',
     saved: 'Personnage enregistré.',
@@ -335,7 +330,6 @@ export const tavern = {
     write: 'Inscrire',
     private: 'Privée',
     loading: 'Chargement des notes',
-    limitReached: 'Cette aventure a atteint la limite de 500 notes de ce type.',
     adding: 'Ajout de la note',
     editing: 'Modification de la note',
     deleteMessage: 'Cette suppression est irréversible.',

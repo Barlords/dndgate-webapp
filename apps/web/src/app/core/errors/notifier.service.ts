@@ -22,6 +22,14 @@ export interface Toast {
 
 const AUTO_CLOSE_MS = 6000;
 
+export interface ErrorOptions {
+  /**
+   * The reader is the master of the adventure: a refusal decided by the master's plan is then about
+   * their own plan, and offers it rather than telling them to ask their master.
+   */
+  readerIsMaster?: boolean;
+}
+
 function messageFor(
   problem: ApiProblem,
   t: Dictionary['common']['errors'],
@@ -67,12 +75,12 @@ export class NotifierService {
   }
 
   /** `context` says what was being done, e.g. « Chargement de l’aventure ». */
-  error(problem: ApiProblem, context?: string): void {
+  error(problem: ApiProblem, context?: string, options: ErrorOptions = {}): void {
     if (problem.status === 401) {
       return; // The interceptor already ended the session and redirected to the login page.
     }
     if (problem.plan) {
-      this.refusal(problem.plan, context);
+      this.refusal(problem.plan, context, options.readerIsMaster === true);
       return;
     }
     const t = this.t().common;
@@ -95,7 +103,7 @@ export class NotifierService {
   }
 
   /** A plan refusal stays until dismissed: the reader has to see which plan would allow it. */
-  private refusal(plan: PlanRefusal, context?: string): void {
+  private refusal(plan: PlanRefusal, context: string | undefined, readerIsMaster: boolean): void {
     const t = this.t();
     const what =
       plan.kind === 'limit'
@@ -105,7 +113,7 @@ export class NotifierService {
     let action: ToastAction | undefined;
     if (plan.upgradePlanId !== null) {
       const name = planName(plan.upgradePlanId, t);
-      if (plan.decidedBy === 'master') {
+      if (plan.decidedBy === 'master' && !readerIsMaster) {
         message = `${what} ${t.plans.askMaster(name)}`;
       } else {
         message = `${what} ${t.plans.upgradeTo(name)}`;

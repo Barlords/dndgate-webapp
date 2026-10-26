@@ -68,7 +68,6 @@ type LoadState = 'loading' | 'ready' | 'missing' | 'failed';
             [currentPlanId]="planId()"
             [submitLabel]="characterId ? t().common.actions.save : submitLabel()"
             [busy]="saving()"
-            [problem]="problem()"
             (saved)="save($event)"
           />
         } @else {
@@ -154,7 +153,6 @@ export class CharacterFormPage {
     background: '',
   });
   protected readonly saving = signal(false);
-  protected readonly problem = signal<string | null>(null);
   private request: Subscription | null = null;
 
   /** An NPC is edited by the current master whoever owns it; any other character by its owner. */
@@ -250,7 +248,6 @@ export class CharacterFormPage {
   }
 
   protected save(submission: CharacterSubmission): void {
-    this.problem.set(null);
     this.saving.set(true);
     if (this.characterId === null) {
       this.create(this.context?.adventure()?.id, submission);
@@ -279,17 +276,9 @@ export class CharacterFormPage {
         },
         error: (error: unknown) => {
           this.saving.set(false);
-          const failure = toApiProblem(error);
-          // The master's NPC quota is a plan refusal: the notifier explains and offers the plan.
-          if (failure.status === 409 && !(this.createsNpc() && failure.plan)) {
-            this.problem.set(
-              adventureId === undefined
-                ? this.t().tavern.characters.limitWithoutAdventure
-                : this.t().tavern.characters.limitInAdventure,
-            );
-          } else {
-            this.onRefused(failure, this.t().tavern.characters.creating);
-          }
+          // A quota (reserve, characters per player, NPCs) is a plan refusal: the notifier names
+          // the limit and the plan that would lift it.
+          this.onRefused(toApiProblem(error), this.t().tavern.characters.creating);
         },
       });
   }
@@ -318,7 +307,7 @@ export class CharacterFormPage {
 
   private onRefused(failure: ApiProblem, context: string): void {
     if (!(failure.status === 400 && this.form()?.showProblem(failure))) {
-      this.notifier.error(failure, context);
+      this.notifier.error(failure, context, { readerIsMaster: this.context?.isMaster() ?? false });
     }
   }
 }

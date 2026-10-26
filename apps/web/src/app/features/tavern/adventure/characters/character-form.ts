@@ -219,9 +219,6 @@ export async function checkPicture(file: File, texts: PictureTexts): Promise<str
       <p class="counter" [class.over]="backgroundLength() > backgroundMax">
         {{ formatted(backgroundLength()) }} / {{ formatted(backgroundMax) }}
       </p>
-      @if (problem(); as message) {
-        <p class="problem" role="alert">{{ message }}</p>
-      }
       <dg-button type="submit" [loading]="busy()">{{
         submitLabel() ?? t().tavern.characters.createSubmit
       }}</dg-button>
@@ -240,8 +237,6 @@ export class CharacterForm {
   readonly pictureAllowed = input(true);
   readonly hintScope = input<'account' | 'adventure'>('account');
   readonly currentPlanId = input<string | null>(null);
-  /** A refusal that belongs to the whole form rather than to a field. */
-  readonly problem = input<string | null>(null);
   readonly saved = output<CharacterSubmission>();
 
   private readonly destroyRef = inject(DestroyRef);

@@ -157,12 +157,6 @@ export class NoteEditor {
     );
   }
 
-  /** Puts a message the API's refusal calls for on the content field. */
-  reject(message: string): void {
-    this.form.controls.content.setErrors({ server: message });
-    this.form.controls.content.markAsTouched();
-  }
-
   protected submit(): void {
     if (this.busy()) {
       return;

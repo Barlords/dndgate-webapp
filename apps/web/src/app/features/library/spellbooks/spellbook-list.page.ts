@@ -320,9 +320,9 @@ export class SpellBookListPage {
     return this.t().library.spellbooks.spellCount(book.spellList?.length ?? 0);
   }
 
-  /** The API refuses a 101st book with a bare 409: this says why. */
-  private limitReached(): ApiProblem {
-    return { status: 409, detail: this.t().library.spellbooks.limitReached, errors: [] };
+  /** A 409 without a plan on an import is the technical ceiling of spells per book. */
+  private spellsLimitReached(): ApiProblem {
+    return { status: 409, detail: this.t().library.spellbooks.spellsLimitReached, errors: [] };
   }
 
   protected retry(): void {
@@ -346,10 +346,9 @@ export class SpellBookListPage {
         },
         error: (error: unknown) => {
           this.saving.set(false);
+          // The quota of books is a plan refusal: the notifier names the plan that would lift it.
           const problem = toApiProblem(error);
-          if (problem.status === 409) {
-            this.notifier.error(this.limitReached());
-          } else if (!(problem.status === 400 && this.form()?.showProblem(problem))) {
+          if (!(problem.status === 400 && this.form()?.showProblem(problem))) {
             this.notifier.error(problem, this.t().library.spellbooks.creating);
           }
         },
@@ -375,8 +374,8 @@ export class SpellBookListPage {
         error: (error: unknown) => {
           this.importing.set(false);
           const problem = toApiProblem(error);
-          if (problem.status === 409) {
-            this.notifier.error(this.limitReached());
+          if (problem.status === 409 && !problem.plan) {
+            this.notifier.error(this.spellsLimitReached());
           } else if (problem.status === 400) {
             this.importErrors.set(
               problem.errors.length > 0

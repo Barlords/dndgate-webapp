@@ -58,15 +58,9 @@ export class CreateAdventurePage {
         },
         error: (error: unknown) => {
           this.saving.set(false);
+          // The quota of active adventures is a plan refusal: the notifier names the plan.
           const problem = toApiProblem(error);
-          if (problem.status === 409 && !problem.plan) {
-            // The cap of active adventures; a refusal decided by the plan is told by the notifier.
-            this.notifier.error({
-              status: 409,
-              detail: this.t().tavern.create.limitReached,
-              errors: [],
-            });
-          } else if (!(problem.status === 400 && this.form()?.showProblem(problem))) {
+          if (!(problem.status === 400 && this.form()?.showProblem(problem))) {
             this.notifier.error(problem, this.t().tavern.create.creating);
           }
         },

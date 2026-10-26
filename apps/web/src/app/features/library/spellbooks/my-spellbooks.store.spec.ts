@@ -75,6 +75,23 @@ describe('MySpellBooksStore', () => {
     expect(store.holds(store.books()[0], 'light')).toBe(false);
   });
 
+  it('explains the ceiling of 1 000 spells when a full book refuses a spell', () => {
+    const notifier = TestBed.inject(NotifierService);
+    store.load();
+    backend.expectOne(mine).flush([BOOK]);
+    store.toggle(store.books()[0], 'fireball');
+    backend
+      .expectOne((r) => r.method === 'POST')
+      .flush(
+        { detail: 'A spell book can hold at most 1000 spells' },
+        { status: 409, statusText: 'Conflict' },
+      );
+    expect(notifier.toasts()[0].message).toBe(
+      'Conflit : un grimoire contient au plus 1 000 sorts.',
+    );
+    expect(store.isPending(store.books()[0], 'fireball')).toBe(false);
+  });
+
   it('drops an answer arriving once the page is gone', () => {
     const success = vi.spyOn(TestBed.inject(NotifierService), 'success');
     store.load();

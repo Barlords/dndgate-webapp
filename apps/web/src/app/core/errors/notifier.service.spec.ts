@@ -190,10 +190,63 @@ describe('NotifierService plan refusals', () => {
     );
   });
 
+  it('a_master_decided_refusal_offers_the_plans_page_to_the_master_himself', () => {
+    notifier.error(refusal({ kind: 'feature', key: 'video', decidedBy: 'master' }), undefined, {
+      readerIsMaster: true,
+    });
+    const [toast] = notifier.toasts();
+    expect(toast.message).toBe(
+      'Cette fonction n’est pas incluse : Visio. L’offre Héros le permet.',
+    );
+    expect(toast.action?.label).toBe('Voir les offres');
+    notifier.act(toast);
+    expect(navigate).toHaveBeenCalledWith('/plans');
+  });
+
+  it('a_master_decided_refusal_still_tells_a_player_to_ask_the_master', () => {
+    notifier.error(refusal({ kind: 'feature', key: 'video', decidedBy: 'master' }), undefined, {
+      readerIsMaster: false,
+    });
+    const [toast] = notifier.toasts();
+    expect(toast.action).toBeUndefined();
+    expect(toast.message).toContain('Demande à ton MJ');
+  });
+
+  it('a_master_decided_limit_with_an_upgrade_tells_a_player_to_ask_the_master', () => {
+    notifier.error(
+      refusal({
+        key: 'npcsPerAdventure',
+        max: 5,
+        decidedBy: 'master',
+        upgradePlanId: 'hero',
+      }),
+    );
+    const [toast] = notifier.toasts();
+    expect(toast.action).toBeUndefined();
+    expect(toast.message).toBe(
+      'Limite atteinte : PNJ par aventure (5 au maximum). Demande à ton MJ : il lui faudrait l’offre Héros pour le permettre.',
+    );
+  });
+
+  it('a_master_decided_limit_offers_the_upgrade_to_the_master_himself', () => {
+    notifier.error(
+      refusal({ key: 'npcsPerAdventure', max: 5, decidedBy: 'master', upgradePlanId: 'hero' }),
+      'Création du personnage',
+      { readerIsMaster: true },
+    );
+    const [toast] = notifier.toasts();
+    expect(toast.message).toBe(
+      'Création du personnage : Limite atteinte : PNJ par aventure (5 au maximum). L’offre Héros le permet.',
+    );
+    expect(toast.action?.label).toBe('Voir les offres');
+  });
+
   it('a_master_decided_refusal_without_upgrade_names_only_the_limit', () => {
-    notifier.error(refusal({ decidedBy: 'master', upgradePlanId: null }));
+    notifier.error(
+      refusal({ key: 'npcsPerAdventure', max: 100, decidedBy: 'master', upgradePlanId: null }),
+    );
     expect(notifier.toasts()[0].message).toBe(
-      'Limite atteinte : Aventures actives en tant que MJ (1 au maximum).',
+      'Limite atteinte : PNJ par aventure (100 au maximum).',
     );
   });
 

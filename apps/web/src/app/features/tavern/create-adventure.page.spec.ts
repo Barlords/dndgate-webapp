@@ -106,13 +106,15 @@ describe('CreateAdventurePage', () => {
     expect(tavern.main().textContent).toContain('Ville invalide');
   });
 
-  it('explains the limit of 50 active adventures', async () => {
+  it('a_conflict_without_plan_names_no_fixed_ceiling', async () => {
     await open();
     fill();
     submit();
     tavern.backend.expectOne(create).flush({}, { status: 409, statusText: 'Conflict' });
     await tavern.render();
-    expect(TestBed.inject(NotifierService).toasts()[0].message).toContain('50 aventures actives');
+    expect(TestBed.inject(NotifierService).toasts()[0].message).toBe(
+      'Création de l’aventure : Conflit.',
+    );
     expect(tavern.router.url).toBe('/tavern/new');
   });
 

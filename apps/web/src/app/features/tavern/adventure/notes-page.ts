@@ -125,12 +125,11 @@ export abstract class NotesPage {
         },
         error: (error: unknown) => {
           this.saving.set(false);
-          const problem = toApiProblem(error);
-          if (problem.status === 409) {
-            this.creator()?.reject(this.t().tavern.notes.limitReached);
-          } else {
-            this.notifier.error(problem, this.t().tavern.notes.adding);
-          }
+          // A full adventure is a plan refusal (decided by the master's plan): the notifier names
+          // the limit and the plan that would lift it. The typed note stays in the editor.
+          this.notifier.error(toApiProblem(error), this.t().tavern.notes.adding, {
+            readerIsMaster: this.context.isMaster(),
+          });
         },
       });
   }
