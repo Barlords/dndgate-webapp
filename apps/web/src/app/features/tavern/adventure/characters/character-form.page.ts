@@ -55,27 +55,29 @@ type LoadState = 'loading' | 'ready' | 'missing' | 'failed';
   styleUrl: '../../tavern-page.scss',
   template: `
     <h1>
-      {{ characterId ? t().tavern.characters.editTitle : t().tavern.characters.newTitle }}
+      {{ title() }}
     </h1>
     @switch (state()) {
       @case ('ready') {
-        @if (!characterId || isOwner()) {
+        @if (!characterId || canEdit()) {
           <dg-character-form
             [initial]="initial()"
             [withPicture]="!characterId"
             [pictureAllowed]="pictureAllowed()"
             [hintScope]="context ? 'adventure' : 'account'"
             [currentPlanId]="planId()"
-            [submitLabel]="
-              characterId ? t().common.actions.save : t().tavern.characters.createSubmit
-            "
+            [submitLabel]="characterId ? t().common.actions.save : submitLabel()"
             [busy]="saving()"
             [problem]="problem()"
             (saved)="save($event)"
           />
         } @else {
           <div class="state">
-            <p role="alert">{{ t().tavern.characters.ownerOnly }}</p>
+            <p role="alert">
+              {{
+                loaded()?.npc ? t().tavern.characters.masterOnly : t().tavern.characters.ownerOnly
+              }}
+            </p>
             <a [routerLink]="backLink()">{{ t().tavern.characters.backToCharacter }}</a>
           </div>
         }
@@ -141,7 +143,7 @@ export class CharacterFormPage {
   protected readonly characterId =
     inject(ActivatedRoute).parent?.snapshot.paramMap.get('characterId') ?? null;
 
-  private readonly loaded = signal<GameCharacterDto | null>(null);
+  protected readonly loaded = signal<GameCharacterDto | null>(null);
   protected readonly state = signal<LoadState>(this.characterId === null ? 'ready' : 'loading');
   protected readonly loadProblem = signal<ApiProblem | null>(null);
   protected readonly initial = signal<CharacterValue>({
@@ -155,7 +157,22 @@ export class CharacterFormPage {
   protected readonly problem = signal<string | null>(null);
   private request: Subscription | null = null;
 
-  protected readonly isOwner = computed(() => this.loaded()?.ownerId === this.auth.account()?.id);
+  /** An NPC is edited by the current master whoever owns it; any other character by its owner. */
+  protected readonly canEdit = computed(() =>
+    this.loaded()?.npc
+      ? (this.context?.isMaster() ?? false)
+      : this.loaded()?.ownerId === this.auth.account()?.id,
+  );
+  /** A character created by the master in their own adventure is an NPC. */
+  private readonly createsNpc = computed(() => this.context?.isMaster() ?? false);
+  protected readonly title = computed(() => {
+    const t = this.t().tavern.characters;
+    return this.characterId ? t.editTitle : this.createsNpc() ? t.newNpcTitle : t.newTitle;
+  });
+  protected readonly submitLabel = computed(() => {
+    const t = this.t().tavern.characters;
+    return this.createsNpc() ? t.createNpcSubmit : t.createSubmit;
+  });
 
   protected readonly listLink = computed(() =>
     this.context === null
@@ -255,12 +272,16 @@ export class CharacterFormPage {
         next: ({ body }) => {
           this.saving.set(false);
           this.notifier.success(this.t().tavern.characters.created);
+          if (body.npc) {
+            this.context?.reloadEntitlements();
+          }
           void this.router.navigate([...this.listLink(), body.id]);
         },
         error: (error: unknown) => {
           this.saving.set(false);
           const failure = toApiProblem(error);
-          if (failure.status === 409) {
+          // The master's NPC quota is a plan refusal: the notifier explains and offers the plan.
+          if (failure.status === 409 && !(this.createsNpc() && failure.plan)) {
             this.problem.set(
               adventureId === undefined
                 ? this.t().tavern.characters.limitWithoutAdventure

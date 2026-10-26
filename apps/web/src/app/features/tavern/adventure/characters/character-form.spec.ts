@@ -1,8 +1,10 @@
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { AdventureDto } from '../../../../core/api/generated/models/adventure-dto';
 import { NotifierService } from '../../../../core/errors/notifier.service';
 import { BreadcrumbService } from '../../../../layout/breadcrumb.service';
 import { AdventureEntitlementsDto } from '../../../../core/api/generated/models/adventure-entitlements-dto';
+import { AdventureContext } from '../adventure-context.service';
 import { adventure, setupTavern, TavernTestbed } from '../../tavern.testing';
 import {
   character,
@@ -20,6 +22,12 @@ interface Req {
 
 describe('CharacterForm (creation and edition pages)', () => {
   let tavern: TavernTestbed;
+
+  /** The context the adventure shell provides to its pages. */
+  const shellContext = () =>
+    tavern.harness.fixture.debugElement
+      .query(By.css('dg-adventure-shell'))
+      .injector.get(AdventureContext);
   let urls: ReturnType<typeof stubObjectUrls>;
 
   const getAdventure = (r: Req) => r.method === 'GET' && /\/adventures\/a1$/.test(r.url);
@@ -302,6 +310,75 @@ describe('CharacterForm (creation and edition pages)', () => {
       tavern.backend.expectOne(getOne).flush({}, { status: 404, statusText: 'Not Found' });
       await tavern.render();
       expect(alerts()).toEqual(['Ce personnage est introuvable.']);
+    });
+  });
+
+  describe('NPCs of the master', () => {
+    it('the_master_creates_an_npc', async () => {
+      await open('/tavern/adventures/a1/characters/new', { creatorId: 'me', players: ['p1'] });
+      expect(tavern.main().querySelector('h1')!.textContent).toContain('Nouveau PNJ');
+      const reload = vi.spyOn(shellContext(), 'reloadEntitlements');
+      fill(valid);
+      tavern.button('Créer le PNJ').click();
+      await tavern.render();
+      const request = tavern.backend.expectOne(post);
+      const body = request.request.body as FormData;
+      expect(JSON.parse(await (body.get('createGameCharacterRequest') as Blob).text())).toEqual({
+        ...valid,
+        adventureId: 'a1',
+      });
+      request.flush(character({ id: 'c9', npc: true, visibility: 'PRIVATE', ownerId: 'me' }), {
+        status: 201,
+        statusText: 'Created',
+      });
+      await tavern.render();
+      expect(reload).toHaveBeenCalled();
+      expect(tavern.router.url).toBe('/tavern/adventures/a1/characters/c9');
+      tavern.backend
+        .expectOne((r) => r.method === 'GET' && /\/game-characters\/c9$/.test(r.url))
+        .flush(character({ id: 'c9', npc: true, ownerId: 'me' }));
+    });
+
+    it('a_refused_npc_quota_goes_through_the_notifier', async () => {
+      await open('/tavern/adventures/a1/characters/new', { creatorId: 'me', players: ['p1'] });
+      fill(valid);
+      tavern.button('Créer le PNJ').click();
+      tavern.backend.expectOne(post).flush(
+        {
+          type: 'urn:dndgate:plan-limit-reached',
+          limit: 'npcsPerAdventure',
+          max: 5,
+          planId: 'dungeon-master',
+          upgradePlanId: 'legendary',
+          decidedBy: 'account',
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
+      await tavern.render();
+      expect(alerts()).toEqual([]);
+      const toast = TestBed.inject(NotifierService).toasts()[0];
+      expect(toast.kind).toBe('error');
+      expect(toast.message).toContain('PNJ');
+    });
+
+    it('the_master_edits_an_npc_whoever_owns_it', async () => {
+      await open('/tavern/adventures/a1/characters/c1/edit', { creatorId: 'me', players: ['p1'] });
+      tavern.backend.expectOne(getOne).flush(character({ ownerId: 'someone', npc: true }));
+      await tavern.render();
+      expect(input('name').value).toBe('Thorin');
+      fill({ race: 'Elfe' });
+      tavern.button('Enregistrer').click();
+      tavern.backend.expectOne(patch).flush(character({ race: 'Elfe', npc: true }));
+      await tavern.render();
+      tavern.backend.expectOne(getOne).flush(character({ race: 'Elfe', npc: true }));
+    });
+
+    it('a_player_cannot_edit_an_npc', async () => {
+      await open('/tavern/adventures/a1/characters/c1/edit');
+      tavern.backend.expectOne(getOne).flush(character({ ownerId: 'me', npc: true }));
+      await tavern.render();
+      expect(tavern.main().querySelector('form')).toBeNull();
+      expect(tavern.main().textContent).toContain('Seul le MJ');
     });
   });
 });

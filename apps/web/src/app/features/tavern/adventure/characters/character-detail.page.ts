@@ -156,7 +156,7 @@ const OPEN_STATUSES: ReadonlySet<AdventureDto['status']> = new Set(['NOT_STARTED
         <p class="text">{{ c.personality }}</p>
         <h2>{{ t().tavern.characters.background }}</h2>
         <p class="text">{{ c.background }}</p>
-        @if (isOwner()) {
+        @if (canManage()) {
           <div class="actions">
             <dg-button (click)="edit()">{{ t().common.actions.edit }}</dg-button>
             @if (!c.npc && c.adventureId) {
@@ -257,6 +257,10 @@ export class CharacterDetailPage {
 
   protected readonly isOwner = computed(
     () => this.character()?.ownerId === this.auth.account()?.id,
+  );
+  /** An NPC belongs to the current master whoever owns it; any other character to its owner. */
+  protected readonly canManage = computed(() =>
+    this.character()?.npc ? (this.context?.isMaster() ?? false) : this.isOwner(),
   );
   protected readonly inAdventure = this.context !== null;
   protected readonly listLink = computed(() =>

@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { AdventureDto } from '../../../../core/api/generated/models/adventure-dto';
 import { NotifierService } from '../../../../core/errors/notifier.service';
+import { AdventureEntitlementsDto } from '../../../../core/api/generated/models/adventure-entitlements-dto';
 import { adventure, setupTavern, TavernTestbed } from '../../tavern.testing';
 import { character, stubObjectUrls } from './characters.testing';
 
@@ -19,8 +20,11 @@ describe('CharacterListPage', () => {
   const pictures = (r: Req) => /\/game-characters\/[^/]+\/picture$/.test(r.url);
   const accounts = (r: Req) => /\/accounts\/id\//.test(r.url);
 
-  async function open(overrides: Partial<AdventureDto> = {}) {
-    tavern = await setupTavern();
+  async function open(
+    overrides: Partial<AdventureDto> = {},
+    entitlements?: AdventureEntitlementsDto,
+  ) {
+    tavern = await setupTavern(entitlements);
     await tavern.go('/tavern/adventures/a1/characters');
     tavern.backend
       .expectOne(getAdventure)
@@ -124,8 +128,8 @@ describe('CharacterListPage', () => {
       character({ id: 'c1', name: 'Thorin', ownerId: 'p1', active: true }),
       character({ id: 'c2', name: 'Elara', ownerId: 'me', active: true }),
       character({ id: 'c3', name: 'Bran', ownerId: 'me', active: false }),
-      character({ id: 'c4', name: 'Garde', ownerId: 'me', active: false, npc: true }),
       character({ id: 'c5', name: 'Pip', ownerId: 'p1', active: false }),
+      character({ id: 'c4', name: 'Garde', ownerId: 'me', active: false, npc: true }),
     ];
     const entries = () => [...tavern.main().querySelectorAll('.portraits > li')];
     const marked = () => entries().map((c) => c.textContent?.includes('Actif'));
@@ -158,6 +162,95 @@ describe('CharacterListPage', () => {
       await tavern.render();
       expect(marked()).toEqual([true, true, false, false, false]);
       expect(TestBed.inject(NotifierService).toasts()[0].kind).toBe('error');
+    });
+  });
+
+  describe('NPCs of the master', () => {
+    const setVisibility = (r: Req) =>
+      r.method === 'PUT' && /\/game-characters\/n[12]\/visibility$/.test(r.url);
+    const withUsage: AdventureEntitlementsDto = {
+      features: [],
+      limits: { npcsPerAdventure: { used: 2, max: 5 } },
+    };
+    const cast = () => [
+      character({ id: 'c1', name: 'Thorin', ownerId: 'p1', npc: false }),
+      character({ id: 'n1', name: 'Garde', ownerId: 'me', npc: true, visibility: 'PRIVATE' }),
+      character({ id: 'n2', name: 'Aubergiste', ownerId: 'me', npc: true, visibility: 'PUBLIC' }),
+    ];
+    const section = (title: string) =>
+      [...tavern.main().querySelectorAll('section')].find(
+        (s) => s.querySelector('h2')?.textContent?.trim() === title,
+      );
+    const names = (root: Element | undefined) =>
+      [...(root?.querySelectorAll('.name') ?? [])].map((n) => n.textContent?.trim());
+    const toggles = () => [
+      ...tavern.main().querySelectorAll<HTMLButtonElement>('button[aria-pressed]'),
+    ];
+
+    it('the_master_sees_npcs_with_their_visibility_toggle', async () => {
+      await open({ creatorId: 'me', players: ['p1'] }, withUsage);
+      await answer(cast());
+      expect(names(section('Personnages des joueurs'))).toEqual(['Thorin']);
+      expect(names(section('PNJ'))).toEqual(['Garde', 'Aubergiste']);
+      expect(section('PNJ')!.textContent).toContain('2 / 5 PNJ');
+      expect(toggles().map((t) => t.textContent!.replace(/\s+/g, ' ').trim())).toEqual([
+        'Privé Garde',
+        'Public Aubergiste',
+      ]);
+      expect(toggles().map((t) => t.getAttribute('aria-pressed'))).toEqual(['false', 'true']);
+      expect(tavern.button('Nouveau PNJ')).toBeTruthy();
+    });
+
+    it('the master creating in their adventure goes to the form', async () => {
+      await open({ creatorId: 'me', players: ['p1'] });
+      await answer(cast());
+      tavern.button('Nouveau PNJ').click();
+      await tavern.render();
+      expect(tavern.router.url).toBe('/tavern/adventures/a1/characters/new');
+    });
+
+    it('toggling_visibility_is_one_call_and_rolls_back_on_error', async () => {
+      await open({ creatorId: 'me', players: ['p1'] }, withUsage);
+      await answer(cast());
+
+      toggles()[0].click();
+      await tavern.render();
+      // Optimistic: the toggle already shows the new state while the call is pending.
+      expect(toggles()[0].getAttribute('aria-pressed')).toBe('true');
+      const request = tavern.backend.expectOne(setVisibility);
+      expect(request.request.body).toEqual({ visibility: 'PUBLIC' });
+      request.flush({}, { status: 500, statusText: 'Server' });
+      await tavern.render();
+      expect(toggles()[0].getAttribute('aria-pressed')).toBe('false');
+      expect(TestBed.inject(NotifierService).toasts()[0].kind).toBe('error');
+
+      toggles()[1].click();
+      await tavern.render();
+      const second = tavern.backend.expectOne(setVisibility);
+      expect(second.request.body).toEqual({ visibility: 'PRIVATE' });
+      second.flush(character({ id: 'n2', npc: true, ownerId: 'me', visibility: 'PRIVATE' }));
+      await tavern.render();
+      expect(toggles()[1].getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('players_see_public_npcs_read_only', async () => {
+      await open({ players: ['me', 'p1'] }, withUsage);
+      await answer([
+        character({ id: 'c1', name: 'Thorin', ownerId: 'p1' }),
+        character({
+          id: 'n2',
+          name: 'Aubergiste',
+          ownerId: 'master',
+          npc: true,
+          visibility: 'PUBLIC',
+        }),
+      ]);
+      expect(names(section('PNJ'))).toEqual(['Aubergiste']);
+      expect(section('PNJ')!.querySelector('.npc')!.textContent).toContain('PNJ');
+      expect(section('PNJ')!.textContent).not.toContain('/ 5');
+      expect(toggles()).toEqual([]);
+      expect(tavern.main().textContent).not.toContain('Rendre actif');
+      expect(tavern.button('Créer un personnage')).toBeTruthy();
     });
   });
 });

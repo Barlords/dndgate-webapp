@@ -1,9 +1,11 @@
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { of } from 'rxjs';
 import { GameCharacterDto } from '../../../../core/api/generated/models/game-character-dto';
 import { AdventureDto } from '../../../../core/api/generated/models/adventure-dto';
 import { NotifierService } from '../../../../core/errors/notifier.service';
 import { BreadcrumbService } from '../../../../layout/breadcrumb.service';
+import { AdventureContext } from '../adventure-context.service';
 import { ReserveFullDialog } from '../../characters/reserve-full.dialog';
 import { ConfirmService } from '../../../../shared/ui/confirm-dialog/confirm.service';
 import { adventure, page, setupTavern, TavernTestbed } from '../../tavern.testing';
@@ -17,6 +19,12 @@ interface Req {
 describe('CharacterDetailPage', () => {
   let tavern: TavernTestbed;
 
+  /** The context the adventure shell provides to its pages. */
+  const shellContext = () =>
+    tavern.harness.fixture.debugElement
+      .query(By.css('dg-adventure-shell'))
+      .injector.get(AdventureContext);
+
   const getAdventure = (r: Req) => r.method === 'GET' && /\/adventures\/a1$/.test(r.url);
   const getOne = (r: Req) => r.method === 'GET' && /\/game-characters\/c1$/.test(r.url);
   const picture = (r: Req) => /\/game-characters\/c1\/picture$/.test(r.url);
@@ -29,8 +37,12 @@ describe('CharacterDetailPage', () => {
     await tavern.render();
   }
 
-  async function open(owner = 'me', overrides: Partial<GameCharacterDto> = {}) {
-    await start();
+  async function open(
+    owner = 'me',
+    overrides: Partial<GameCharacterDto> = {},
+    adventureOverrides: Partial<AdventureDto> = {},
+  ) {
+    await start(adventureOverrides);
     tavern.backend.expectOne(getOne).flush(character({ ownerId: owner, ...overrides }));
     await tavern.render();
     tavern.backend.expectOne(picture).flush(new Blob(['x']));
@@ -88,6 +100,28 @@ describe('CharacterDetailPage', () => {
     await tavern.render();
     expect(tavern.router.url).toBe('/tavern/adventures/a1/characters/c1/edit');
     tavern.backend.expectOne(getOne).flush(character({ ownerId: 'me' }));
+  });
+
+  it('the_master_manages_an_npc_whoever_owns_it', async () => {
+    await open('someone', { npc: true, visibility: 'PUBLIC' }, { creatorId: 'me' });
+    expect(buttons()).toEqual(['Modifier', 'Supprimer']);
+    const typeToConfirm = vi
+      .spyOn(TestBed.inject(ConfirmService), 'typeToConfirm')
+      .mockReturnValue(of('Thorin'));
+    const reload = vi.spyOn(shellContext(), 'reloadEntitlements');
+    tavern.button('Supprimer').click();
+    expect(typeToConfirm).toHaveBeenCalled();
+    tavern.backend.expectOne(remove).flush(null, { status: 204, statusText: 'No Content' });
+    await tavern.render();
+    expect(reload).toHaveBeenCalled();
+    tavern.backend
+      .match((r) => r.method === 'GET' && /\/game-characters$/.test(r.url))
+      .forEach((r) => r.flush([]));
+  });
+
+  it('a_player_cannot_manage_an_npc_even_if_it_is_theirs', async () => {
+    await open('me', { npc: true, visibility: 'PUBLIC' });
+    expect(buttons()).toEqual([]);
   });
 
   it('another participant can only read', async () => {
