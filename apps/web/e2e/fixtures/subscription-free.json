@@ -1,0 +1,9 @@
+{
+  "planId": "adventurer",
+  "interval": null,
+  "status": null,
+  "currentPeriodEnd": null,
+  "cancelAtPeriodEnd": false,
+  "billingEnabled": true,
+  "usage": {}
+}

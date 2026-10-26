@@ -22,6 +22,7 @@ import { Button } from '../../shared/ui/button/button';
 import { ConfirmService } from '../../shared/ui/confirm-dialog/confirm.service';
 import { FormField } from '../../shared/ui/form-field/form-field';
 import { AccountLayout } from './account-layout';
+import { SubscriptionPanel } from './subscription-panel';
 import { I18n } from '../../core/i18n/i18n.service';
 
 const PSEUDO_PATTERN = /^\s*[\p{L}\p{N}_.-]{3,30}\s*$/u;
@@ -42,9 +43,9 @@ function sameAsNewPassword(control: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'dg-profile-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, AccountLayout, FormField, Button],
+  imports: [ReactiveFormsModule, AccountLayout, FormField, Button, SubscriptionPanel],
   styles: `
-    // Two columns: identity then the danger zone on the left, password then sessions on the
+    // Two columns: identity, subscription then the danger zone on the left, password then sessions on the
     // right. On a narrow screen, one column in reading order (the danger zone last).
     .profile {
       display: grid;
@@ -74,16 +75,20 @@ function sameAsNewPassword(control: AbstractControl): ValidationErrors | null {
         order: 1;
       }
 
-      .profile__password {
+      .profile__subscription {
         order: 2;
       }
 
-      .profile__sessions {
+      .profile__password {
         order: 3;
       }
 
-      .profile__danger {
+      .profile__sessions {
         order: 4;
+      }
+
+      .profile__danger {
+        order: 5;
       }
     }
 
@@ -153,6 +158,11 @@ function sameAsNewPassword(control: AbstractControl): ValidationErrors | null {
                 }}</dg-button>
               </div>
             </form>
+          </section>
+
+          <section class="profile__subscription" aria-labelledby="profile-subscription">
+            <h2 id="profile-subscription">{{ t().plans.subscription.title }}</h2>
+            <dg-subscription-panel />
           </section>
 
           <section class="profile__danger" aria-labelledby="profile-danger">

@@ -118,16 +118,33 @@ describe('ChroniclePage', () => {
     expect(tavern.main().textContent).toContain('entre 1900 et 2200');
   });
 
-  it('explains the limit of 500 notes', async () => {
+  it('a full chronicle tells the player which plan their master would need', async () => {
     await open();
     await answer([]);
     tavern.button('Ajouter une note').click();
     await tavern.render();
     await type('textarea', 'x');
     tavern.button('Inscrire').click();
-    tavern.backend.expectOne((r) => r.method === 'POST').flush({ status: 409 }, conflict);
+    tavern.backend
+      .expectOne((r) => r.method === 'POST')
+      .flush(
+        {
+          type: 'urn:dndgate:plan-limit-reached',
+          limit: 'historicalNotesPerAdventure',
+          max: 50,
+          planId: 'adventurer',
+          upgradePlanId: 'hero',
+          decidedBy: 'master',
+        },
+        conflict,
+      );
     await tavern.render();
-    expect(tavern.main().textContent).toContain('limite de 500 notes');
+    const [toast] = TestBed.inject(NotifierService).toasts();
+    expect(toast.message).toBe(
+      'Ajout de la note : Limite atteinte : Notes d’historique par aventure (50 au maximum). Demande à ton MJ : il lui faudrait l’offre Héros pour le permettre.',
+    );
+    expect(toast.action).toBeUndefined();
+    expect(field<HTMLTextAreaElement>('textarea').value).toBe('x');
   });
 
   it('edits a note in place', async () => {

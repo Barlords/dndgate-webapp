@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { ApiProblem } from './api-problem';
+import { Router } from '@angular/router';
+import { ApiProblem, PlanRefusal } from './api-problem';
 import { NotifierService, Toast } from './notifier.service';
 
 const problem = (extra: Partial<ApiProblem>): ApiProblem => ({ status: 500, errors: [], ...extra });
@@ -133,5 +134,140 @@ describe('NotifierService', () => {
       vi.advanceTimersByTime(60_000);
       expect(notifier.toasts()).toHaveLength(1);
     });
+  });
+});
+
+describe('NotifierService plan refusals', () => {
+  let notifier: NotifierService;
+  let navigate: ReturnType<typeof vi.spyOn>;
+
+  const refusal = (extra: Partial<PlanRefusal>): ApiProblem => ({
+    status: 409,
+    errors: [],
+    plan: {
+      kind: 'limit',
+      key: 'activeAdventuresAsMaster',
+      max: 1,
+      planId: 'adventurer',
+      upgradePlanId: 'hero',
+      decidedBy: 'account',
+      ...extra,
+    },
+  });
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    notifier = TestBed.inject(NotifierService);
+    navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+  });
+
+  afterEach(() => vi.useRealTimers());
+
+  it('an_account_decided_refusal_offers_the_plans_page', () => {
+    notifier.error(refusal({}));
+    const [toast] = notifier.toasts();
+    expect(toast.message).toContain('Aventures actives en tant que MJ');
+    expect(toast.message).toContain('Héros');
+    expect(toast.action?.label).toBe('Voir les offres');
+    notifier.act(toast);
+    expect(navigate).toHaveBeenCalledWith('/plans');
+    expect(notifier.toasts()).toEqual([]);
+  });
+
+  it('a_feature_refusal_names_the_feature_and_stays_until_dismissed', () => {
+    notifier.error(refusal({ kind: 'feature', key: 'video', max: undefined }));
+    vi.advanceTimersByTime(60_000);
+    expect(notifier.toasts()[0].message).toContain('Visio');
+    expect(notifier.toasts()[0].action).toBeDefined();
+  });
+
+  it('a_master_decided_refusal_tells_the_player_to_ask_the_master', () => {
+    notifier.error(refusal({ kind: 'feature', key: 'video', decidedBy: 'master' }));
+    const [toast] = notifier.toasts();
+    expect(toast.action).toBeUndefined();
+    expect(toast.message).toBe(
+      'Cette fonction n’est pas incluse : Visio. Demande à ton MJ : il lui faudrait l’offre Héros pour le permettre.',
+    );
+  });
+
+  it('a_master_decided_refusal_offers_the_plans_page_to_the_master_himself', () => {
+    notifier.error(refusal({ kind: 'feature', key: 'video', decidedBy: 'master' }), undefined, {
+      readerIsMaster: true,
+    });
+    const [toast] = notifier.toasts();
+    expect(toast.message).toBe(
+      'Cette fonction n’est pas incluse : Visio. L’offre Héros le permet.',
+    );
+    expect(toast.action?.label).toBe('Voir les offres');
+    notifier.act(toast);
+    expect(navigate).toHaveBeenCalledWith('/plans');
+  });
+
+  it('a_master_decided_refusal_still_tells_a_player_to_ask_the_master', () => {
+    notifier.error(refusal({ kind: 'feature', key: 'video', decidedBy: 'master' }), undefined, {
+      readerIsMaster: false,
+    });
+    const [toast] = notifier.toasts();
+    expect(toast.action).toBeUndefined();
+    expect(toast.message).toContain('Demande à ton MJ');
+  });
+
+  it('a_master_decided_limit_with_an_upgrade_tells_a_player_to_ask_the_master', () => {
+    notifier.error(
+      refusal({
+        key: 'npcsPerAdventure',
+        max: 5,
+        decidedBy: 'master',
+        upgradePlanId: 'hero',
+      }),
+    );
+    const [toast] = notifier.toasts();
+    expect(toast.action).toBeUndefined();
+    expect(toast.message).toBe(
+      'Limite atteinte : PNJ par aventure (5 au maximum). Demande à ton MJ : il lui faudrait l’offre Héros pour le permettre.',
+    );
+  });
+
+  it('a_master_decided_limit_offers_the_upgrade_to_the_master_himself', () => {
+    notifier.error(
+      refusal({ key: 'npcsPerAdventure', max: 5, decidedBy: 'master', upgradePlanId: 'hero' }),
+      'Création du personnage',
+      { readerIsMaster: true },
+    );
+    const [toast] = notifier.toasts();
+    expect(toast.message).toBe(
+      'Création du personnage : Limite atteinte : PNJ par aventure (5 au maximum). L’offre Héros le permet.',
+    );
+    expect(toast.action?.label).toBe('Voir les offres');
+  });
+
+  it('a_master_decided_refusal_without_upgrade_names_only_the_limit', () => {
+    notifier.error(
+      refusal({ key: 'npcsPerAdventure', max: 100, decidedBy: 'master', upgradePlanId: null }),
+    );
+    expect(notifier.toasts()[0].message).toBe(
+      'Limite atteinte : PNJ par aventure (100 au maximum).',
+    );
+  });
+
+  it('a_limit_without_max_omits_it', () => {
+    notifier.error(refusal({ max: undefined, upgradePlanId: null }));
+    expect(notifier.toasts()[0].message).toBe(
+      'Limite atteinte : Aventures actives en tant que MJ.',
+    );
+  });
+
+  it('a_refusal_is_wrapped_in_its_context', () => {
+    notifier.error(refusal({ upgradePlanId: null }), 'Création de l’aventure');
+    expect(notifier.toasts()[0].message).toBe(
+      'Création de l’aventure : Limite atteinte : Aventures actives en tant que MJ (1 au maximum).',
+    );
+  });
+
+  it('a_refusal_without_upgrade_has_no_action', () => {
+    notifier.error(refusal({ upgradePlanId: null }));
+    const [toast] = notifier.toasts();
+    expect(toast.action).toBeUndefined();
+    expect(toast.message).not.toContain('Héros');
   });
 });

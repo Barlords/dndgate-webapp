@@ -19,11 +19,23 @@ export function displayName(account: PublicAccountDto, t: Dictionary): string {
 type Known =
   { kind: 'loading' } | { kind: 'found'; account: PublicAccountDto } | { kind: 'failed' };
 
+/** A mark shown next to a pseudo: the founder mark first, then the plan badge. */
+export type AccountBadgeKind = 'founder' | 'dungeon-master' | 'legend';
+
 interface PseudoEntry {
   known: WritableSignal<Known>;
   name: Signal<string>;
+  badges: Signal<AccountBadgeKind[]>;
   /** When the last lookup failed, or null while loading or loaded. */
   failedAt: number | null;
+}
+
+function badgesOf(known: Known): AccountBadgeKind[] {
+  if (known.kind !== 'found') {
+    return [];
+  }
+  const { founder, planBadge } = known.account;
+  return [...(founder ? (['founder'] as const) : []), ...(planBadge ? [planBadge] : [])];
 }
 
 /**
@@ -59,16 +71,33 @@ export class AccountDirectory {
    * 30 s or more later, on the same signal.
    */
   pseudo(id: string): Signal<string> {
+    return this.entry(id).name;
+  }
+
+  /**
+   * The marks of an account (founder first, then its plan badge), from the same cached lookup as
+   * `pseudo`. Empty while loading and when the lookup failed; the same signal for the same id.
+   */
+  badges(id: string): Signal<AccountBadgeKind[]> {
+    return this.entry(id).badges;
+  }
+
+  private entry(id: string): PseudoEntry {
     let entry = this.pseudos.get(id);
     if (entry === undefined) {
       const known = signal<Known>({ kind: 'loading' });
-      entry = { known, name: computed(() => this.nameOf(known())), failedAt: null };
+      entry = {
+        known,
+        name: computed(() => this.nameOf(known())),
+        badges: computed(() => badgesOf(known())),
+        failedAt: null,
+      };
       this.pseudos.set(id, entry);
       this.load(id, entry);
     } else if (entry.failedAt !== null && Date.now() - entry.failedAt >= RETRY_COOLDOWN_MS) {
       this.load(id, entry);
     }
-    return entry.name;
+    return entry;
   }
 
   private nameOf(known: Known): string {
@@ -85,12 +114,24 @@ export class AccountDirectory {
 
   private load(id: string, entry: PseudoEntry): void {
     entry.failedAt = null;
+    // A cached lookup emits during `subscribe`, i.e. inside whatever reactive context asked for the
+    // pseudo: writing a signal there throws (NG0600), so a synchronous emission is deferred.
+    let subscribing = true;
+    const apply = (update: () => void): void => {
+      if (subscribing) {
+        queueMicrotask(update);
+      } else {
+        update();
+      }
+    };
     this.get(id).subscribe({
-      next: (account) => entry.known.set({ kind: 'found', account }),
-      error: () => {
-        entry.failedAt = Date.now();
-        entry.known.set({ kind: 'failed' });
-      },
+      next: (account) => apply(() => entry.known.set({ kind: 'found', account })),
+      error: () =>
+        apply(() => {
+          entry.failedAt = Date.now();
+          entry.known.set({ kind: 'failed' });
+        }),
     });
+    subscribing = false;
   }
 }

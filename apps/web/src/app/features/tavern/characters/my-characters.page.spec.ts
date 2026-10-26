@@ -25,6 +25,25 @@ describe('MyCharactersPage and the characters outside any adventure', () => {
   const getOne = (r: Req) => r.method === 'GET' && /\/game-characters\/c1$/.test(r.url);
   const patch = (r: Req) => r.method === 'PATCH' && /\/game-characters\/c1$/.test(r.url);
 
+  const subscription = (r: Req) =>
+    r.method === 'GET' && /\/accounts\/me\/subscription$/.test(r.url);
+  const plans = (r: Req) => r.method === 'GET' && /\/plans$/.test(r.url);
+  const CATALOG = {
+    currency: 'EUR',
+    defaultPlan: 'adventurer',
+    plans: [
+      { id: 'adventurer', features: { characterPictures: false } },
+      { id: 'hero', features: { characterPictures: true } },
+    ],
+  };
+
+  /** The creation page looks at the reader's own plan to know whether a picture may be sent. */
+  async function answerPlan(planId = 'hero') {
+    tavern.backend.expectOne(subscription).flush({ planId, status: 'active' });
+    tavern.backend.expectOne(plans).flush(CATALOG);
+    await tavern.render();
+  }
+
   async function settle() {
     await tavern.render();
     tavern.backend.match(pictures).forEach((r) => r.flush(new Blob(['x'])));
@@ -116,6 +135,7 @@ describe('MyCharactersPage and the characters outside any adventure', () => {
       tavern.main().querySelector<HTMLButtonElement>('[aria-label="Créer un personnage"]')!.click();
       await tavern.render();
       expect(tavern.router.url).toBe('/tavern/characters/new');
+      await answerPlan();
     });
   });
 
@@ -125,7 +145,24 @@ describe('MyCharactersPage and the characters outside any adventure', () => {
       await tavern.go('/tavern/characters/new');
     });
 
+    it('keeps the picture field when the own plan cannot be known', async () => {
+      tavern.backend.expectOne(subscription).flush({}, { status: 500, statusText: 'Error' });
+      tavern.backend.expectOne(plans).flush(CATALOG);
+      await tavern.render();
+      expect(tavern.main().querySelector('input[type="file"]')).not.toBeNull();
+      expect(tavern.main().querySelector('dg-plan-hint')).toBeNull();
+    });
+
+    it('the_picture_field_is_replaced_by_the_hint_without_the_feature', async () => {
+      await answerPlan('adventurer');
+      expect(tavern.main().querySelector('input[type="file"]')).toBeNull();
+      expect(tavern.main().querySelector('dg-plan-hint')?.textContent).toContain(
+        'Inclus à partir de l’offre Héros.',
+      );
+    });
+
     async function submit() {
+      await answerPlan();
       fill({
         name: 'Elara',
         race: 'Elfe',
@@ -145,8 +182,31 @@ describe('MyCharactersPage and the characters outside any adventure', () => {
       return tavern.backend.expectOne(post);
     }
 
-    it('draws the form on the parchment, like the other forms', () => {
+    it('draws the form on the parchment, like the other forms', async () => {
+      await answerPlan();
       expect(tavern.main().querySelector('dg-parchment dg-character-form')).not.toBeNull();
+    });
+
+    it('a_full_reserve_shows_the_plan_refusal', async () => {
+      const request = await submit();
+      request.flush(
+        {
+          type: 'urn:dndgate:plan-limit-reached',
+          limit: 'charactersWithoutAdventure',
+          max: 3,
+          planId: 'adventurer',
+          upgradePlanId: 'hero',
+          decidedBy: 'account',
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
+      await tavern.render();
+      const [toast] = TestBed.inject(NotifierService).toasts();
+      expect(toast.message).toBe(
+        'Création du personnage : Limite atteinte : Personnages hors aventure (3 au maximum). L’offre Héros le permet.',
+      );
+      expect(toast.action?.label).toBe('Voir les offres');
+      expect(tavern.main().querySelectorAll('[role="alert"]').length).toBe(0);
     });
 
     it('sends no adventure and opens the new character among mine', async () => {
@@ -161,13 +221,6 @@ describe('MyCharactersPage and the characters outside any adventure', () => {
         .expectOne((r) => r.method === 'GET' && /\/game-characters\/c9$/.test(r.url))
         .flush(character({ id: 'c9', ownerId: 'me' }));
       await settle();
-    });
-
-    it('explains the limit of the characters outside any adventure on a 409', async () => {
-      const request = await submit();
-      request.flush({}, { status: 409, statusText: 'Conflict' });
-      await tavern.render();
-      expect(tavern.main().textContent).toContain('Tu as déjà 50 personnages hors aventure.');
     });
   });
 

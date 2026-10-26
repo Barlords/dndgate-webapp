@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   DestroyRef,
   effect,
   inject,
@@ -10,10 +11,17 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
+import { NgTemplateOutlet } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { AccountDirectory } from '../../../../core/accounts/account-directory.service';
 import { ApiConfiguration } from '../../../../core/api/generated/api-configuration';
-import { getGameCharacters } from '../../../../core/api/generated/functions';
+import {
+  getGameCharacters,
+  setActiveCharacter,
+  setGameCharacterVisibility,
+} from '../../../../core/api/generated/functions';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { NotifierService } from '../../../../core/errors/notifier.service';
 import { GameCharacterDto } from '../../../../core/api/generated/models/game-character-dto';
 import { Button } from '../../../../shared/ui/button/button';
 import { ApiProblem, toApiProblem } from '../../../../core/errors/api-problem';
@@ -22,6 +30,7 @@ import { Loading } from '../../../../shared/ui/loading/loading';
 import { AdventureContext } from '../adventure-context.service';
 import { CharacterPortrait } from './character-portrait';
 import { I18n } from '../../../../core/i18n/i18n.service';
+import { AccountBadges } from '../../../../shared/ui/account-badges/account-badges';
 
 type ListState = 'loading' | 'ready' | 'failed';
 
@@ -29,7 +38,15 @@ type ListState = 'loading' | 'ready' | 'failed';
 @Component({
   selector: 'dg-character-list-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LoadError, RouterLink, Button, Loading, CharacterPortrait],
+  imports: [
+    LoadError,
+    RouterLink,
+    Button,
+    Loading,
+    CharacterPortrait,
+    AccountBadges,
+    NgTemplateOutlet,
+  ],
   styleUrl: '../../tavern-page.scss',
   styles: `
     .head {
@@ -98,6 +115,54 @@ type ListState = 'loading' | 'ready' | 'failed';
       color: var(--dg-ink-muted);
     }
 
+    .active {
+      margin: 0;
+      font-weight: 700;
+      color: var(--dg-blood);
+    }
+
+    .npc {
+      margin: 0;
+      font-size: var(--dg-text-sm);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--dg-ink-muted);
+    }
+
+    .usage {
+      margin: 0 0 var(--dg-space-3);
+      color: var(--dg-ink-muted);
+    }
+
+    section + section {
+      margin-top: var(--dg-space-5);
+    }
+
+    .switch {
+      display: block;
+      margin-top: var(--dg-space-2);
+      text-align: center;
+    }
+
+    .visibility {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: var(--dg-space-2);
+      margin-top: var(--dg-space-2);
+    }
+
+    .visibility__state,
+    .none {
+      font-size: var(--dg-text-sm);
+      color: var(--dg-ink-muted);
+    }
+
+    .none {
+      margin: 0;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .card {
         transition: none;
@@ -112,29 +177,43 @@ type ListState = 'loading' | 'ready' | 'failed';
   template: `
     <div class="head">
       <h1>{{ t().tavern.characters.title }}</h1>
-      <dg-button (click)="create()">{{ t().tavern.characters.create }}</dg-button>
+      <dg-button (click)="create()">{{
+        context.isMaster() ? t().tavern.characters.createNpc : t().tavern.characters.create
+      }}</dg-button>
     </div>
     @switch (state()) {
       @case ('ready') {
-        @if (characters().length) {
-          <ul class="cards portraits">
-            @for (character of characters(); track character.id) {
-              <li>
-                <a
-                  class="card"
-                  [routerLink]="['/tavern/adventures', adventureId(), 'characters', character.id]"
-                >
-                  <dg-character-portrait
-                    [characterId]="character.id!"
-                    [name]="character.name ?? ''"
-                  />
-                  <span class="name">{{ character.name }}</span>
-                  <p class="kind">{{ character.race }} · {{ character.martialClass }}</p>
-                  <p class="owner">{{ pseudo(character.ownerId!) }}</p>
-                </a>
-              </li>
+        @if (showNpcSection()) {
+          <section>
+            <h2>{{ t().tavern.characters.playersSection }}</h2>
+            @if (players().length) {
+              <ng-container
+                [ngTemplateOutlet]="list"
+                [ngTemplateOutletContext]="{ $implicit: players() }"
+              />
+            } @else {
+              <p class="none">{{ t().tavern.characters.noPlayerCharacters }}</p>
             }
-          </ul>
+          </section>
+          <section>
+            <h2>{{ t().tavern.characters.npcSection }}</h2>
+            @if (context.isMaster() && npcUsage(); as usage) {
+              <p class="usage">{{ t().tavern.characters.npcUsage(usage.used, usage.max) }}</p>
+            }
+            @if (npcs().length) {
+              <ng-container
+                [ngTemplateOutlet]="list"
+                [ngTemplateOutletContext]="{ $implicit: npcs() }"
+              />
+            } @else {
+              <p class="none">{{ t().tavern.characters.noNpcs }}</p>
+            }
+          </section>
+        } @else if (players().length) {
+          <ng-container
+            [ngTemplateOutlet]="list"
+            [ngTemplateOutletContext]="{ $implicit: players() }"
+          />
         } @else {
           <div class="state">
             <p>{{ t().tavern.characters.empty }}</p>
@@ -159,6 +238,65 @@ type ListState = 'loading' | 'ready' | 'failed';
         </div>
       }
     }
+    <ng-template #list let-items>
+      <ul class="cards portraits">
+        @for (character of items; track character.id) {
+          <li>
+            <a
+              class="card"
+              [routerLink]="['/tavern/adventures', adventureId(), 'characters', character.id]"
+            >
+              <dg-character-portrait
+                [characterId]="character.id!"
+                [name]="character.name ?? ''"
+                [hasPicture]="!!character.pictureUrl"
+              />
+              <span class="name">{{ character.name }}</span>
+              <p class="kind">{{ character.race }} · {{ character.martialClass }}</p>
+              <p class="owner">
+                {{ pseudo(character.ownerId!)
+                }}<dg-account-badges [accountId]="character.ownerId" />
+              </p>
+              @if (character.npc) {
+                <p class="npc">{{ t().tavern.characters.npcTag }}</p>
+              }
+              @if (isActive(character)) {
+                <p class="active">{{ t().tavern.characters.active }}</p>
+              }
+            </a>
+            @if (character.npc && context.isMaster()) {
+              <!-- A fixed name; the state is aria-pressed, and the text beside it (ruling W6). -->
+              <div class="visibility">
+                <dg-button
+                  [variant]="character.visibility === 'PUBLIC' ? 'primary' : 'ghost'"
+                  [pressed]="character.visibility === 'PUBLIC'"
+                  [loading]="isVisibilityPending(character)"
+                  (click)="toggleVisibility(character)"
+                >
+                  {{ t().tavern.characters.npcPublic }}
+                  <span class="dg-visually-hidden">{{ character.name }}</span>
+                </dg-button>
+                <span class="visibility__state">{{
+                  character.visibility === 'PUBLIC'
+                    ? t().tavern.characters.npcSeenByTable
+                    : t().tavern.characters.npcSeenByMaster
+                }}</span>
+              </div>
+            }
+            @if (canActivate(character)) {
+              <dg-button
+                class="switch"
+                variant="ghost"
+                [loading]="switching() === character.id"
+                (click)="activate(character)"
+              >
+                {{ t().tavern.characters.makeActive }}
+              </dg-button>
+            }
+          </li>
+        }
+      </ul>
+    </ng-template>
   `,
 })
 export class CharacterListPage {
@@ -166,14 +304,27 @@ export class CharacterListPage {
 
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
-  private readonly context = inject(AdventureContext);
+  protected readonly context = inject(AdventureContext);
   private readonly directory = inject(AccountDirectory);
+  private readonly auth = inject(AuthService);
+  private readonly notifier = inject(NotifierService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly state = signal<ListState>('loading');
   protected readonly loadProblem = signal<ApiProblem | null>(null);
   protected readonly characters = signal<GameCharacterDto[]>([]);
+  protected readonly players = computed(() => this.characters().filter((c) => !c.npc));
+  protected readonly npcs = computed(() => this.characters().filter((c) => c.npc));
+  /** The master always has the NPC section (to see the quota); players only when there is one. */
+  protected readonly showNpcSection = computed(
+    () => this.context.isMaster() || this.npcs().length > 0,
+  );
+  protected readonly npcUsage = computed(() => this.context.usage('npcsPerAdventure'));
+  /** The id of the character being made active, if any. */
+  protected readonly switching = signal<string | null>(null);
+  /** The NPCs whose visibility change is on its way: a second click would race the first. */
+  private readonly visibilityPending = signal<ReadonlySet<string>>(new Set());
   private request: Subscription | null = null;
   private requested = false;
 
@@ -215,6 +366,89 @@ export class CharacterListPage {
         error: (error: unknown) => {
           this.loadProblem.set(toApiProblem(error));
           this.state.set('failed');
+        },
+      });
+  }
+
+  /** The character a player plays now; non-player characters have no such notion. */
+  protected isActive(character: GameCharacterDto): boolean {
+    return !character.npc && character.active === true;
+  }
+
+  /** Only the owner switches, only among their player characters, and only to another one. */
+  protected canActivate(character: GameCharacterDto): boolean {
+    return (
+      !character.npc &&
+      !character.active &&
+      character.ownerId === this.auth.account()?.id &&
+      this.context.isPlayer()
+    );
+  }
+
+  protected activate(character: GameCharacterDto): void {
+    this.switching.set(character.id!);
+    setActiveCharacter(this.http, this.rootUrl, {
+      id: this.adventureId(),
+      body: { characterId: character.id! },
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: ({ body }) => {
+          this.switching.set(null);
+          // One active character per player: the others of that player lose the mark.
+          this.characters.update((all) =>
+            all.map((c) =>
+              c.npc || c.ownerId !== body.ownerId ? c : { ...c, active: c.id === body.id },
+            ),
+          );
+          this.context.reloadEntitlements();
+          this.notifier.success(this.t().tavern.characters.activated(body.name ?? ''));
+        },
+        error: (error: unknown) => {
+          this.switching.set(null);
+          this.notifier.error(toApiProblem(error), this.t().tavern.characters.activating);
+        },
+      });
+  }
+
+  protected isVisibilityPending(character: GameCharacterDto): boolean {
+    return this.visibilityPending().has(character.id!);
+  }
+
+  /** One call; the toggle moves at once and goes back if the API refuses. */
+  protected toggleVisibility(character: GameCharacterDto): void {
+    const id = character.id!;
+    if (this.visibilityPending().has(id)) {
+      return; // The change is already on its way.
+    }
+    const settle = () =>
+      this.visibilityPending.update((ids) => {
+        const next = new Set(ids);
+        next.delete(id);
+        return next;
+      });
+    this.visibilityPending.update((ids) => new Set(ids).add(id));
+    const previous = character.visibility;
+    const next = previous === 'PUBLIC' ? 'PRIVATE' : 'PUBLIC';
+    const show = (visibility: GameCharacterDto['visibility']) =>
+      this.characters.update((all) =>
+        all.map((c) => (c.id === character.id ? { ...c, visibility } : c)),
+      );
+    show(next);
+    setGameCharacterVisibility(this.http, this.rootUrl, {
+      id: character.id!,
+      body: { visibility: next },
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: ({ body }) => {
+          settle();
+          show(body.visibility);
+        },
+        error: (error: unknown) => {
+          settle();
+          show(previous);
+          this.notifier.error(toApiProblem(error), this.t().tavern.characters.npcVisibility);
         },
       });
   }

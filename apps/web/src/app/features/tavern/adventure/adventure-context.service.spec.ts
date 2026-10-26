@@ -30,9 +30,18 @@ describe('AdventureContext', () => {
 
   afterEach(() => backend.verify());
 
+  const entitlements = (r: { method: string; url: string }) =>
+    r.method === 'GET' && /\/adventures\/a1\/entitlements$/.test(r.url);
+  const OFFER = {
+    features: ['characterPictures'],
+    limits: { npcsPerAdventure: { used: 2, max: 5 } },
+  };
+
   function load(overrides = {}): void {
     context.open('a1');
     backend.expectOne(get).flush(adventure(overrides));
+    // A participant's entitlements follow the adventure; the tests below look at them.
+    backend.match(entitlements).forEach((r) => r.flush(OFFER));
   }
 
   it('context computes master, player and participant', () => {
@@ -107,5 +116,39 @@ describe('AdventureContext', () => {
     expect(context.adventure()).toBeNull();
     expect(context.state()).toBe('loading');
     backend.expectOne(get).flush(adventure());
+  });
+
+  it('entitlements_are_loaded_for_participants_only', () => {
+    setup('p1');
+    context.open('a1');
+    backend.expectOne(get).flush(adventure());
+    backend.expectOne(entitlements).flush(OFFER);
+    expect(context.entitlements()).toEqual(OFFER);
+    expect(context.has('characterPictures')).toBe(true);
+    expect(context.has('video')).toBe(false);
+    expect(context.usage('npcsPerAdventure')).toEqual({ used: 2, max: 5 });
+    expect(context.usage('messagesPerAdventure')).toBeNull();
+
+    context.open('a1');
+    expect(context.entitlements()).toBeNull();
+    backend.expectOne(get).flush(adventure({ players: [] }));
+    backend.expectNone(entitlements);
+    expect(context.entitlements()).toBeNull();
+    expect(context.has('characterPictures')).toBe(false);
+  });
+
+  it('a failed entitlements request leaves them unknown, and reloadEntitlements asks again', () => {
+    setup('p1');
+    context.open('a1');
+    backend.expectOne(get).flush(adventure());
+    backend.expectOne(entitlements).flush({}, { status: 500, statusText: 'Server Error' });
+    expect(context.entitlements()).toBeNull();
+    expect(context.state()).toBe('ready');
+    context.reloadEntitlements();
+    backend.expectOne(entitlements).flush(OFFER);
+    expect(context.entitlements()).toEqual(OFFER);
+    context.reloadEntitlements();
+    backend.expectOne(entitlements).flush({}, { status: 500, statusText: 'Server Error' });
+    expect(context.entitlements()).toEqual(OFFER);
   });
 });

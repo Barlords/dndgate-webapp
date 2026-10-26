@@ -28,6 +28,14 @@ describe('ProfilePage', () => {
     backend.expectOne((r) => r.method === 'GET' && /accounts\/me$/.test(r.url)).flush(account);
     const fixture = TestBed.createComponent(ProfilePage);
     fixture.detectChanges();
+    // The subscription panel loads its own data.
+    backend
+      .expectOne((r) => r.url.endsWith('/plans'))
+      .flush({ currency: 'EUR', defaultPlan: 'adventurer', plans: [] });
+    backend
+      .expectOne((r) => r.url.endsWith('/accounts/me/subscription'))
+      .flush({ planId: 'adventurer', billingEnabled: true, usage: {} });
+    fixture.detectChanges();
     return { fixture, root: fixture.nativeElement as HTMLElement };
   }
 
@@ -73,7 +81,7 @@ describe('ProfilePage', () => {
     const titles = (column: Element) =>
       [...column.querySelectorAll('h2')].map((title) => title.textContent?.trim());
     expect(columns.map(titles)).toEqual([
-      ['Identité', 'Zone dangereuse'],
+      ['Identité', 'Mon abonnement', 'Zone dangereuse'],
       ['Mot de passe', 'Sessions'],
     ]);
     // The password form asks for the current password first.

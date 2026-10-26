@@ -97,6 +97,30 @@
           <span class="sidebar__label">{{ t().common.shell.signIn }}</span>
         </a>
       }
+      <a
+        routerLink="/plans"
+        class="sidebar__account"
+        routerLinkActive="on"
+        ariaCurrentWhenActive="page"
+        [attr.title]="collapsed() ? t().plans.page.navLabel : null"
+        [attr.aria-label]="collapsed() ? t().plans.page.navLabel : null"
+        (click)="linkFollowed()"
+      >
+        <dg-icon name="crown" />
+        <span class="sidebar__label">{{ t().plans.page.navLabel }}</span>
+      </a>
+      <a
+        routerLink="/terms"
+        class="sidebar__account"
+        routerLinkActive="on"
+        ariaCurrentWhenActive="page"
+        [attr.title]="collapsed() ? t().legal.navLabel : null"
+        [attr.aria-label]="collapsed() ? t().legal.navLabel : null"
+        (click)="linkFollowed()"
+      >
+        <dg-icon name="scroll" />
+        <span class="sidebar__label">{{ t().legal.navLabel }}</span>
+      </a>
     </div>
   </div>
 </aside>

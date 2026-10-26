@@ -1,12 +1,19 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { provideHttpClient } from '@angular/common/http';
+import {
+  HttpErrorResponse,
+  HttpInterceptorFn,
+  HttpResponse,
+  provideHttpClient,
+  withInterceptors,
+} from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { of } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { provideApi } from '../../core/api/api.providers';
+import { AdventureEntitlementsDto } from '../../core/api/generated/models/adventure-entitlements-dto';
 import { AdventureDto } from '../../core/api/generated/models/adventure-dto';
 import { AuthService } from '../../core/auth/auth.service';
 import { TAVERN_ROUTES } from './tavern.routes';
@@ -46,16 +53,39 @@ export function page(content: AdventureDto[], totalPages = 1, number = 0) {
   return { content, page: number, size: 100, totalElements: content.length, totalPages };
 }
 
-export async function setupTavern(): Promise<TavernTestbed> {
+/** For tests only: every tool included, which is what most pages need to be indifferent to plans. */
+export const ALL_FEATURES: AdventureEntitlementsDto = {
+  features: ['characterPictures', 'video'],
+  limits: {},
+};
+
+/**
+ * `entitlements` answers `GET /adventures/{id}/entitlements` of every adventure (null: the request
+ * fails), so that pages not about plans need not know of it.
+ */
+export async function setupTavern(
+  entitlements: AdventureEntitlementsDto | null = ALL_FEATURES,
+): Promise<TavernTestbed> {
   localStorage.clear();
+  const answerEntitlements: HttpInterceptorFn = (request, next) => {
+    if (request.method === 'GET' && /\/adventures\/[^/]+\/entitlements$/.test(request.url)) {
+      return entitlements === null
+        ? throwError(() => new HttpErrorResponse({ status: 500, url: request.url }))
+        : of(new HttpResponse({ status: 200, body: structuredClone(entitlements) }));
+    }
+    return next(request);
+  };
   const account = signal({ id: 'me', pseudo: 'Me' });
   TestBed.configureTestingModule({
     providers: [
-      provideHttpClient(),
+      provideHttpClient(withInterceptors([answerEntitlements])),
       provideHttpClientTesting(),
       provideApi(),
       provideRouter([{ path: 'tavern', data: { breadcrumb: 'Taverne' }, children: TAVERN_ROUTES }]),
-      { provide: AuthService, useValue: { account, isAuthenticated: () => true } },
+      {
+        provide: AuthService,
+        useValue: { account, isAuthenticated: () => true, sessionEnded: new Subject<void>() },
+      },
       {
         provide: BreakpointObserver,
         useValue: { observe: () => of({ matches: false, breakpoints: {} }) },

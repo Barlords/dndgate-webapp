@@ -129,7 +129,7 @@ describe('SpellBookListPage', () => {
     expect(main().textContent).toContain('Ce champ est obligatoire.');
   });
 
-  it('create explains the limit of 100 books on a 409', async () => {
+  it('create shows the plan refusal on a 409', async () => {
     await open();
     create();
     await library.render();
@@ -138,8 +138,22 @@ describe('SpellBookListPage', () => {
     main().querySelector('form')!.dispatchEvent(new Event('submit'));
     backend
       .expectOne((r) => r.method === 'POST' && /spellbooks$/.test(r.url))
-      .flush({ status: 409 }, { status: 409, statusText: 'Conflict' });
-    expect(TestBed.inject(NotifierService).toasts()[0].message).toContain('100 grimoires');
+      .flush(
+        {
+          type: 'urn:dndgate:plan-limit-reached',
+          limit: 'spellBooks',
+          max: 2,
+          planId: 'adventurer',
+          upgradePlanId: 'hero',
+          decidedBy: 'account',
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
+    const [toast] = TestBed.inject(NotifierService).toasts();
+    expect(toast.message).toBe(
+      'Création du grimoire : Limite atteinte : Grimoires (2 au maximum). L’offre Héros le permet.',
+    );
+    expect(toast.action?.label).toBe('Voir les offres');
   });
 
   it('import sends the chosen file as multipart', async () => {
@@ -183,13 +197,38 @@ describe('SpellBookListPage', () => {
     expect(box.textContent).toContain('must not be blank');
   });
 
-  it('import explains the limit of 100 books on a 409', async () => {
+  it('import shows the plan refusal on a 409 with a plan', async () => {
+    await open();
+    chooseFile(new File(['{}'], 'b.json'));
+    backend
+      .expectOne((r) => /import-file$/.test(r.url))
+      .flush(
+        {
+          type: 'urn:dndgate:plan-limit-reached',
+          limit: 'spellBooks',
+          max: 2,
+          planId: 'adventurer',
+          upgradePlanId: 'hero',
+          decidedBy: 'account',
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
+    const [toast] = TestBed.inject(NotifierService).toasts();
+    expect(toast.message).toBe(
+      'Import du grimoire : Limite atteinte : Grimoires (2 au maximum). L’offre Héros le permet.',
+    );
+    expect(toast.action?.label).toBe('Voir les offres');
+  });
+
+  it('import explains the ceiling of 1 000 spells on a 409 without a plan', async () => {
     await open();
     chooseFile(new File(['{}'], 'b.json'));
     backend
       .expectOne((r) => /import-file$/.test(r.url))
       .flush({ status: 409 }, { status: 409, statusText: 'Conflict' });
-    expect(TestBed.inject(NotifierService).toasts()[0].message).toContain('100 grimoires');
+    expect(TestBed.inject(NotifierService).toasts()[0].message).toBe(
+      'Conflit : un grimoire contient au plus 1 000 sorts.',
+    );
   });
 
   it('shows a retry state when the list cannot be loaded', async () => {

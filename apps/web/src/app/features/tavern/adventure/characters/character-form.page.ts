@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { forkJoin, Subscription } from 'rxjs';
 import { ApiConfiguration } from '../../../../core/api/generated/api-configuration';
 import {
   createGameCharacter,
@@ -24,6 +24,8 @@ import { AuthService } from '../../../../core/auth/auth.service';
 import { ApiProblem, toApiProblem } from '../../../../core/errors/api-problem';
 import { NotifierService } from '../../../../core/errors/notifier.service';
 import { BreadcrumbService } from '../../../../layout/breadcrumb.service';
+import { Billing } from '../../../../core/plans/billing.service';
+import { PlanCatalog } from '../../../../core/plans/plan-catalog.service';
 import { LoadError } from '../../../../shared/ui/load-error/load-error';
 import { Loading } from '../../../../shared/ui/loading/loading';
 import { AdventureContext } from '../adventure-context.service';
@@ -53,24 +55,28 @@ type LoadState = 'loading' | 'ready' | 'missing' | 'failed';
   styleUrl: '../../tavern-page.scss',
   template: `
     <h1>
-      {{ characterId ? t().tavern.characters.editTitle : t().tavern.characters.newTitle }}
+      {{ title() }}
     </h1>
     @switch (state()) {
       @case ('ready') {
-        @if (!characterId || isOwner()) {
+        @if (!characterId || canEdit()) {
           <dg-character-form
             [initial]="initial()"
             [withPicture]="!characterId"
-            [submitLabel]="
-              characterId ? t().common.actions.save : t().tavern.characters.createSubmit
-            "
+            [pictureAllowed]="pictureAllowed()"
+            [hintScope]="context ? 'adventure' : 'account'"
+            [currentPlanId]="planId()"
+            [submitLabel]="characterId ? t().common.actions.save : submitLabel()"
             [busy]="saving()"
-            [problem]="problem()"
             (saved)="save($event)"
           />
         } @else {
           <div class="state">
-            <p role="alert">{{ t().tavern.characters.ownerOnly }}</p>
+            <p role="alert">
+              {{
+                loaded()?.npc ? t().tavern.characters.masterOnly : t().tavern.characters.ownerOnly
+              }}
+            </p>
             <a [routerLink]="backLink()">{{ t().tavern.characters.backToCharacter }}</a>
           </div>
         }
@@ -107,20 +113,36 @@ export class CharacterFormPage {
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   /** Null under « Mes personnages »: the character is then created outside any adventure. */
-  private readonly context = inject(AdventureContext, { optional: true });
+  protected readonly context = inject(AdventureContext, { optional: true });
   private readonly auth = inject(AuthService);
   private readonly notifier = inject(NotifierService);
   private readonly breadcrumb = inject(BreadcrumbService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
+  private readonly billing = inject(Billing);
+  private readonly catalog = inject(PlanCatalog);
+
   private readonly form = viewChild(CharacterForm);
+
+  /** Outside an adventure, the reader's own plan; null while unknown. */
+  protected readonly planId = signal<string | null>(null);
+  private readonly ownPlanHasPictures = signal<boolean | null>(null);
+  /**
+   * Whether the reader can send a picture. Unknown (loading, or a failed request) counts as yes:
+   * the API refuses what the plan does not include and says so.
+   */
+  protected readonly pictureAllowed = computed(() =>
+    this.context === null
+      ? (this.ownPlanHasPictures() ?? true)
+      : this.context.entitlements() === null || this.context.has('characterPictures'),
+  );
 
   /** The edited character, from the `:characterId` route above this one; null when creating. */
   protected readonly characterId =
     inject(ActivatedRoute).parent?.snapshot.paramMap.get('characterId') ?? null;
 
-  private readonly loaded = signal<GameCharacterDto | null>(null);
+  protected readonly loaded = signal<GameCharacterDto | null>(null);
   protected readonly state = signal<LoadState>(this.characterId === null ? 'ready' : 'loading');
   protected readonly loadProblem = signal<ApiProblem | null>(null);
   protected readonly initial = signal<CharacterValue>({
@@ -131,10 +153,24 @@ export class CharacterFormPage {
     background: '',
   });
   protected readonly saving = signal(false);
-  protected readonly problem = signal<string | null>(null);
   private request: Subscription | null = null;
 
-  protected readonly isOwner = computed(() => this.loaded()?.ownerId === this.auth.account()?.id);
+  /** An NPC is edited by the current master whoever owns it; any other character by its owner. */
+  protected readonly canEdit = computed(() =>
+    this.loaded()?.npc
+      ? (this.context?.isMaster() ?? false)
+      : this.loaded()?.ownerId === this.auth.account()?.id,
+  );
+  /** A character created by the master in their own adventure is an NPC. */
+  private readonly createsNpc = computed(() => this.context?.isMaster() ?? false);
+  protected readonly title = computed(() => {
+    const t = this.t().tavern.characters;
+    return this.characterId ? t.editTitle : this.createsNpc() ? t.newNpcTitle : t.newTitle;
+  });
+  protected readonly submitLabel = computed(() => {
+    const t = this.t().tavern.characters;
+    return this.createsNpc() ? t.createNpcSubmit : t.createSubmit;
+  });
 
   protected readonly listLink = computed(() =>
     this.context === null
@@ -147,6 +183,7 @@ export class CharacterFormPage {
     const context = this.context;
     if (context === null) {
       this.load();
+      this.loadOwnPlan();
       return;
     }
     effect(() => {
@@ -159,6 +196,22 @@ export class CharacterFormPage {
         });
       }
     });
+  }
+
+  private loadOwnPlan(): void {
+    if (this.characterId !== null) {
+      return;
+    }
+    forkJoin([this.billing.loadMine(), this.catalog.load()])
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: ([subscription]) => {
+          this.planId.set(subscription.planId ?? null);
+          const plan = this.catalog.plan(subscription.planId ?? '');
+          this.ownPlanHasPictures.set(plan ? plan.features?.['characterPictures'] === true : null);
+        },
+        error: () => undefined,
+      });
   }
 
   protected load(): void {
@@ -195,7 +248,6 @@ export class CharacterFormPage {
   }
 
   protected save(submission: CharacterSubmission): void {
-    this.problem.set(null);
     this.saving.set(true);
     if (this.characterId === null) {
       this.create(this.context?.adventure()?.id, submission);
@@ -207,7 +259,7 @@ export class CharacterFormPage {
   private create(adventureId: string | undefined, { value, picture }: CharacterSubmission): void {
     createGameCharacter(this.http, this.rootUrl, {
       body: {
-        picturePresentation: picture!,
+        ...(picture === null ? {} : { picturePresentation: picture }),
         // Without an adventure, the character is kept outside any.
         createGameCharacterRequest: adventureId === undefined ? value : { ...value, adventureId },
       },
@@ -217,20 +269,16 @@ export class CharacterFormPage {
         next: ({ body }) => {
           this.saving.set(false);
           this.notifier.success(this.t().tavern.characters.created);
+          if (body.npc) {
+            this.context?.reloadEntitlements();
+          }
           void this.router.navigate([...this.listLink(), body.id]);
         },
         error: (error: unknown) => {
           this.saving.set(false);
-          const failure = toApiProblem(error);
-          if (failure.status === 409) {
-            this.problem.set(
-              adventureId === undefined
-                ? this.t().tavern.characters.limitWithoutAdventure
-                : this.t().tavern.characters.limitInAdventure,
-            );
-          } else {
-            this.onRefused(failure, this.t().tavern.characters.creating);
-          }
+          // A quota (reserve, characters per player, NPCs) is a plan refusal: the notifier names
+          // the limit and the plan that would lift it.
+          this.onRefused(toApiProblem(error), this.t().tavern.characters.creating);
         },
       });
   }
@@ -259,7 +307,7 @@ export class CharacterFormPage {
 
   private onRefused(failure: ApiProblem, context: string): void {
     if (!(failure.status === 400 && this.form()?.showProblem(failure))) {
-      this.notifier.error(failure, context);
+      this.notifier.error(failure, context, { readerIsMaster: this.context?.isMaster() ?? false });
     }
   }
 }

@@ -243,7 +243,7 @@ export const library: Dictionary['library'] = {
     loadError: 'Your spell books cannot be loaded.',
     loading: 'Loading the spell books',
     loadingFlavour: 'Dusting off the spell books…',
-    limitReached: 'you have reached the limit of 100 spell books.',
+    spellsLimitReached: 'a spell book holds at most 1,000 spells.',
     created: 'Spell book created.',
     imported: 'Spell book imported.',
     creating: 'Creating the spell book',

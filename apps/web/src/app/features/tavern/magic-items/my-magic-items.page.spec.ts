@@ -154,12 +154,25 @@ describe('My magic items', () => {
       tavern.backend.expectNone(post);
     });
 
-    it('explains the limit on a 409 and puts the field messages of a 400 on the fields', async () => {
+    it('shows the plan refusal on a 409 and puts the field messages of a 400 on the fields', async () => {
       fill({ name: 'Cape', description: 'Elle flotte.' });
       tavern.button('Créer l’objet').click();
-      tavern.backend.expectOne(post).flush({}, { status: 409, statusText: 'Conflict' });
+      tavern.backend.expectOne(post).flush(
+        {
+          type: 'urn:dndgate:plan-limit-reached',
+          limit: 'magicItems',
+          max: 10,
+          planId: 'adventurer',
+          upgradePlanId: 'hero',
+          decidedBy: 'account',
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
       await tavern.render();
-      expect(toasts()[0].message).toContain('500 objets magiques');
+      expect(toasts()[0].message).toBe(
+        'Création de l’objet magique : Limite atteinte : Objets magiques (10 au maximum). L’offre Héros le permet.',
+      );
+      expect(toasts()[0].action?.label).toBe('Voir les offres');
 
       tavern.button('Créer l’objet').click();
       tavern.backend

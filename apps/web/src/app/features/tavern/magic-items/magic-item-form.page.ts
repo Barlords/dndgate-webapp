@@ -170,16 +170,8 @@ export class MagicItemFormPage {
         },
         error: (error: unknown) => {
           this.saving.set(false);
-          const problem = toApiProblem(error);
-          if (problem.status === 409) {
-            this.notifier.error({
-              status: 409,
-              detail: this.t().tavern.magicItems.limitReached,
-              errors: [],
-            });
-          } else {
-            this.onRefused(problem, this.t().tavern.magicItems.creating);
-          }
+          // The quota of magic items is a plan refusal: the notifier names the plan.
+          this.onRefused(toApiProblem(error), this.t().tavern.magicItems.creating);
         },
       });
   }

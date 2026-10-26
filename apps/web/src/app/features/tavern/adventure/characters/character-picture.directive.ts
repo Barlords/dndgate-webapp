@@ -12,7 +12,8 @@ export type PictureStatus = 'loading' | 'ready' | 'failed';
   exportAs: 'dgCharacterPicture',
 })
 export class CharacterPictureDirective {
-  readonly dgCharacterPicture = input.required<string>();
+  /** The character's id; null for a character without picture: nothing is fetched. */
+  readonly dgCharacterPicture = input.required<string | null>();
 
   private readonly pictures = inject(CharacterPictureService);
   private readonly image = inject<ElementRef<HTMLImageElement>>(ElementRef).nativeElement;
@@ -24,6 +25,10 @@ export class CharacterPictureDirective {
     effect((onCleanup) => {
       const id = this.dgCharacterPicture();
       this.image.removeAttribute('src');
+      if (id === null) {
+        this.state.set('failed');
+        return;
+      }
       this.state.set('loading');
       const subscription = this.pictures.objectUrl(id).subscribe({
         next: (url) => {

@@ -20,6 +20,7 @@ import {
 import { startWith } from 'rxjs';
 import { ApiProblem } from '../../../../core/errors/api-problem';
 import { applyFieldErrors } from '../../../../core/errors/form-errors';
+import { PlanHint } from '../../../../shared/ui/plan-hint/plan-hint';
 import { Button } from '../../../../shared/ui/button/button';
 import { FormField } from '../../../../shared/ui/form-field/form-field';
 import { Dictionary } from '../../../../core/i18n/dictionary';
@@ -106,7 +107,7 @@ export async function checkPicture(file: File, texts: PictureTexts): Promise<str
 @Component({
   selector: 'dg-character-form',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, FormField, Button],
+  imports: [ReactiveFormsModule, FormField, Button, PlanHint],
   styles: `
     textarea {
       min-height: 8rem;
@@ -150,6 +151,13 @@ export async function checkPicture(file: File, texts: PictureTexts): Promise<str
       border-radius: var(--dg-radius);
     }
 
+    .note,
+    .picture-hint {
+      margin: var(--dg-space-1) 0 var(--dg-space-4);
+      font-size: var(--dg-text-sm);
+      color: var(--dg-ink-muted);
+    }
+
     .problem {
       margin: var(--dg-space-1) 0 0;
       color: var(--dg-blood);
@@ -158,7 +166,14 @@ export async function checkPicture(file: File, texts: PictureTexts): Promise<str
   `,
   template: `
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-      @if (withPicture()) {
+      @if (withPicture() && !pictureAllowed()) {
+        <dg-plan-hint
+          class="picture-hint"
+          feature="characterPictures"
+          [scope]="hintScope()"
+          [currentPlanId]="currentPlanId()"
+        />
+      } @else if (withPicture()) {
         <div class="picture">
           <div>
             <label class="caption" for="dg-character-picture">{{
@@ -170,6 +185,7 @@ export async function checkPicture(file: File, texts: PictureTexts): Promise<str
               accept="image/png,image/jpeg"
               (change)="pick($event)"
             />
+            <p class="note">{{ t().tavern.characters.pictureOptional }}</p>
             @if (pictureProblem(); as message) {
               <p class="problem" role="alert">{{ message }}</p>
             }
@@ -203,9 +219,6 @@ export async function checkPicture(file: File, texts: PictureTexts): Promise<str
       <p class="counter" [class.over]="backgroundLength() > backgroundMax">
         {{ formatted(backgroundLength()) }} / {{ formatted(backgroundMax) }}
       </p>
-      @if (problem(); as message) {
-        <p class="problem" role="alert">{{ message }}</p>
-      }
       <dg-button type="submit" [loading]="busy()">{{
         submitLabel() ?? t().tavern.characters.createSubmit
       }}</dg-button>
@@ -218,10 +231,12 @@ export class CharacterForm {
   readonly initial = input<CharacterValue>(BLANK);
   readonly submitLabel = input<string | null>(null);
   readonly busy = input(false);
-  /** Creation asks for a picture; the API cannot change it afterwards. */
+  /** Creation offers a picture (optional); the API cannot change it afterwards. */
   readonly withPicture = input(false);
-  /** A refusal that belongs to the whole form rather than to a field. */
-  readonly problem = input<string | null>(null);
+  /** False when the reader's plan does not include pictures: a hint replaces the field. */
+  readonly pictureAllowed = input(true);
+  readonly hintScope = input<'account' | 'adventure'>('account');
+  readonly currentPlanId = input<string | null>(null);
   readonly saved = output<CharacterSubmission>();
 
   private readonly destroyRef = inject(DestroyRef);
@@ -296,15 +311,13 @@ export class CharacterForm {
     if (this.busy()) {
       return;
     }
-    const missingPicture = this.withPicture() && this.picture === null;
-    if (missingPicture && this.pictureProblem() === null) {
-      this.pictureProblem.set(this.t().tavern.characters.pictureRequired);
-    }
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
-    if (missingPicture) {
+    if (this.withPicture() && this.pictureAllowed() && this.pictureProblem() !== null) {
+      // A refused file is shown as such; sending without it would silently drop the reader's choice.
+      // Once the field has turned into the plan hint, no file is asked for: nothing to block.
       return;
     }
     const value = this.form.getRawValue();
@@ -316,7 +329,7 @@ export class CharacterForm {
         personality: value.personality.trim(),
         background: value.background.trim(),
       },
-      picture: this.withPicture() ? this.picture : null,
+      picture: this.withPicture() && this.pictureAllowed() ? this.picture : null,
     });
   }
 

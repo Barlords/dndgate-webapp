@@ -18,5 +18,6 @@ public record PlanDto(
         Map<String, PlanPriceDto> prices,
         Map<String, Integer> limits,
         Map<String, Boolean> features,
-        @Schema(nullable = true, description = "dungeon-master, legend or null") String badge) {
+        @Schema(nullable = true, allowableValues = {"dungeon-master", "legend"},
+                description = "dungeon-master, legend or null") String badge) {
 }

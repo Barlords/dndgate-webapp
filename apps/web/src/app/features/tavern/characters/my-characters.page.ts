@@ -144,6 +144,7 @@ import { I18n } from '../../../core/i18n/i18n.service';
                     <dg-character-portrait
                       [characterId]="character.id!"
                       [name]="character.name ?? ''"
+                      [hasPicture]="!!character.pictureUrl"
                     />
                     <span class="name">{{ character.name }}</span>
                     <p class="kind">{{ character.race }} · {{ character.martialClass }}</p>

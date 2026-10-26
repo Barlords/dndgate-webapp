@@ -32,6 +32,7 @@ import { compareIso, formatDate } from '../../../shared/ui/date-picker/iso-date'
 import { Loading } from '../../../shared/ui/loading/loading';
 import { AdventureContext } from './adventure-context.service';
 import { I18n } from '../../../core/i18n/i18n.service';
+import { AccountBadges } from '../../../shared/ui/account-badges/account-badges';
 
 type PlanningState = 'loading' | 'none' | 'ready' | 'failed';
 
@@ -42,7 +43,7 @@ type PlanningState = 'loading' | 'none' | 'ready' | 'failed';
 @Component({
   selector: 'dg-planning-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LoadError, Button, Loading, DatePicker, NgTemplateOutlet],
+  imports: [LoadError, Button, Loading, DatePicker, NgTemplateOutlet, AccountBadges],
   styleUrl: '../tavern-page.scss',
   styles: `
     h2 {
@@ -244,7 +245,10 @@ type PlanningState = 'loading' | 'none' | 'ready' | 'failed';
                   <tbody>
                     @for (entry of votes(); track entry.id) {
                       <tr>
-                        <th scope="row">{{ pseudo(entry.accountId!) }}</th>
+                        <th scope="row">
+                          {{ pseudo(entry.accountId!)
+                          }}<dg-account-badges [accountId]="entry.accountId" />
+                        </th>
                         @for (date of dates(); track date) {
                           @if (entry.availabilityDates?.includes(date)) {
                             <td class="yes">

@@ -106,13 +106,37 @@ describe('CreateAdventurePage', () => {
     expect(tavern.main().textContent).toContain('Ville invalide');
   });
 
-  it('explains the limit of 50 active adventures', async () => {
+  it('a_conflict_without_plan_names_no_fixed_ceiling', async () => {
     await open();
     fill();
     submit();
     tavern.backend.expectOne(create).flush({}, { status: 409, statusText: 'Conflict' });
     await tavern.render();
-    expect(TestBed.inject(NotifierService).toasts()[0].message).toContain('50 aventures actives');
+    expect(TestBed.inject(NotifierService).toasts()[0].message).toBe(
+      'Création de l’aventure : Conflit.',
+    );
     expect(tavern.router.url).toBe('/tavern/new');
+  });
+
+  it('shows_the_plan_refusal_with_the_offers_when_the_plan_limit_is_reached', async () => {
+    await open();
+    fill();
+    submit();
+    tavern.backend.expectOne(create).flush(
+      {
+        type: 'urn:dndgate:plan-limit-reached',
+        limit: 'activeAdventuresAsMaster',
+        max: 1,
+        planId: 'adventurer',
+        upgradePlanId: 'hero',
+        decidedBy: 'account',
+      },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await tavern.render();
+    const toast = TestBed.inject(NotifierService).toasts()[0];
+    expect(toast.message).toContain('Aventures actives en tant que MJ');
+    expect(toast.message).not.toContain('50 aventures');
+    expect(toast.action?.label).toBe('Voir les offres');
   });
 });

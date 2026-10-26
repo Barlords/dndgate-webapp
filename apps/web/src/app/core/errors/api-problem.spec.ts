@@ -67,3 +67,53 @@ describe('toApiProblem', () => {
     expect(problem.errors).toEqual([{ field: 'a', message: 'm' }]);
   });
 });
+
+describe('toApiProblem plan refusals', () => {
+  it('a_plan_limit_problem_is_read', () => {
+    const problem = toApiProblem(
+      failure(409, {
+        type: 'urn:dndgate:plan-limit-reached',
+        limit: 'activeAdventuresAsMaster',
+        max: 1,
+        planId: 'adventurer',
+        upgradePlanId: 'hero',
+        decidedBy: 'account',
+      }),
+    );
+    expect(problem.type).toBe('urn:dndgate:plan-limit-reached');
+    expect(problem.plan).toEqual({
+      kind: 'limit',
+      key: 'activeAdventuresAsMaster',
+      max: 1,
+      planId: 'adventurer',
+      upgradePlanId: 'hero',
+      decidedBy: 'account',
+    });
+  });
+
+  it('a_feature_problem_is_read', () => {
+    const problem = toApiProblem(
+      failure(403, {
+        type: 'urn:dndgate:feature-not-included',
+        feature: 'video',
+        planId: 'hero',
+        upgradePlanId: null,
+        decidedBy: 'master',
+      }),
+    );
+    expect(problem.plan).toEqual({
+      kind: 'feature',
+      key: 'video',
+      max: undefined,
+      planId: 'hero',
+      upgradePlanId: null,
+      decidedBy: 'master',
+    });
+  });
+
+  it('another_409_has_no_plan', () => {
+    const problem = toApiProblem(failure(409, { type: 'about:blank', detail: 'Clash' }));
+    expect(problem.plan).toBeUndefined();
+    expect(problem.type).toBe('about:blank');
+  });
+});

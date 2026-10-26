@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { AdventureDto } from '../../../core/api/generated/models/adventure-dto';
+import { NotifierService } from '../../../core/errors/notifier.service';
 import { ConfirmService } from '../../../shared/ui/confirm-dialog/confirm.service';
 import { adventure, setupTavern, TavernTestbed } from '../tavern.testing';
 import { adventureNote, notesPage, Req, today } from './notes.testing';
@@ -69,6 +70,37 @@ describe('GmNotesPage', () => {
     tavern.backend.expectOne(list).flush(notesPage([adventureNote()]));
     await tavern.render();
     expect(items().length).toBe(1);
+  });
+
+  it('a full set of notes offers the master the plan that lifts it', async () => {
+    await open();
+    await answer([]);
+    tavern.button('Ajouter une note').click();
+    await tavern.render();
+    const textarea = tavern.main().querySelector('textarea')!;
+    textarea.value = 'Encore une.';
+    textarea.dispatchEvent(new Event('input'));
+    await tavern.render();
+    tavern.button('Inscrire').click();
+    tavern.backend
+      .expectOne((r) => r.method === 'POST')
+      .flush(
+        {
+          type: 'urn:dndgate:plan-limit-reached',
+          limit: 'masterNotesPerAdventure',
+          max: 50,
+          planId: 'adventurer',
+          upgradePlanId: 'hero',
+          decidedBy: 'master',
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await tavern.render();
+    const [toast] = TestBed.inject(NotifierService).toasts();
+    expect(toast.message).toBe(
+      'Ajout de la note : Limite atteinte : Notes du MJ par aventure (50 au maximum). L’offre Héros le permet.',
+    );
+    expect(toast.action?.label).toBe('Voir les offres');
   });
 
   it('players cannot create gm notes', async () => {

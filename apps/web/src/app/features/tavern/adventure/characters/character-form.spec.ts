@@ -1,7 +1,10 @@
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { AdventureDto } from '../../../../core/api/generated/models/adventure-dto';
 import { NotifierService } from '../../../../core/errors/notifier.service';
 import { BreadcrumbService } from '../../../../layout/breadcrumb.service';
+import { AdventureEntitlementsDto } from '../../../../core/api/generated/models/adventure-entitlements-dto';
+import { AdventureContext } from '../adventure-context.service';
 import { adventure, setupTavern, TavernTestbed } from '../../tavern.testing';
 import {
   character,
@@ -19,6 +22,12 @@ interface Req {
 
 describe('CharacterForm (creation and edition pages)', () => {
   let tavern: TavernTestbed;
+
+  /** The context the adventure shell provides to its pages. */
+  const shellContext = () =>
+    tavern.harness.fixture.debugElement
+      .query(By.css('dg-adventure-shell'))
+      .injector.get(AdventureContext);
   let urls: ReturnType<typeof stubObjectUrls>;
 
   const getAdventure = (r: Req) => r.method === 'GET' && /\/adventures\/a1$/.test(r.url);
@@ -26,8 +35,12 @@ describe('CharacterForm (creation and edition pages)', () => {
   const getOne = (r: Req) => r.method === 'GET' && /\/game-characters\/c1$/.test(r.url);
   const patch = (r: Req) => r.method === 'PATCH' && /\/game-characters\/c1$/.test(r.url);
 
-  async function open(url: string, overrides: Partial<AdventureDto> = {}) {
-    tavern = await setupTavern();
+  async function open(
+    url: string,
+    overrides: Partial<AdventureDto> = {},
+    entitlements?: AdventureEntitlementsDto | null,
+  ) {
+    tavern = await setupTavern(entitlements);
     await tavern.go(url);
     tavern.backend.expectOne(getAdventure).flush(adventure({ players: ['me'], ...overrides }));
     await tavern.render();
@@ -103,12 +116,26 @@ describe('CharacterForm (creation and edition pages)', () => {
       tavern.backend.expectNone(post);
     });
 
-    it('requires a picture', async () => {
+    it('a_character_can_be_created_without_picture', async () => {
       fill(valid);
       tavern.button('Créer le personnage').click();
       await tavern.render();
-      tavern.backend.expectNone(post);
-      expect(alerts()).toEqual(['Choisis une image pour ton personnage.']);
+      const request = tavern.backend.expectOne(post);
+      const body = request.request.body as FormData;
+      expect(body.has('picturePresentation')).toBe(false);
+      expect(JSON.parse(await (body.get('createGameCharacterRequest') as Blob).text())).toEqual({
+        ...valid,
+        adventureId: 'a1',
+      });
+      expect(alerts()).toEqual([]);
+      request.flush(character({ id: 'c9', pictureUrl: null }), {
+        status: 201,
+        statusText: 'Created',
+      });
+      await tavern.render();
+      tavern.backend
+        .expectOne((r) => r.method === 'GET' && /\/game-characters\/c9$/.test(r.url))
+        .flush(character({ id: 'c9', pictureUrl: null }));
     });
 
     it('checks the lengths of the fields', async () => {
@@ -153,13 +180,28 @@ describe('CharacterForm (creation and edition pages)', () => {
         .flush(character({ id: 'c9' }));
     });
 
-    it('explains the limit of 10 characters on a 409', async () => {
+    it('a_full_seat_tells_the_player_which_plan_their_master_would_need', async () => {
       fill(valid);
       await choose(fileOf(PNG_BYTES, 'hero.png'));
       tavern.button('Créer le personnage').click();
-      tavern.backend.expectOne(post).flush({}, { status: 409, statusText: 'Conflict' });
+      tavern.backend.expectOne(post).flush(
+        {
+          type: 'urn:dndgate:plan-limit-reached',
+          limit: 'charactersPerPlayerAndAdventure',
+          max: 1,
+          planId: 'adventurer',
+          upgradePlanId: 'dungeon-master',
+          decidedBy: 'master',
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
       await tavern.render();
-      expect(alerts()).toEqual(['Tu as déjà 10 personnages dans cette aventure.']);
+      expect(alerts()).toEqual([]);
+      const [toast] = TestBed.inject(NotifierService).toasts();
+      expect(toast.message).toBe(
+        'Création du personnage : Limite atteinte : Personnages par joueur et par aventure (1 au maximum). Demande à ton MJ : il lui faudrait l’offre Maître du Donjon pour le permettre.',
+      );
+      expect(toast.action).toBeUndefined();
     });
 
     it('puts the field messages of a 400 on the fields', async () => {
@@ -184,6 +226,62 @@ describe('CharacterForm (creation and edition pages)', () => {
       expect(TestBed.inject(NotifierService).toasts()[0].message).toContain(
         'Création du personnage',
       );
+    });
+  });
+
+  describe('without the picture feature', () => {
+    const plans = (r: Req) => r.method === 'GET' && /\/plans$/.test(r.url);
+    const CATALOG = {
+      currency: 'EUR',
+      defaultPlan: 'adventurer',
+      plans: [
+        { id: 'adventurer', features: { characterPictures: false } },
+        { id: 'hero', features: { characterPictures: true } },
+      ],
+    };
+
+    it('the_picture_field_is_replaced_by_the_hint_without_the_feature', async () => {
+      await open('/tavern/adventures/a1/characters/new', {}, { features: [], limits: {} });
+      tavern.backend.expectOne(plans).flush(CATALOG);
+      await tavern.render();
+      const main = tavern.main();
+      expect(main.querySelector('input[type="file"]')).toBeNull();
+      const hint = main.querySelector('dg-plan-hint')!;
+      expect(hint.textContent).toContain(
+        'Inclus à partir de l’offre Héros (ou si ton MJ a une table équipée).',
+      );
+      expect(hint.querySelector('a')?.getAttribute('href')).toBe('/plans');
+      fill(valid);
+      tavern.button('Créer le personnage').click();
+      const body = tavern.backend.expectOne(post).request.body as FormData;
+      expect(body.has('picturePresentation')).toBe(false);
+    });
+
+    it('a_refused_file_no_longer_blocks_once_the_field_turned_into_the_hint', async () => {
+      const entitlements: AdventureEntitlementsDto = {
+        features: ['characterPictures'],
+        limits: {},
+      };
+      await open('/tavern/adventures/a1/characters/new', {}, entitlements);
+      await choose(fileOf(GIF_BYTES, 'hero.png'));
+      expect(alerts()).toEqual(['L’image doit être un PNG ou un JPEG.']);
+      // The master's table loses its tools meanwhile: the field becomes the hint.
+      entitlements.features = [];
+      shellContext().reloadEntitlements();
+      await tavern.render();
+      tavern.backend.expectOne(plans).flush(CATALOG);
+      await tavern.render();
+      expect(tavern.main().querySelector('input[type="file"]')).toBeNull();
+      fill(valid);
+      tavern.button('Créer le personnage').click();
+      const body = tavern.backend.expectOne(post).request.body as FormData;
+      expect(body.has('picturePresentation')).toBe(false);
+    });
+
+    it('an unknown offer does not hide the picture field', async () => {
+      await open('/tavern/adventures/a1/characters/new', {}, null);
+      expect(tavern.main().querySelector('input[type="file"]')).not.toBeNull();
+      expect(tavern.main().querySelector('dg-plan-hint')).toBeNull();
     });
   });
 
@@ -248,6 +346,79 @@ describe('CharacterForm (creation and edition pages)', () => {
       tavern.backend.expectOne(getOne).flush({}, { status: 404, statusText: 'Not Found' });
       await tavern.render();
       expect(alerts()).toEqual(['Ce personnage est introuvable.']);
+    });
+  });
+
+  describe('NPCs of the master', () => {
+    it('the_master_creates_an_npc', async () => {
+      await open('/tavern/adventures/a1/characters/new', { creatorId: 'me', players: ['p1'] });
+      expect(tavern.main().querySelector('h1')!.textContent).toContain('Nouveau PNJ');
+      const reload = vi.spyOn(shellContext(), 'reloadEntitlements');
+      fill(valid);
+      tavern.button('Créer le PNJ').click();
+      await tavern.render();
+      const request = tavern.backend.expectOne(post);
+      const body = request.request.body as FormData;
+      expect(JSON.parse(await (body.get('createGameCharacterRequest') as Blob).text())).toEqual({
+        ...valid,
+        adventureId: 'a1',
+      });
+      request.flush(character({ id: 'c9', npc: true, visibility: 'PRIVATE', ownerId: 'me' }), {
+        status: 201,
+        statusText: 'Created',
+      });
+      await tavern.render();
+      expect(reload).toHaveBeenCalled();
+      expect(tavern.router.url).toBe('/tavern/adventures/a1/characters/c9');
+      tavern.backend
+        .expectOne((r) => r.method === 'GET' && /\/game-characters\/c9$/.test(r.url))
+        .flush(character({ id: 'c9', npc: true, ownerId: 'me' }));
+    });
+
+    it('a_refused_npc_quota_goes_through_the_notifier', async () => {
+      await open('/tavern/adventures/a1/characters/new', { creatorId: 'me', players: ['p1'] });
+      fill(valid);
+      tavern.button('Créer le PNJ').click();
+      tavern.backend.expectOne(post).flush(
+        {
+          type: 'urn:dndgate:plan-limit-reached',
+          limit: 'npcsPerAdventure',
+          max: 50,
+          planId: 'dungeon-master',
+          upgradePlanId: 'legendary',
+          decidedBy: 'master',
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
+      await tavern.render();
+      expect(alerts()).toEqual([]);
+      const toast = TestBed.inject(NotifierService).toasts()[0];
+      expect(toast.kind).toBe('error');
+      // The master reads about their own plan: no « ask your master ».
+      expect(toast.message).toBe(
+        'Création du personnage : Limite atteinte : PNJ par aventure (50 au maximum). L’offre Légendaire le permet.',
+      );
+      expect(toast.action?.label).toBe('Voir les offres');
+    });
+
+    it('the_master_edits_an_npc_whoever_owns_it', async () => {
+      await open('/tavern/adventures/a1/characters/c1/edit', { creatorId: 'me', players: ['p1'] });
+      tavern.backend.expectOne(getOne).flush(character({ ownerId: 'someone', npc: true }));
+      await tavern.render();
+      expect(input('name').value).toBe('Thorin');
+      fill({ race: 'Elfe' });
+      tavern.button('Enregistrer').click();
+      tavern.backend.expectOne(patch).flush(character({ race: 'Elfe', npc: true }));
+      await tavern.render();
+      tavern.backend.expectOne(getOne).flush(character({ race: 'Elfe', npc: true }));
+    });
+
+    it('a_player_cannot_edit_an_npc', async () => {
+      await open('/tavern/adventures/a1/characters/c1/edit');
+      tavern.backend.expectOne(getOne).flush(character({ ownerId: 'me', npc: true }));
+      await tavern.render();
+      expect(tavern.main().querySelector('form')).toBeNull();
+      expect(tavern.main().textContent).toContain('Seul le MJ');
     });
   });
 });

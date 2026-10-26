@@ -29,6 +29,19 @@ describe('Button', () => {
     expect(native().type).toBe('submit');
   });
 
+  it('says whether a toggle is on, and says nothing otherwise', async () => {
+    await fixture.whenStable();
+    expect(native().hasAttribute('aria-pressed')).toBe(false);
+
+    fixture.componentRef.setInput('pressed', false);
+    await fixture.whenStable();
+    expect(native().getAttribute('aria-pressed')).toBe('false');
+
+    fixture.componentRef.setInput('pressed', true);
+    await fixture.whenStable();
+    expect(native().getAttribute('aria-pressed')).toBe('true');
+  });
+
   it('is disabled and busy while loading', async () => {
     fixture.componentRef.setInput('loading', true);
     await fixture.whenStable();

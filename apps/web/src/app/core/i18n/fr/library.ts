@@ -249,7 +249,7 @@ export const library = {
     loadError: 'Impossible de charger tes grimoires.',
     loading: 'Chargement des grimoires',
     loadingFlavour: 'Dépoussiérage des grimoires…',
-    limitReached: 'tu as atteint la limite de 100 grimoires.',
+    spellsLimitReached: 'un grimoire contient au plus 1 000 sorts.',
     created: 'Grimoire créé.',
     imported: 'Grimoire importé.',
     creating: 'Création du grimoire',

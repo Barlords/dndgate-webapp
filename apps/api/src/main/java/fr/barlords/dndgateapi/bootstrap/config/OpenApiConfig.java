@@ -21,6 +21,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -76,6 +77,35 @@ public class OpenApiConfig {
                         operation.setSecurity(List.of());
                     }
                 }));
+    }
+
+    /**
+     * A property that may be null and lists its values would refuse the null in a validator: JSON Schema checks the
+     * {@code enum} whatever the {@code type} says, so the null is added to the values.
+     */
+    @Bean
+    public OpenApiCustomizer nullInNullableEnums() {
+        return openApi -> {
+            if (openApi.getComponents() == null || openApi.getComponents().getSchemas() == null) {
+                return;
+            }
+            openApi.getComponents().getSchemas().values().forEach(schema -> {
+                if (schema.getProperties() != null) {
+                    ((java.util.Map<String, Schema<?>>) schema.getProperties()).values().forEach(OpenApiConfig::allowNullInEnum);
+                }
+            });
+        };
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static void allowNullInEnum(Schema<?> property) {
+        List<Object> values = (List<Object>) property.getEnum();
+        if (values != null && !values.contains(null)
+                && property.getTypes() != null && property.getTypes().contains("null")) {
+            List<Object> withNull = new ArrayList<>(values);
+            withNull.add(null);
+            ((Schema) property).setEnum(withNull);
+        }
     }
 
     /**

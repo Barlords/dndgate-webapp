@@ -25,6 +25,7 @@ import { Loading } from '../../shared/ui/loading/loading';
 import { StarRating } from '../../shared/ui/star-rating/star-rating';
 import { AccountLayout } from './account-layout';
 import { I18n } from '../../core/i18n/i18n.service';
+import { AccountBadges } from '../../shared/ui/account-badges/account-badges';
 
 const PAGE_SIZE = 10;
 
@@ -36,8 +37,14 @@ interface Profile {
 @Component({
   selector: 'dg-public-profile-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AccountLayout, Loading, StarRating, Paginator, DatePipe],
+  imports: [AccountLayout, Loading, StarRating, Paginator, DatePipe, AccountBadges],
   styles: `
+    .badges {
+      margin: 0 0 var(--dg-space-2);
+    }
+    .badges dg-account-badges {
+      margin-left: 0;
+    }
     .summary {
       display: flex;
       flex-direction: column;
@@ -80,6 +87,7 @@ interface Profile {
   template: `
     <dg-account-layout [heading]="heading()">
       @if (profile(); as shown) {
+        <p class="badges"><dg-account-badges [accountId]="accountId()" /></p>
         <div class="summary">
           @if (shown.mean.average === null) {
             <p>{{ t().account.publicProfile.noRating }}</p>
@@ -94,7 +102,7 @@ interface Profile {
             @for (rating of page.content ?? []; track rating.id) {
               <li>
                 <span>
-                  {{ author(rating.emitterId) }}
+                  {{ author(rating.emitterId) }}<dg-account-badges [accountId]="rating.emitterId" />
                   <small>{{ rating.createdAt | date: 'dd/MM/yyyy' }}</small>
                 </span>
                 <dg-star-rating [value]="rating.rate ?? null" [readonly]="true" />
@@ -129,7 +137,7 @@ export class PublicProfilePage {
   private readonly directory = inject(AccountDirectory);
   private readonly notifier = inject(NotifierService);
 
-  private readonly accountId = signal('');
+  protected readonly accountId = signal('');
   protected readonly profile = signal<Profile | null>(null);
   protected readonly failed = signal(false);
   protected readonly ratings = signal<PageDtoRatingDto | null>(null);

@@ -3,7 +3,8 @@ import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core'
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subscription } from 'rxjs';
 import { ApiConfiguration } from '../../../core/api/generated/api-configuration';
-import { getAdventureById } from '../../../core/api/generated/functions';
+import { getAdventureById, getAdventureEntitlements } from '../../../core/api/generated/functions';
+import { AdventureEntitlementsDto } from '../../../core/api/generated/models/adventure-entitlements-dto';
 import { AdventureDto } from '../../../core/api/generated/models/adventure-dto';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ApiProblem, toApiProblem } from '../../../core/errors/api-problem';
@@ -26,6 +27,10 @@ export class AdventureContext {
   private readonly loadState = signal<AdventureLoadState>('loading');
   private id: string | null = null;
   private request: Subscription | null = null;
+  private entitlementsRequest: Subscription | null = null;
+  private readonly offer = signal<AdventureEntitlementsDto | null>(null);
+  /** What the reader may do here (tools and limits); null for a visitor, while loading or if unknown. */
+  readonly entitlements = this.offer.asReadonly();
 
   readonly adventure = this.current.asReadonly();
   readonly state = this.loadState.asReadonly();
@@ -51,8 +56,37 @@ export class AdventureContext {
   open(id: string): void {
     this.id = id;
     this.current.set(null);
+    this.offer.set(null);
+    this.entitlementsRequest?.unsubscribe();
     this.loadState.set('loading');
     this.fetch();
+  }
+
+  /** Whether a tool is available to the reader in this adventure; false while it is unknown. */
+  has(feature: string): boolean {
+    return this.offer()?.features?.includes(feature) ?? false;
+  }
+
+  /** Usage of one of the adventure's limits, or null when unknown. */
+  usage(limit: string): { used: number; max: number } | null {
+    const usage = this.offer()?.limits?.[limit];
+    return usage?.used === undefined || usage.max === undefined
+      ? null
+      : { used: usage.used, max: usage.max };
+  }
+
+  /** Asks the entitlements again; a failure keeps what is known. */
+  reloadEntitlements(): void {
+    if (this.id === null) {
+      return;
+    }
+    this.entitlementsRequest?.unsubscribe();
+    this.entitlementsRequest = getAdventureEntitlements(this.http, this.rootUrl, { id: this.id })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => this.offer.set(response.body),
+        error: () => undefined,
+      });
   }
 
   /** Fetches the adventure again; the one shown stays until the answer. `done` gets the fresh one. */
@@ -76,6 +110,10 @@ export class AdventureContext {
       .subscribe({
         next: (response) => {
           this.update(response.body);
+          // Only a participant has entitlements here; a visitor's request would be refused.
+          if (this.isParticipant() && this.offer() === null) {
+            this.reloadEntitlements();
+          }
           done?.(response.body);
         },
         error: (error: unknown) => {

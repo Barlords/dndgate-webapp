@@ -5,7 +5,7 @@ import { I18n } from '../../../../core/i18n/i18n.service';
 
 /**
  * A character's portrait in a gilded frame. A parchment plate with a silhouette stands in while
- * the picture loads and when it cannot be shown.
+ * the picture loads and when there is none or it cannot be shown.
  */
 @Component({
   selector: 'dg-character-portrait',
@@ -65,7 +65,7 @@ import { I18n } from '../../../../core/i18n/i18n.service';
     <div class="frame">
       <div class="inner">
         <img
-          [dgCharacterPicture]="characterId()"
+          [dgCharacterPicture]="hasPicture() ? characterId() : null"
           #picture="dgCharacterPicture"
           [alt]="t().tavern.portrait(name())"
           [class.hidden]="picture.status() !== 'ready'"
@@ -82,4 +82,6 @@ export class CharacterPortrait {
 
   readonly characterId = input.required<string>();
   readonly name = input('');
+  /** False for a character without picture: nothing is fetched, the plate stays. */
+  readonly hasPicture = input(true);
 }

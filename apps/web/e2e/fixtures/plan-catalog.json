@@ -1,0 +1,30 @@
+{
+  "currency": "EUR",
+  "defaultPlan": "adventurer",
+  "plans": [
+    {
+      "id": "adventurer",
+      "highlighted": false,
+      "badge": null,
+      "limits": { "activeAdventuresAsMaster": 1, "spellBooks": 2 },
+      "features": {},
+      "prices": {}
+    },
+    {
+      "id": "hero",
+      "highlighted": false,
+      "badge": null,
+      "limits": { "activeAdventuresAsMaster": 3, "spellBooks": 10 },
+      "features": { "characterPictures": true },
+      "prices": { "monthly": { "amount": 199 }, "yearly": { "amount": 1990 } }
+    },
+    {
+      "id": "dungeon-master",
+      "highlighted": true,
+      "badge": "dungeon-master",
+      "limits": { "activeAdventuresAsMaster": 10, "spellBooks": 20 },
+      "features": { "characterPictures": true, "video": true },
+      "prices": { "monthly": { "amount": 499 }, "yearly": { "amount": 4990 } }
+    }
+  ]
+}
