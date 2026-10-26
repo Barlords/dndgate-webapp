@@ -1,6 +1,8 @@
 # Analyse continue des dépendances : une pull request quand une mise à jour ou un correctif de sécurité existe.
 version: 2
 updates:
+
+# API
   - package-ecosystem: maven
     directory: /apps/api
     schedule:
@@ -12,6 +14,24 @@ updates:
     schedule:
       interval: weekly
 
+# Web
+  - package-ecosystem: npm
+    directory: /apps/web
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      angular:
+        patterns:
+          - "@angular/*"
+          - "@angular-devkit/*"
+
+  - package-ecosystem: docker
+    directory: /apps/web
+    schedule:
+      interval: weekly
+
+# GitHub Actions
   - package-ecosystem: github-actions
     directory: /
     schedule:
