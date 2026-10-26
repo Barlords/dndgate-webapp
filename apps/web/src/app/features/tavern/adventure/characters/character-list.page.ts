@@ -13,7 +13,9 @@ import { Router, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { AccountDirectory } from '../../../../core/accounts/account-directory.service';
 import { ApiConfiguration } from '../../../../core/api/generated/api-configuration';
-import { getGameCharacters } from '../../../../core/api/generated/functions';
+import { getGameCharacters, setActiveCharacter } from '../../../../core/api/generated/functions';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { NotifierService } from '../../../../core/errors/notifier.service';
 import { GameCharacterDto } from '../../../../core/api/generated/models/game-character-dto';
 import { Button } from '../../../../shared/ui/button/button';
 import { ApiProblem, toApiProblem } from '../../../../core/errors/api-problem';
@@ -99,6 +101,18 @@ type ListState = 'loading' | 'ready' | 'failed';
       color: var(--dg-ink-muted);
     }
 
+    .active {
+      margin: 0;
+      font-weight: 700;
+      color: var(--dg-blood);
+    }
+
+    .switch {
+      display: block;
+      margin-top: var(--dg-space-2);
+      text-align: center;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .card {
         transition: none;
@@ -136,7 +150,20 @@ type ListState = 'loading' | 'ready' | 'failed';
                     {{ pseudo(character.ownerId!)
                     }}<dg-account-badges [accountId]="character.ownerId" />
                   </p>
+                  @if (isActive(character)) {
+                    <p class="active">{{ t().tavern.characters.active }}</p>
+                  }
                 </a>
+                @if (canActivate(character)) {
+                  <dg-button
+                    class="switch"
+                    variant="ghost"
+                    [loading]="switching() === character.id"
+                    (click)="activate(character)"
+                  >
+                    {{ t().tavern.characters.makeActive }}
+                  </dg-button>
+                }
               </li>
             }
           </ul>
@@ -173,12 +200,16 @@ export class CharacterListPage {
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   private readonly context = inject(AdventureContext);
   private readonly directory = inject(AccountDirectory);
+  private readonly auth = inject(AuthService);
+  private readonly notifier = inject(NotifierService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly state = signal<ListState>('loading');
   protected readonly loadProblem = signal<ApiProblem | null>(null);
   protected readonly characters = signal<GameCharacterDto[]>([]);
+  /** The id of the character being made active, if any. */
+  protected readonly switching = signal<string | null>(null);
   private request: Subscription | null = null;
   private requested = false;
 
@@ -220,6 +251,47 @@ export class CharacterListPage {
         error: (error: unknown) => {
           this.loadProblem.set(toApiProblem(error));
           this.state.set('failed');
+        },
+      });
+  }
+
+  /** The character a player plays now; non-player characters have no such notion. */
+  protected isActive(character: GameCharacterDto): boolean {
+    return !character.npc && character.active === true;
+  }
+
+  /** Only the owner switches, only among their player characters, and only to another one. */
+  protected canActivate(character: GameCharacterDto): boolean {
+    return (
+      !character.npc &&
+      !character.active &&
+      character.ownerId === this.auth.account()?.id &&
+      this.context.isPlayer()
+    );
+  }
+
+  protected activate(character: GameCharacterDto): void {
+    this.switching.set(character.id!);
+    setActiveCharacter(this.http, this.rootUrl, {
+      id: this.adventureId(),
+      body: { characterId: character.id! },
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: ({ body }) => {
+          this.switching.set(null);
+          // One active character per player: the others of that player lose the mark.
+          this.characters.update((all) =>
+            all.map((c) =>
+              c.npc || c.ownerId !== body.ownerId ? c : { ...c, active: c.id === body.id },
+            ),
+          );
+          this.context.reloadEntitlements();
+          this.notifier.success(this.t().tavern.characters.activated(body.name ?? ''));
+        },
+        error: (error: unknown) => {
+          this.switching.set(null);
+          this.notifier.error(toApiProblem(error), this.t().tavern.characters.activating);
         },
       });
   }

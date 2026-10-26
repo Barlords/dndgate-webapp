@@ -1,4 +1,6 @@
+import { TestBed } from '@angular/core/testing';
 import { AdventureDto } from '../../../../core/api/generated/models/adventure-dto';
+import { NotifierService } from '../../../../core/errors/notifier.service';
 import { adventure, setupTavern, TavernTestbed } from '../../tavern.testing';
 import { character, stubObjectUrls } from './characters.testing';
 
@@ -113,5 +115,49 @@ describe('CharacterListPage', () => {
     tavern.button('Réessayer').click();
     await answer([]);
     expect(tavern.main().textContent).toContain('Aucun personnage');
+  });
+
+  describe('active character', () => {
+    const activate = (r: Req) =>
+      r.method === 'PUT' && /\/adventures\/a1\/players\/me\/active-character$/.test(r.url);
+    const party = () => [
+      character({ id: 'c1', name: 'Thorin', ownerId: 'p1', active: true }),
+      character({ id: 'c2', name: 'Elara', ownerId: 'me', active: true }),
+      character({ id: 'c3', name: 'Bran', ownerId: 'me', active: false }),
+      character({ id: 'c4', name: 'Garde', ownerId: 'me', active: false, npc: true }),
+      character({ id: 'c5', name: 'Pip', ownerId: 'p1', active: false }),
+    ];
+    const entries = () => [...tavern.main().querySelectorAll('.portraits > li')];
+    const marked = () => entries().map((c) => c.textContent?.includes('Actif'));
+    const switchButton = (entry: Element) =>
+      [...entry.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Rendre actif');
+
+    it('the_active_character_is_marked_and_can_be_switched', async () => {
+      await open();
+      await answer(party());
+      expect(marked()).toEqual([true, true, false, false, false]);
+      // Only the reader's own non-active player characters can be switched to.
+      expect(entries().map((c) => !!switchButton(c))).toEqual([false, false, true, false, false]);
+
+      switchButton(entries()[2])!.click();
+      const request = tavern.backend.expectOne(activate);
+      expect(request.request.body).toEqual({ characterId: 'c3' });
+      request.flush(character({ id: 'c3', name: 'Bran', ownerId: 'me', active: true }));
+      await tavern.render();
+
+      expect(marked()).toEqual([true, false, true, false, false]);
+      expect(entries().map((c) => !!switchButton(c))).toEqual([false, true, false, false, false]);
+      expect(TestBed.inject(NotifierService).toasts()[0].message).toContain('Bran');
+    });
+
+    it('a refused switch leaves the marks as they were', async () => {
+      await open();
+      await answer(party());
+      switchButton(entries()[2])!.click();
+      tavern.backend.expectOne(activate).flush({}, { status: 500, statusText: 'Server' });
+      await tavern.render();
+      expect(marked()).toEqual([true, true, false, false, false]);
+      expect(TestBed.inject(NotifierService).toasts()[0].kind).toBe('error');
+    });
   });
 });
