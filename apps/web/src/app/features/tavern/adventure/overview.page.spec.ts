@@ -1,9 +1,11 @@
 import { TestBed } from '@angular/core/testing';
+import type { MockInstance } from 'vitest';
 import { of } from 'rxjs';
 import { AdventureDto } from '../../../core/api/generated/models/adventure-dto';
 import { NotifierService } from '../../../core/errors/notifier.service';
 import { BreadcrumbService } from '../../../layout/breadcrumb.service';
 import { ConfirmService } from '../../../shared/ui/confirm-dialog/confirm.service';
+import { QuitReserveDialogService } from './quit-reserve.dialog';
 import { adventure, setupTavern, TavernTestbed } from '../tavern.testing';
 
 interface Req {
@@ -324,6 +326,152 @@ describe('OverviewPage', () => {
     await tavern.render();
     expect(tavern.router.url).toBe('/tavern/mine');
     tavern.backend.match(() => true);
+  });
+
+  describe('quitting with a full reserve', () => {
+    const quit = (r: Req) => r.method === 'DELETE' && /\/adventures\/a1\/players\/me$/.test(r.url);
+    const full = {
+      type: 'urn:dndgate:plan-limit-reached',
+      limit: 'charactersWithoutAdventure',
+      max: 2,
+      planId: 'adventurer',
+      decidedBy: 'account',
+    };
+    const characters = [
+      { id: 'c1', name: 'Thorin', ownerId: 'me', adventureId: 'a1', npc: false },
+      { id: 'c2', name: 'Bilbo', ownerId: 'me', adventureId: 'a1', npc: false },
+      { id: 'c3', name: 'Gollum', ownerId: 'other', adventureId: 'a1', npc: false },
+      { id: 'c4', name: 'Orc', ownerId: 'me', adventureId: 'a1', npc: true },
+    ];
+
+    /** The reader confirms the quit; the API answers that the reserve is full. */
+    async function quitFull(used = 2, prepare: () => void = () => undefined) {
+      await open({ players: ['me'] });
+      prepare();
+      vi.spyOn(TestBed.inject(ConfirmService), 'confirm').mockReturnValue(of(true));
+      tavern.button('Quitter l’aventure').click();
+      tavern.backend.expectOne(quit).flush(full, { status: 409, statusText: 'Conflict' });
+      tavern.backend
+        .expectOne((r) => r.method === 'GET' && /\/accounts\/me\/subscription$/.test(r.url))
+        .flush({ usage: { charactersWithoutAdventure: { used, max: 2 } } });
+      tavern.backend
+        .expectOne(
+          (r) =>
+            r.method === 'GET' &&
+            /\/game-characters$/.test(r.url) &&
+            r.params.get('adventureId') === 'a1',
+        )
+        .flush(characters);
+    }
+
+    it('a_quit_that_fits_needs_no_dialog', async () => {
+      await open({ players: ['me'] });
+      vi.spyOn(TestBed.inject(ConfirmService), 'confirm').mockReturnValue(of(true));
+      const ask = vi.spyOn(TestBed.inject(QuitReserveDialogService), 'ask');
+      tavern.button('Quitter l’aventure').click();
+      const request = tavern.backend.expectOne(quit);
+      expect(request.request.body).toBeNull();
+      request.flush(adventure());
+      await tavern.render();
+      expect(ask).not.toHaveBeenCalled();
+      expect(tavern.router.url).toBe('/tavern/mine');
+      tavern.backend.match(() => true);
+    });
+
+    it('a_full_reserve_asks_which_characters_to_delete', async () => {
+      let ask!: MockInstance<QuitReserveDialogService['ask']>;
+      await quitFull(2, () => {
+        ask = vi.spyOn(TestBed.inject(QuitReserveDialogService), 'ask').mockReturnValue(of(null));
+      });
+      // Two characters of the reader (the NPC and the other player's are left out) for a reserve
+      // with 0 free place: both would have to go back, so two places are missing.
+      expect(ask).toHaveBeenCalledWith(
+        [
+          { id: 'c1', name: 'Thorin' },
+          { id: 'c2', name: 'Bilbo' },
+        ],
+        2,
+      );
+    });
+
+    it('counts only the places that are really missing', async () => {
+      let ask!: MockInstance<QuitReserveDialogService['ask']>;
+      await quitFull(1, () => {
+        ask = vi.spyOn(TestBed.inject(QuitReserveDialogService), 'ask').mockReturnValue(of(null));
+      });
+      expect(ask.mock.calls[0][1]).toBe(1);
+    });
+
+    it('the_deletions_are_sent_with_their_names', async () => {
+      let typeToConfirm!: MockInstance<ConfirmService['typeToConfirm']>;
+      await quitFull(2, () => {
+        vi.spyOn(TestBed.inject(QuitReserveDialogService), 'ask').mockReturnValue(of(['c1', 'c2']));
+        typeToConfirm = vi
+          .spyOn(TestBed.inject(ConfirmService), 'typeToConfirm')
+          .mockReturnValueOnce(of('Thorin'))
+          .mockReturnValueOnce(of('Bilbo'));
+      });
+      expect(typeToConfirm.mock.calls.map(([options]) => options.expected)).toEqual([
+        'Thorin',
+        'Bilbo',
+      ]);
+      const request = tavern.backend.expectOne(quit);
+      expect(request.request.body).toEqual({
+        deletions: [
+          { characterId: 'c1', confirmation: 'Thorin' },
+          { characterId: 'c2', confirmation: 'Bilbo' },
+        ],
+      });
+      request.flush(adventure());
+      await tavern.render();
+      expect(tavern.router.url).toBe('/tavern/mine');
+      tavern.backend.match(() => true);
+    });
+
+    it('cancelling_the_quit_dialog_sends_nothing', async () => {
+      await quitFull(2, () => {
+        vi.spyOn(TestBed.inject(QuitReserveDialogService), 'ask').mockReturnValue(of(null));
+      });
+      tavern.backend.expectNone(quit);
+      expect(tavern.router.url).toContain('/overview');
+    });
+
+    it('cancelling_one_name_aborts_everything', async () => {
+      let typeToConfirm!: MockInstance<ConfirmService['typeToConfirm']>;
+      await quitFull(2, () => {
+        vi.spyOn(TestBed.inject(QuitReserveDialogService), 'ask').mockReturnValue(of(['c1', 'c2']));
+        typeToConfirm = vi
+          .spyOn(TestBed.inject(ConfirmService), 'typeToConfirm')
+          .mockReturnValueOnce(of(null))
+          .mockReturnValueOnce(of('Bilbo'));
+      });
+      expect(typeToConfirm).toHaveBeenCalledTimes(1);
+      tavern.backend.expectNone(quit);
+    });
+
+    it('a refusal of the quit with deletions is reported, not asked again', async () => {
+      const ask = vi.fn(() => of(['c1']));
+      let error!: MockInstance<NotifierService['error']>;
+      await quitFull(2, () => {
+        error = vi.spyOn(TestBed.inject(NotifierService), 'error');
+        vi.spyOn(TestBed.inject(QuitReserveDialogService), 'ask').mockImplementation(ask);
+        vi.spyOn(TestBed.inject(ConfirmService), 'typeToConfirm').mockReturnValue(of('Thorin'));
+      });
+      tavern.backend.expectOne(quit).flush(full, { status: 409, statusText: 'Conflict' });
+      expect(error).toHaveBeenCalled();
+      expect(ask).toHaveBeenCalledTimes(1);
+      tavern.backend.match(() => true);
+    });
+
+    it('another refusal is reported as usual', async () => {
+      await open({ players: ['me'] });
+      vi.spyOn(TestBed.inject(ConfirmService), 'confirm').mockReturnValue(of(true));
+      const error = vi.spyOn(TestBed.inject(NotifierService), 'error');
+      tavern.button('Quitter l’aventure').click();
+      tavern.backend.expectOne(quit).flush({}, { status: 500, statusText: 'Server Error' });
+      expect(error).toHaveBeenCalled();
+      tavern.backend.match(() => true);
+    });
   });
 
   it('a vacant master seat is shown', async () => {

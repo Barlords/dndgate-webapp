@@ -10,20 +10,36 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
-import { filter, Observable } from 'rxjs';
+import {
+  concatMap,
+  filter,
+  finalize,
+  forkJoin,
+  from,
+  map,
+  Observable,
+  switchMap,
+  takeWhile,
+  toArray,
+} from 'rxjs';
 import { AccountDirectory } from '../../../core/accounts/account-directory.service';
 import { ApiConfiguration } from '../../../core/api/generated/api-configuration';
 import {
   deleteAdventureById,
+  getGameCharacters,
   joinAdventure,
   quitAdventure,
   updateAdventure,
   updateAdventureStatus,
   updateAdventureVisibility,
 } from '../../../core/api/generated/functions';
+import { AuthService } from '../../../core/auth/auth.service';
+import { CharacterDeletion } from '../../../core/api/generated/models/character-deletion';
 import { AdventureDto } from '../../../core/api/generated/models/adventure-dto';
 import { ApiProblem, toApiProblem } from '../../../core/errors/api-problem';
 import { NotifierService } from '../../../core/errors/notifier.service';
+import { Billing } from '../../../core/plans/billing.service';
+import { QuitReserveDialogService } from './quit-reserve.dialog';
 import { Button } from '../../../shared/ui/button/button';
 import { ConfirmService } from '../../../shared/ui/confirm-dialog/confirm.service';
 import { AdventureForm, AdventureValue } from '../adventure-form';
@@ -31,6 +47,9 @@ import { allowedTransitions, isClosed, Status } from '../adventure-status';
 import { AdventureContext } from './adventure-context.service';
 import { I18n } from '../../../core/i18n/i18n.service';
 import { AccountBadges } from '../../../shared/ui/account-badges/account-badges';
+
+/** The plan limit hit when the reserve (characters outside any adventure) is full. */
+const RESERVE_LIMIT = 'charactersWithoutAdventure';
 
 function toValue(adventure: AdventureDto): AdventureValue {
   return {
@@ -192,6 +211,9 @@ export class OverviewPage {
   private readonly directory = inject(AccountDirectory);
   private readonly confirmer = inject(ConfirmService);
   private readonly notifier = inject(NotifierService);
+  private readonly auth = inject(AuthService);
+  private readonly billing = inject(Billing);
+  private readonly quitDialog = inject(QuitReserveDialogService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -309,16 +331,95 @@ export class OverviewPage {
         confirmLabel: this.t().tavern.overview.quitConfirm,
       })
       .pipe(filter(Boolean), takeUntilDestroyed(this.destroyRef))
-      .subscribe(() =>
-        this.run(
-          quitAdventure(this.http, this.rootUrl, { id: this.adventure().id! }),
-          this.t().tavern.overview.quitting,
-          () => {
-            this.notifier.success(this.t().tavern.overview.quitted);
-            void this.router.navigate(['/tavern/mine']);
-          },
-        ),
-      );
+      .subscribe(() => this.sendQuit());
+  }
+
+  /**
+   * Leaves the adventure. A full reserve cannot take the reader's characters back: the API refuses
+   * and the reader chooses which ones to delete; `deletions` is then sent along.
+   */
+  private sendQuit(deletions?: CharacterDeletion[]): void {
+    const context = this.t().tavern.overview.quitting;
+    this.busy.set(true);
+    quitAdventure(this.http, this.rootUrl, {
+      id: this.adventure().id!,
+      body: deletions ? { deletions } : undefined,
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.busy.set(false);
+          this.notifier.success(this.t().tavern.overview.quitted);
+          void this.router.navigate(['/tavern/mine']);
+        },
+        error: (error: unknown) => {
+          this.busy.set(false);
+          const problem = toApiProblem(error);
+          if (!deletions && problem.status === 409 && problem.plan?.key === RESERVE_LIMIT) {
+            this.chooseDeletions(problem.plan.max ?? 0);
+            return;
+          }
+          this.notifier.error(problem, context);
+          this.context.reload();
+        },
+      });
+  }
+
+  /** Lists the reader's characters of this adventure and asks which ones to give up. */
+  private chooseDeletions(max: number): void {
+    const me = this.auth.account()?.id;
+    this.busy.set(true);
+    forkJoin({
+      subscription: this.billing.loadMine(),
+      characters: getGameCharacters(this.http, this.rootUrl, {
+        adventureId: this.adventure().id!,
+      }).pipe(map((response) => response.body)),
+    })
+      .pipe(
+        finalize(() => this.busy.set(false)),
+        switchMap(({ subscription, characters }) => {
+          const mine = characters
+            .filter((c) => c.ownerId === me && !c.npc)
+            .map((c) => ({ id: c.id!, name: c.name ?? '' }));
+          const used = subscription.usage?.[RESERVE_LIMIT]?.used ?? 0;
+          return this.quitDialog.ask(mine, Math.max(0, used + mine.length - max)).pipe(
+            filter((ids): ids is string[] => ids !== null),
+            switchMap((ids) => this.retypeNames(mine.filter((c) => ids.includes(c.id)))),
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (deletions) => this.sendQuit(deletions),
+        error: (error: unknown) =>
+          this.notifier.error(toApiProblem(error), this.t().tavern.overview.quitting),
+      });
+  }
+
+  /** Asks the name of each character, one after the other; any cancel aborts everything. */
+  private retypeNames(characters: { id: string; name: string }[]): Observable<CharacterDeletion[]> {
+    const texts = this.t().tavern.characters;
+    return from(characters).pipe(
+      concatMap((character) =>
+        this.confirmer
+          .typeToConfirm({
+            title: texts.deleteTitle,
+            message: texts.deleteMessage(character.name),
+            confirmLabel: this.t().common.actions.delete,
+            inputLabel: texts.deleteInput,
+            inputType: 'text',
+            expected: character.name,
+          })
+          .pipe(
+            map((typed) =>
+              typed === null ? null : { characterId: character.id, confirmation: typed },
+            ),
+          ),
+      ),
+      takeWhile((deletion) => deletion !== null, true),
+      toArray(),
+      filter((all): all is CharacterDeletion[] => all.every((deletion) => deletion !== null)),
+    );
   }
 
   protected remove(): void {

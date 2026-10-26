@@ -216,6 +216,17 @@ export const tavern: Dictionary['tavern'] = {
     quitConfirm: 'Leave',
     quitting: 'Leaving the adventure',
     quitted: 'You left the adventure.',
+    quitReserveTitle: 'Your reserve is full',
+    quitReserveMessage:
+      'When you leave this adventure, your characters go back to your reserve, which does not have enough room. Tick those to delete permanently; the others are kept.',
+    quitReserveChoose: 'Characters to delete permanently',
+    quitReserveDelete: (name: string) => `Delete “${name}” permanently`,
+    quitReserveMissing: (n: number) =>
+      n === 1
+        ? 'There is still 1 place missing: tick 1 more character.'
+        : `There are still ${n} places missing: tick ${n} more characters.`,
+    quitReserveEnough: 'Your reserve has enough room.',
+    quitReserveConfirm: 'Leave and delete',
     deleteTitle: 'Delete the adventure',
     deleteMessage: (name) =>
       `This cannot be undone. Type the name of the adventure again (“${name}”) to confirm.`,

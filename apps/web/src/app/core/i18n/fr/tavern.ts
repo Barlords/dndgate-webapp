@@ -216,6 +216,17 @@ export const tavern = {
     quitConfirm: 'Quitter',
     quitting: 'Quitter l’aventure',
     quitted: 'Tu as quitté l’aventure.',
+    quitReserveTitle: 'Ta réserve est pleine',
+    quitReserveMessage:
+      'En quittant cette aventure, tes personnages retournent dans ta réserve, qui n’a pas assez de place. Coche ceux à supprimer définitivement ; les autres sont gardés.',
+    quitReserveChoose: 'Personnages à supprimer définitivement',
+    quitReserveDelete: (name: string) => `Supprimer définitivement « ${name} »`,
+    quitReserveMissing: (n: number) =>
+      n === 1
+        ? 'Il manque encore 1 place : coche 1 personnage de plus.'
+        : `Il manque encore ${n} places : coche ${n} personnages de plus.`,
+    quitReserveEnough: 'Ta réserve a assez de place.',
+    quitReserveConfirm: 'Quitter et supprimer',
     deleteTitle: 'Supprimer l’aventure',
     deleteMessage: (name: string) =>
       `Cette suppression est irréversible. Retape le nom de l’aventure (« ${name} ») pour confirmer.`,
