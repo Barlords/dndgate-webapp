@@ -31,7 +31,7 @@ import { Loading } from '../../shared/ui/loading/loading';
       />
     } @else if (view(); as view) {
       <p class="plan">
-        <span>{{ t().plans.subscription.plan }} :</span>
+        <span>{{ t().plans.subscription.plan }}</span>
         <strong class="plan__name">{{ view.name }}</strong>
         @if (view.badge; as badge) {
           <span class="seal seal--badge">{{ badge }}</span>

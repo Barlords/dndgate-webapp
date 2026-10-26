@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideApi } from '../../core/api/api.providers';
 import { SubscriptionDto } from '../../core/api/generated/models/subscription-dto';
+import { I18n } from '../../core/i18n/i18n.service';
 import { Billing, REDIRECT } from '../../core/plans/billing.service';
 import { SubscriptionPanel } from './subscription-panel';
 
@@ -77,11 +78,24 @@ describe('SubscriptionPanel', () => {
     expect(text(full[0])).toContain('Grimoires');
   });
 
+  it('the_colon_after_the_plan_label_follows_the_language', async () => {
+    const root = await open({
+      planId: 'adventurer',
+      interval: null,
+      status: null,
+      billingEnabled: true,
+      usage: USAGE,
+    });
+    TestBed.inject(I18n).use('en');
+    TestBed.tick();
+    expect(text(root.querySelector('.plan')!)).toBe('Your plan:Adventurer');
+  });
+
   it('a_paid_account_sees_its_renewal_date_and_the_portal', async () => {
     const root = await open({
       planId: 'dungeon-master',
-      interval: 'YEARLY',
-      status: 'ACTIVE',
+      interval: 'yearly',
+      status: 'active',
       currentPeriodEnd: '2027-03-15T10:00:00Z',
       cancelAtPeriodEnd: false,
       billingEnabled: true,
@@ -103,8 +117,8 @@ describe('SubscriptionPanel', () => {
   it('a_cancelled_subscription_says_when_it_ends', async () => {
     const root = await open({
       planId: 'dungeon-master',
-      interval: 'MONTHLY',
-      status: 'ACTIVE',
+      interval: 'monthly',
+      status: 'active',
       currentPeriodEnd: '2027-03-15T10:00:00Z',
       cancelAtPeriodEnd: true,
       billingEnabled: true,
@@ -117,8 +131,8 @@ describe('SubscriptionPanel', () => {
   it('a_past_due_payment_is_flagged', async () => {
     const root = await open({
       planId: 'dungeon-master',
-      interval: 'MONTHLY',
-      status: 'PAST_DUE',
+      interval: 'monthly',
+      status: 'past_due',
       currentPeriodEnd: '2027-03-15T10:00:00Z',
       cancelAtPeriodEnd: false,
       billingEnabled: true,
@@ -133,8 +147,8 @@ describe('SubscriptionPanel', () => {
   it('without_billing_the_portal_is_hidden_and_a_note_says_why', async () => {
     const root = await open({
       planId: 'dungeon-master',
-      interval: 'MONTHLY',
-      status: 'ACTIVE',
+      interval: 'monthly',
+      status: 'active',
       billingEnabled: false,
       usage: USAGE,
     });

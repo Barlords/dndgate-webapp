@@ -360,6 +360,8 @@ export class MasterPage {
           this.invitation.set(null);
           this.notifier.success(this.t().tavern.master.steppedDown);
           this.context.reload();
+          // The adventure follows its master's plan: without one, the default plan.
+          this.context.reloadEntitlements();
         });
       });
   }
@@ -397,6 +399,8 @@ export class MasterPage {
       this.claim.set(null);
       if (claim.status === 'ACCEPTED') {
         this.notifier.success(this.t().tavern.master.handedOver);
+        // The adventure now follows the new master's plan.
+        this.context.reloadEntitlements();
       }
       this.context.reload();
     }

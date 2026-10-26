@@ -31,7 +31,9 @@ export type PlanAction = 'signIn' | 'current' | 'choose' | 'manage' | 'unavailab
       </header>
 
       <p class="card__price">
-        @if (amount() === null) {
+        @if (periodMissing()) {
+          <span class="card__unavailable">{{ t().plans.unavailableFor[interval()] }}</span>
+        } @else if (amount() === null) {
           <span class="card__amount">{{ t().plans.free }}</span>
         } @else {
           <span class="card__amount">{{ amount() }}</span>
@@ -63,7 +65,7 @@ export type PlanAction = 'signIn' | 'current' | 'choose' | 'manage' | 'unavailab
       }
 
       <div class="card__action">
-        @switch (action()) {
+        @switch (shownAction()) {
           @case ('signIn') {
             <a class="card__link" routerLink="/login" [queryParams]="{ returnUrl: '/plans' }">
               {{ t().plans.page.signIn }}
@@ -182,6 +184,10 @@ export type PlanAction = 'signIn' | 'current' | 'choose' | 'manage' | 'unavailab
       margin-top: auto;
       padding-top: var(--dg-space-3);
     }
+    .card__unavailable {
+      font-style: italic;
+      color: var(--dg-ink-muted);
+    }
     .card__link {
       padding: var(--dg-space-2) var(--dg-space-4);
       border: 1px solid var(--dg-blood);
@@ -230,6 +236,15 @@ export class PlanCard {
       ? null
       : formatPrice(price.amount, this.currency(), this.i18n.language());
   });
+  /** A paid plan sold in the other period only: nothing to show or choose for this one. */
+  protected readonly periodMissing = computed(() => {
+    const prices = this.plan().prices ?? {};
+    return Object.keys(prices).length > 0 && prices[this.interval()]?.amount === undefined;
+  });
+  /** Without a price for the period there is nothing to buy; « Ton offre » still says where one is. */
+  protected readonly shownAction = computed(() =>
+    this.periodMissing() && this.action() !== 'current' ? null : this.action(),
+  );
   protected readonly period = computed(() =>
     this.interval() === 'yearly' ? this.t().plans.perYear : this.t().plans.perMonth,
   );

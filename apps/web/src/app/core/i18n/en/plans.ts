@@ -43,6 +43,7 @@ export const plans: Dictionary['plans'] = {
   perMonth: '/ month',
   perYear: '/ year',
   free: 'Free',
+  unavailableFor: { monthly: 'Not available monthly', yearly: 'Not available yearly' },
   limitReached: (limitLabel, max) =>
     max === undefined
       ? `Limit reached: ${limitLabel}.`
@@ -79,7 +80,7 @@ export const plans: Dictionary['plans'] = {
   },
   subscription: {
     title: 'My subscription',
-    plan: 'Your plan',
+    plan: 'Your plan:',
     interval: { monthly: 'Billed monthly', yearly: 'Billed yearly' },
     status: {
       active: 'Active',

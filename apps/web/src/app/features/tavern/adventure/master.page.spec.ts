@@ -1,10 +1,12 @@
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { of } from 'rxjs';
 import { AdventureDto } from '../../../core/api/generated/models/adventure-dto';
 import { MasterClaimDto } from '../../../core/api/generated/models/master-claim-dto';
 import { NotifierService } from '../../../core/errors/notifier.service';
 import { ConfirmService } from '../../../shared/ui/confirm-dialog/confirm.service';
 import { adventure, setupTavern, TavernTestbed } from '../tavern.testing';
+import { AdventureContext } from './adventure-context.service';
 
 interface Req {
   method: string;
@@ -69,6 +71,14 @@ describe('MasterPage', () => {
   };
   const text = () => tavern.main().textContent ?? '';
   const toasts = () => TestBed.inject(NotifierService).toasts();
+  /** The entitlements follow the master's plan: a change of master asks them again. */
+  const spyEntitlements = () =>
+    vi.spyOn(
+      tavern.harness.fixture.debugElement
+        .query(By.css('dg-adventure-shell'))
+        .injector.get(AdventureContext),
+      'reloadEntitlements',
+    );
 
   afterEach(() => {
     // Names of the people shown by the adventure shell are not what these tests are about.
@@ -132,6 +142,7 @@ describe('MasterPage', () => {
     const typeToConfirm = vi
       .spyOn(TestBed.inject(ConfirmService), 'typeToConfirm')
       .mockReturnValue(of('La mine perdue'));
+    const entitlements = spyEntitlements();
     tavern.button('Quitter le rôle de MJ').click();
     expect(typeToConfirm.mock.calls[0][0]).toMatchObject({
       expected: 'La mine perdue',
@@ -140,6 +151,7 @@ describe('MasterPage', () => {
     const request = tavern.backend.expectOne(stepDown);
     expect(request.request.body).toEqual({ confirmation: 'La mine perdue' });
     request.flush(adventure({ creatorId: 'me', masterVacant: true }));
+    expect(entitlements).toHaveBeenCalled();
     // The role changed: the adventure is read again.
     tavern.backend
       .expectOne(getAdventure)
@@ -200,8 +212,10 @@ describe('MasterPage', () => {
 
   it('claiming with no one to vote hands the seat over at once', async () => {
     await openVacant(null);
+    const entitlements = spyEntitlements();
     tavern.button('Demander à devenir MJ').click();
     tavern.backend.expectOne(claim).flush(claimDto({ status: 'ACCEPTED', candidateId: 'me' }));
+    expect(entitlements).toHaveBeenCalled();
     tavern.backend
       .expectOne(getAdventure)
       .flush(adventure({ creatorId: 'me', masterVacant: false, players: ['p1'] }));
@@ -223,6 +237,7 @@ describe('MasterPage', () => {
       ['Pseudo p2', 'Accepte'],
     ]);
     expect(text()).not.toContain('Retirer ma demande');
+    const entitlements = spyEntitlements();
 
     tavern.button('Refuser').click();
     const refusal = tavern.backend.expectOne(vote);
@@ -237,6 +252,8 @@ describe('MasterPage', () => {
     );
     await tavern.render();
     expect(text()).toContain('Refuse');
+    // The vote is still open: the master has not changed.
+    expect(entitlements).not.toHaveBeenCalled();
 
     // The answer can change while the vote is open.
     tavern.button('Accepter').click();
@@ -245,8 +262,10 @@ describe('MasterPage', () => {
 
   it('an approval that ends the vote reloads the adventure', async () => {
     await openVacant(claimDto());
+    const entitlements = spyEntitlements();
     tavern.button('Accepter').click();
     tavern.backend.expectOne(vote).flush(claimDto({ status: 'ACCEPTED' }));
+    expect(entitlements).toHaveBeenCalled();
     tavern.backend
       .expectOne(getAdventure)
       .flush(adventure({ creatorId: 'p1', masterVacant: false, players: ['me', 'p2'] }));

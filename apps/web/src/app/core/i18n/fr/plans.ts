@@ -41,6 +41,7 @@ export const plans = {
   perMonth: '/ mois',
   perYear: '/ an',
   free: 'Gratuit',
+  unavailableFor: { monthly: 'Indisponible en mensuel', yearly: 'Indisponible en annuel' },
   limitReached: (limitLabel: string, max: number | undefined) =>
     max === undefined
       ? `Limite atteinte : ${limitLabel}.`
@@ -79,7 +80,8 @@ export const plans = {
   },
   subscription: {
     title: 'Mon abonnement',
-    plan: 'Ton offre',
+    /** The punctuation belongs to the language: French puts a space before the colon. */
+    plan: 'Ton offre :',
     interval: { monthly: 'Facturation mensuelle', yearly: 'Facturation annuelle' },
     status: {
       active: 'Actif',
