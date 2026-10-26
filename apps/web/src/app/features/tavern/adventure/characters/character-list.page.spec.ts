@@ -193,12 +193,28 @@ describe('CharacterListPage', () => {
       expect(names(section('Personnages des joueurs'))).toEqual(['Thorin']);
       expect(names(section('PNJ'))).toEqual(['Garde', 'Aubergiste']);
       expect(section('PNJ')!.textContent).toContain('2 / 5 PNJ');
+      // A fixed name, the state in aria-pressed (ruling W6); the state text sits beside it.
       expect(toggles().map((t) => t.textContent!.replace(/\s+/g, ' ').trim())).toEqual([
-        'Privé Garde',
+        'Public Garde',
         'Public Aubergiste',
       ]);
       expect(toggles().map((t) => t.getAttribute('aria-pressed'))).toEqual(['false', 'true']);
+      expect(
+        [...section('PNJ')!.querySelectorAll('.visibility__state')].map((s) =>
+          s.textContent?.trim(),
+        ),
+      ).toEqual(['Visible par toi seul', 'Visible par toute la table']);
       expect(tavern.button('Nouveau PNJ')).toBeTruthy();
+    });
+
+    it('the_master_of_an_adventure_without_character_sees_the_npc_section_and_quota', async () => {
+      await open({ creatorId: 'me', players: ['p1'] }, withUsage);
+      await answer([]);
+      expect(section('PNJ')!.textContent).toContain('2 / 5 PNJ');
+      expect(section('PNJ')!.textContent).toContain('Aucun PNJ pour le moment.');
+      expect(section('Personnages des joueurs')!.textContent).toContain(
+        'Aucun personnage de joueur pour le moment.',
+      );
     });
 
     it('the master creating in their adventure goes to the form', async () => {
@@ -222,6 +238,7 @@ describe('CharacterListPage', () => {
       request.flush({}, { status: 500, statusText: 'Server' });
       await tavern.render();
       expect(toggles()[0].getAttribute('aria-pressed')).toBe('false');
+      expect(toggles()[0].disabled).toBe(false);
       expect(TestBed.inject(NotifierService).toasts()[0].kind).toBe('error');
 
       toggles()[1].click();
@@ -231,6 +248,28 @@ describe('CharacterListPage', () => {
       second.flush(character({ id: 'n2', npc: true, ownerId: 'me', visibility: 'PRIVATE' }));
       await tavern.render();
       expect(toggles()[1].getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('a_click_while_the_visibility_call_is_pending_sends_nothing', async () => {
+      await open({ creatorId: 'me', players: ['p1'] }, withUsage);
+      await answer(cast());
+      const host = () => section('PNJ')!.querySelectorAll<HTMLElement>('dg-button')[0];
+
+      host().click();
+      await tavern.render();
+      const request = tavern.backend.expectOne(setVisibility);
+      expect(toggles()[0].disabled).toBe(true);
+      expect(toggles()[0].getAttribute('aria-busy')).toBe('true');
+      // Even a click that reaches the host is ignored while the call is on its way.
+      host().click();
+      await tavern.render();
+      tavern.backend.expectNone(setVisibility);
+      expect(toggles()[0].getAttribute('aria-pressed')).toBe('true');
+
+      request.flush({}, { status: 500, statusText: 'Server' });
+      await tavern.render();
+      // The rollback restores the value from before the first click.
+      expect(toggles()[0].getAttribute('aria-pressed')).toBe('false');
     });
 
     it('players_see_public_npcs_read_only', async () => {

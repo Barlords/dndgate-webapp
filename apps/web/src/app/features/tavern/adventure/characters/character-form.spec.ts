@@ -257,6 +257,27 @@ describe('CharacterForm (creation and edition pages)', () => {
       expect(body.has('picturePresentation')).toBe(false);
     });
 
+    it('a_refused_file_no_longer_blocks_once_the_field_turned_into_the_hint', async () => {
+      const entitlements: AdventureEntitlementsDto = {
+        features: ['characterPictures'],
+        limits: {},
+      };
+      await open('/tavern/adventures/a1/characters/new', {}, entitlements);
+      await choose(fileOf(GIF_BYTES, 'hero.png'));
+      expect(alerts()).toEqual(['L’image doit être un PNG ou un JPEG.']);
+      // The master's table loses its tools meanwhile: the field becomes the hint.
+      entitlements.features = [];
+      shellContext().reloadEntitlements();
+      await tavern.render();
+      tavern.backend.expectOne(plans).flush(CATALOG);
+      await tavern.render();
+      expect(tavern.main().querySelector('input[type="file"]')).toBeNull();
+      fill(valid);
+      tavern.button('Créer le personnage').click();
+      const body = tavern.backend.expectOne(post).request.body as FormData;
+      expect(body.has('picturePresentation')).toBe(false);
+    });
+
     it('an unknown offer does not hide the picture field', async () => {
       await open('/tavern/adventures/a1/characters/new', {}, null);
       expect(tavern.main().querySelector('input[type="file"]')).not.toBeNull();

@@ -315,8 +315,9 @@ export class CharacterForm {
       this.form.markAllAsTouched();
       return;
     }
-    if (this.pictureProblem() !== null) {
+    if (this.withPicture() && this.pictureAllowed() && this.pictureProblem() !== null) {
       // A refused file is shown as such; sending without it would silently drop the reader's choice.
+      // Once the field has turned into the plan hint, no file is asked for: nothing to block.
       return;
     }
     const value = this.form.getRawValue();

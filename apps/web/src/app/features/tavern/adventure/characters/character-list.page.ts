@@ -144,6 +144,25 @@ type ListState = 'loading' | 'ready' | 'failed';
       text-align: center;
     }
 
+    .visibility {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: var(--dg-space-2);
+      margin-top: var(--dg-space-2);
+    }
+
+    .visibility__state,
+    .none {
+      font-size: var(--dg-text-sm);
+      color: var(--dg-ink-muted);
+    }
+
+    .none {
+      margin: 0;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .card {
         transition: none;
@@ -164,31 +183,37 @@ type ListState = 'loading' | 'ready' | 'failed';
     </div>
     @switch (state()) {
       @case ('ready') {
-        @if (characters().length) {
-          @if (showNpcSection()) {
-            <section>
-              <h2>{{ t().tavern.characters.playersSection }}</h2>
+        @if (showNpcSection()) {
+          <section>
+            <h2>{{ t().tavern.characters.playersSection }}</h2>
+            @if (players().length) {
               <ng-container
                 [ngTemplateOutlet]="list"
                 [ngTemplateOutletContext]="{ $implicit: players() }"
               />
-            </section>
-            <section>
-              <h2>{{ t().tavern.characters.npcSection }}</h2>
-              @if (context.isMaster() && npcUsage(); as usage) {
-                <p class="usage">{{ t().tavern.characters.npcUsage(usage.used, usage.max) }}</p>
-              }
+            } @else {
+              <p class="none">{{ t().tavern.characters.noPlayerCharacters }}</p>
+            }
+          </section>
+          <section>
+            <h2>{{ t().tavern.characters.npcSection }}</h2>
+            @if (context.isMaster() && npcUsage(); as usage) {
+              <p class="usage">{{ t().tavern.characters.npcUsage(usage.used, usage.max) }}</p>
+            }
+            @if (npcs().length) {
               <ng-container
                 [ngTemplateOutlet]="list"
                 [ngTemplateOutletContext]="{ $implicit: npcs() }"
               />
-            </section>
-          } @else {
-            <ng-container
-              [ngTemplateOutlet]="list"
-              [ngTemplateOutletContext]="{ $implicit: players() }"
-            />
-          }
+            } @else {
+              <p class="none">{{ t().tavern.characters.noNpcs }}</p>
+            }
+          </section>
+        } @else if (players().length) {
+          <ng-container
+            [ngTemplateOutlet]="list"
+            [ngTemplateOutletContext]="{ $implicit: players() }"
+          />
         } @else {
           <div class="state">
             <p>{{ t().tavern.characters.empty }}</p>
@@ -240,19 +265,23 @@ type ListState = 'loading' | 'ready' | 'failed';
               }
             </a>
             @if (character.npc && context.isMaster()) {
-              <dg-button
-                class="switch"
-                variant="ghost"
-                [pressed]="character.visibility === 'PUBLIC'"
-                (click)="toggleVisibility(character)"
-              >
-                {{
+              <!-- A fixed name; the state is aria-pressed, and the text beside it (ruling W6). -->
+              <div class="visibility">
+                <dg-button
+                  [variant]="character.visibility === 'PUBLIC' ? 'primary' : 'ghost'"
+                  [pressed]="character.visibility === 'PUBLIC'"
+                  [loading]="isVisibilityPending(character)"
+                  (click)="toggleVisibility(character)"
+                >
+                  {{ t().tavern.characters.npcPublic }}
+                  <span class="dg-visually-hidden">{{ character.name }}</span>
+                </dg-button>
+                <span class="visibility__state">{{
                   character.visibility === 'PUBLIC'
-                    ? t().tavern.characters.npcPublic
-                    : t().tavern.characters.npcPrivate
-                }}
-                <span class="dg-visually-hidden">{{ character.name }}</span>
-              </dg-button>
+                    ? t().tavern.characters.npcSeenByTable
+                    : t().tavern.characters.npcSeenByMaster
+                }}</span>
+              </div>
             }
             @if (canActivate(character)) {
               <dg-button
@@ -294,6 +323,8 @@ export class CharacterListPage {
   protected readonly npcUsage = computed(() => this.context.usage('npcsPerAdventure'));
   /** The id of the character being made active, if any. */
   protected readonly switching = signal<string | null>(null);
+  /** The NPCs whose visibility change is on its way: a second click would race the first. */
+  private readonly visibilityPending = signal<ReadonlySet<string>>(new Set());
   private request: Subscription | null = null;
   private requested = false;
 
@@ -380,8 +411,23 @@ export class CharacterListPage {
       });
   }
 
+  protected isVisibilityPending(character: GameCharacterDto): boolean {
+    return this.visibilityPending().has(character.id!);
+  }
+
   /** One call; the toggle moves at once and goes back if the API refuses. */
   protected toggleVisibility(character: GameCharacterDto): void {
+    const id = character.id!;
+    if (this.visibilityPending().has(id)) {
+      return; // The change is already on its way.
+    }
+    const settle = () =>
+      this.visibilityPending.update((ids) => {
+        const next = new Set(ids);
+        next.delete(id);
+        return next;
+      });
+    this.visibilityPending.update((ids) => new Set(ids).add(id));
     const previous = character.visibility;
     const next = previous === 'PUBLIC' ? 'PRIVATE' : 'PUBLIC';
     const show = (visibility: GameCharacterDto['visibility']) =>
@@ -395,8 +441,12 @@ export class CharacterListPage {
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: ({ body }) => show(body.visibility),
+        next: ({ body }) => {
+          settle();
+          show(body.visibility);
+        },
         error: (error: unknown) => {
+          settle();
           show(previous);
           this.notifier.error(toApiProblem(error), this.t().tavern.characters.npcVisibility);
         },
