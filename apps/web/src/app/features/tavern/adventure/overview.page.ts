@@ -13,13 +13,13 @@ import { Router, RouterLink } from '@angular/router';
 import {
   concatMap,
   filter,
-  finalize,
   forkJoin,
   from,
   map,
   Observable,
   switchMap,
   takeWhile,
+  tap,
   toArray,
 } from 'rxjs';
 import { AccountDirectory } from '../../../core/accounts/account-directory.service';
@@ -375,14 +375,19 @@ export class OverviewPage {
         adventureId: this.adventure().id!,
       }).pipe(map((response) => response.body)),
     })
+      // Unlocked before anything downstream runs: the resend locks again and must stay locked.
+      .pipe(tap({ next: () => this.busy.set(false), error: () => this.busy.set(false) }))
       .pipe(
-        finalize(() => this.busy.set(false)),
         switchMap(({ subscription, characters }) => {
           const mine = characters
             .filter((c) => c.ownerId === me && !c.npc)
             .map((c) => ({ id: c.id!, name: c.name ?? '' }));
           const used = subscription.usage?.[RESERVE_LIMIT]?.used ?? 0;
-          return this.quitDialog.ask(mine, Math.max(0, used + mine.length - max)).pipe(
+          // After a downgrade `used` may exceed `max`: deleting every character always lets the
+          // reader leave. The API said the reserve is full, so at least one must go.
+          const needed = Math.max(1, used + mine.length - max);
+          const missing = Math.min(mine.length, needed);
+          return this.quitDialog.ask(mine, missing, needed > mine.length).pipe(
             filter((ids): ids is string[] => ids !== null),
             switchMap((ids) => this.retypeNames(mine.filter((c) => ids.includes(c.id)))),
           );

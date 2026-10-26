@@ -391,6 +391,7 @@ describe('OverviewPage', () => {
           { id: 'c2', name: 'Bilbo' },
         ],
         2,
+        false,
       );
     });
 
@@ -400,6 +401,44 @@ describe('OverviewPage', () => {
         ask = vi.spyOn(TestBed.inject(QuitReserveDialogService), 'ask').mockReturnValue(of(null));
       });
       expect(ask.mock.calls[0][1]).toBe(1);
+    });
+
+    it('a_reserve_over_its_limit_asks_to_delete_every_character_and_never_more', async () => {
+      let ask!: MockInstance<QuitReserveDialogService['ask']>;
+      await quitFull(3, () => {
+        ask = vi
+          .spyOn(TestBed.inject(QuitReserveDialogService), 'ask')
+          .mockReturnValue(of(['c1', 'c2']));
+        vi.spyOn(TestBed.inject(ConfirmService), 'typeToConfirm')
+          .mockReturnValueOnce(of('Thorin'))
+          .mockReturnValueOnce(of('Bilbo'));
+      });
+      expect(ask.mock.calls[0][1]).toBe(2);
+      expect(ask.mock.calls[0][2]).toBe(true);
+      const request = tavern.backend.expectOne(quit);
+      expect(request.request.body.deletions).toHaveLength(2);
+      request.flush(adventure());
+      tavern.backend.match(() => true);
+    });
+
+    it('asks for at least one deletion when the usage looks stale', async () => {
+      let ask!: MockInstance<QuitReserveDialogService['ask']>;
+      await quitFull(0, () => {
+        ask = vi.spyOn(TestBed.inject(QuitReserveDialogService), 'ask').mockReturnValue(of(null));
+      });
+      expect(ask.mock.calls[0][1]).toBe(1);
+      expect(ask.mock.calls[0][2]).toBe(false);
+    });
+
+    it('stays locked while the quit with deletions is in flight', async () => {
+      await quitFull(2, () => {
+        vi.spyOn(TestBed.inject(QuitReserveDialogService), 'ask').mockReturnValue(of(['c1']));
+        vi.spyOn(TestBed.inject(ConfirmService), 'typeToConfirm').mockReturnValue(of('Thorin'));
+      });
+      await tavern.render();
+      expect(tavern.button('Quitter l’aventure').getAttribute('aria-busy')).toBe('true');
+      tavern.backend.expectOne(quit).flush(adventure());
+      tavern.backend.match(() => true);
     });
 
     it('the_deletions_are_sent_with_their_names', async () => {

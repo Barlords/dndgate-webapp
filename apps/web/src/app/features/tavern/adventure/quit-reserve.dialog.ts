@@ -24,6 +24,8 @@ export interface QuitReserveData {
   characters: QuitCharacter[];
   /** How many places the reserve lacks if every character goes back to it. */
   missing: number;
+  /** Even deleting every character would not free the reserve: all of them must go. */
+  everyone: boolean;
 }
 
 let nextId = 0;
@@ -54,6 +56,9 @@ let nextId = 0;
             </label>
           }
         </fieldset>
+        @if (data.everyone) {
+          <p class="message">{{ t().tavern.overview.quitReserveEveryone }}</p>
+        }
         <p class="status" role="status" aria-live="polite">
           {{
             stillMissing() > 0
@@ -147,7 +152,11 @@ export class QuitReserveDialog {
 export class QuitReserveDialogService {
   private readonly dialog = inject(Dialog);
 
-  ask(characters: QuitCharacter[], missing: number): Observable<string[] | null> {
+  ask(
+    characters: QuitCharacter[],
+    missing: number,
+    everyone: boolean,
+  ): Observable<string[] | null> {
     return new Observable((subscriber) => {
       const id = nextId++;
       const data: QuitReserveData = {
@@ -155,6 +164,7 @@ export class QuitReserveDialogService {
         messageId: `dg-quit-message-${id}`,
         characters,
         missing,
+        everyone,
       };
       const ref = this.dialog.open<string[], QuitReserveData>(QuitReserveDialog, {
         data,

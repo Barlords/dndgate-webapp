@@ -225,6 +225,8 @@ export const tavern: Dictionary['tavern'] = {
       n === 1
         ? 'There is still 1 place missing: tick 1 more character.'
         : `There are still ${n} places missing: tick ${n} more characters.`,
+    quitReserveEveryone:
+      'Even without them your reserve would stay full: you must delete all your characters of this adventure to leave it.',
     quitReserveEnough: 'Your reserve has enough room.',
     quitReserveConfirm: 'Leave and delete',
     deleteTitle: 'Delete the adventure',

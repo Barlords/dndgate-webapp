@@ -28,10 +28,10 @@ async function tick(index: number) {
 }
 
 describe('QuitReserveDialog', () => {
-  function open(missing: number) {
+  function open(missing: number, everyone = false) {
     const results: (string[] | null)[] = [];
     TestBed.inject(QuitReserveDialogService)
-      .ask(characters, missing)
+      .ask(characters, missing, everyone)
       .subscribe((result) => results.push(result));
     return results;
   }
@@ -76,6 +76,12 @@ describe('QuitReserveDialog', () => {
     confirmButton().click();
     await settle();
     expect(results).toEqual([['c2']]);
+  });
+
+  it('says that every character must go when deleting some is not enough', async () => {
+    open(2, true);
+    await settle();
+    expect(dialog().textContent).toContain('tous tes personnages');
   });
 
   it('emits null on cancel', async () => {

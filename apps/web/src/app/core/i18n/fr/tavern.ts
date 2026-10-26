@@ -225,6 +225,8 @@ export const tavern = {
       n === 1
         ? 'Il manque encore 1 place : coche 1 personnage de plus.'
         : `Il manque encore ${n} places : coche ${n} personnages de plus.`,
+    quitReserveEveryone:
+      'Même sans eux, ta réserve resterait pleine : tu dois supprimer tous tes personnages de cette aventure pour la quitter.',
     quitReserveEnough: 'Ta réserve a assez de place.',
     quitReserveConfirm: 'Quitter et supprimer',
     deleteTitle: 'Supprimer l’aventure',
