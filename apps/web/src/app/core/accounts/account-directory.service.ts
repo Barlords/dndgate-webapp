@@ -114,12 +114,24 @@ export class AccountDirectory {
 
   private load(id: string, entry: PseudoEntry): void {
     entry.failedAt = null;
+    // A cached lookup emits during `subscribe`, i.e. inside whatever reactive context asked for the
+    // pseudo: writing a signal there throws (NG0600), so a synchronous emission is deferred.
+    let subscribing = true;
+    const apply = (update: () => void): void => {
+      if (subscribing) {
+        queueMicrotask(update);
+      } else {
+        update();
+      }
+    };
     this.get(id).subscribe({
-      next: (account) => entry.known.set({ kind: 'found', account }),
-      error: () => {
-        entry.failedAt = Date.now();
-        entry.known.set({ kind: 'failed' });
-      },
+      next: (account) => apply(() => entry.known.set({ kind: 'found', account })),
+      error: () =>
+        apply(() => {
+          entry.failedAt = Date.now();
+          entry.known.set({ kind: 'failed' });
+        }),
     });
+    subscribing = false;
   }
 }

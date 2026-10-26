@@ -1,5 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { computed } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 import { provideApi } from '../api/api.providers';
@@ -94,6 +95,27 @@ describe('AccountDirectory', () => {
     backend.expectOne((r) => r.url.endsWith('/accounts/id/4')).flush({ id: '4', pseudo: 'Back' });
     expect((await retry).pseudo).toBe('Back');
   });
+
+  it.each(['badges', 'pseudo'] as const)(
+    'reading %s inside a computed for a cached account never writes a signal',
+    async (reader) => {
+      const first = firstValueFrom(directory.get('21'));
+      backend
+        .expectOne((r) => r.url.endsWith('/accounts/id/21'))
+        .flush({ id: '21', pseudo: 'Saruman', founder: true, planBadge: 'legend' });
+      await first;
+
+      const read = computed(() => directory[reader]('21')());
+      expect(() => read()).not.toThrow();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(directory[reader]('21')()).toEqual(
+        reader === 'badges' ? ['founder', 'legend'] : 'Saruman',
+      );
+      backend.expectNone(() => true);
+    },
+  );
 
   describe('after a failed lookup', () => {
     beforeEach(() => vi.useFakeTimers({ toFake: ['Date'] }));
