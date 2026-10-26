@@ -141,24 +141,45 @@ describe('Shell', () => {
     expect(element.querySelector('.sidebar__avatar')?.textContent?.trim()).toBe('B');
   });
 
-  it('the_plans_link_is_there_for_everyone', async () => {
+  it('the_sidebar_has_no_plans_nor_terms_link_any_more', async () => {
     await render();
-    const plans = () =>
-      element.querySelector<HTMLAnchorElement>('.sidebar__footer a[href="/plans"]');
-    expect(plans()?.textContent).toContain('Offres');
     account.set({ id: '1', pseudo: 'Barlords' });
     await fixture.whenStable();
-    expect(plans()?.textContent).toContain('Offres');
+    expect(element.querySelector('.sidebar a[href="/plans"]')).toBeNull();
+    expect(element.querySelector('.sidebar a[href="/terms"]')).toBeNull();
   });
 
-  it('the_terms_link_is_there_for_everyone', async () => {
+  it('offers_a_beer_on_tipeee_in_a_new_tab', async () => {
     await render();
-    const terms = () =>
-      element.querySelector<HTMLAnchorElement>('.sidebar__footer a[href="/terms"]');
-    expect(terms()?.textContent).toContain('CGV');
-    account.set({ id: '1', pseudo: 'Barlords' });
-    await fixture.whenStable();
-    expect(terms()?.textContent).toContain('CGV');
+    const beer = element.querySelector<HTMLAnchorElement>('.sidebar__footer .sidebar__beer')!;
+    expect(beer.getAttribute('href')).toBe('https://fr.tipeee.com/barlords/');
+    expect(beer.getAttribute('target')).toBe('_blank');
+    expect(beer.getAttribute('rel')).toBe('noopener noreferrer');
+    expect(beer.textContent).toContain('Offrir une bière');
+    expect(beer.getAttribute('aria-label')).toBe('Offrir une bière sur Tipeee (nouvel onglet)');
+    const drawn = [...beer.querySelectorAll('path')].map((path) => path.getAttribute('d'));
+    expect(drawn).toEqual([...ICON_PATHS.beer]);
+  });
+
+  it('only_the_navigation_scrolls_the_title_and_the_header_stay_out_of_it', async () => {
+    await render();
+    const nav = element.querySelector('.sidebar__nav')!;
+    expect(nav.querySelector('.header-slot')).toBeNull();
+    expect(nav.querySelector('.sidebar__title')).toBeNull();
+    // The header sits with the title, above the panel the toggle controls.
+    const header = element.querySelector('.sidebar__header')!;
+    expect(header.previousElementSibling?.classList).toContain('sidebar__heading');
+    expect(header.nextElementSibling?.classList).toContain('sidebar__panel');
+    expect(nav.nextElementSibling).toBe(toggle());
+  });
+
+  it('puts_the_terms_and_the_copyright_under_the_content', async () => {
+    await render();
+    const footer = element.querySelector('main dg-site-footer')!;
+    expect(element.querySelector('main .content-slot')!.nextElementSibling).toBe(footer);
+    expect(footer.querySelector('a')?.getAttribute('href')).toBe('/terms');
+    expect(footer.querySelector('a')?.textContent?.trim()).toBe('CGV');
+    expect(footer.textContent).toContain('© DnDGate. Tous droits réservés.');
   });
 
   it('collapsed shell shows icons with labels as tooltips', async () => {

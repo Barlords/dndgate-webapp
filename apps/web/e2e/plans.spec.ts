@@ -36,7 +36,7 @@ test('an anonymous reader sees the offers, signs in and comes back to them', asy
   await page.getByRole('button', { name: 'Se connecter' }).click();
 
   await expect(page).toHaveURL('/plans');
-  await expect(page.getByRole('button', { name: 'Choisir' }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Souscrire' }).first()).toBeVisible();
 });
 
 test('a free reader chooses the yearly Maître du Donjon and reaches Checkout', async ({ page }) => {
@@ -61,7 +61,7 @@ test('a free reader chooses the yearly Maître du Donjon and reaches Checkout', 
   await page
     .getByRole('article')
     .filter({ has: page.getByRole('heading', { name: 'Maître du Donjon' }) })
-    .getByRole('button', { name: 'Choisir' })
+    .getByRole('button', { name: 'Souscrire' })
     .click();
 
   await expect(page).toHaveURL(CHECKOUT_URL);

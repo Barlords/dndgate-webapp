@@ -140,7 +140,7 @@ describe('PlansPage', () => {
     const fixture = await open({ planId: 'adventurer', billingEnabled: true, status: null });
     const shown = cards(fixture);
     const current = shown[0].querySelector('button')!;
-    expect(text(current)).toBe('Ton offre');
+    expect(text(current)).toBe('Offre actuelle');
     expect(current.disabled).toBe(true);
 
     const yearly = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].find(
@@ -149,7 +149,7 @@ describe('PlansPage', () => {
     yearly.click();
     await settle(fixture);
     const choose = shown[2].querySelector('button')!;
-    expect(text(choose)).toBe('Choisir');
+    expect(text(choose)).toBe('Souscrire');
     choose.click();
     const request = backend.expectOne(
       (r) => r.method === 'POST' && r.url.endsWith('/billing/checkout-session'),
@@ -162,10 +162,17 @@ describe('PlansPage', () => {
   it('a_subscribed_reader_manages_in_the_portal', async () => {
     const fixture = await open({ planId: 'hero', billingEnabled: true, status: 'active' });
     const shown = cards(fixture);
-    expect(text(shown[1].querySelector('button')!)).toBe('Ton offre');
+    expect(text(shown[1].querySelector('button')!)).toBe('Offre actuelle');
     expect(shown[1].querySelector('button')!.disabled).toBe(true);
+    // Only the reader's own offer wears the seal.
+    expect(shown.map((card) => card.querySelector('.seal--current') !== null)).toEqual([
+      false,
+      true,
+      false,
+      false,
+    ]);
     for (const index of [0, 2, 3]) {
-      expect(text(shown[index].querySelector('button')!)).toBe('Gérer mon abonnement');
+      expect(text(shown[index].querySelector('button')!)).toBe('Souscrire');
     }
     shown[3].querySelector('button')!.click();
     backend
@@ -178,7 +185,7 @@ describe('PlansPage', () => {
     const fixture = await open({ planId: 'adventurer', billingEnabled: false, status: null });
     const buttons = cards(fixture).map((card) => card.querySelector('button')!);
     expect(buttons.map(text)).toEqual([
-      'Ton offre',
+      'Offre actuelle',
       'Paiement indisponible',
       'Paiement indisponible',
       'Paiement indisponible',
@@ -213,7 +220,7 @@ describe('PlansPage', () => {
       .expectOne((r) => r.url.endsWith('/accounts/me/subscription'))
       .flush({ planId: 'legendary', billingEnabled: true, status: 'active' });
     await settle(second);
-    expect(text(cards(second)[3].querySelector('button')!)).toBe('Ton offre');
+    expect(text(cards(second)[3].querySelector('button')!)).toBe('Offre actuelle');
   });
 
   it('the_spinner_is_only_on_the_clicked_card', async () => {

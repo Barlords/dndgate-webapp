@@ -10,15 +10,26 @@ export type BillingInterval = 'monthly' | 'yearly';
 /** What the card's button does for this reader. */
 export type PlanAction = 'signIn' | 'current' | 'choose' | 'manage' | 'unavailable';
 
-/** One offer of the catalog: its name, price, limits and features, and the one action left to the reader. */
+/**
+ * One offer of the catalog: its name, price, limits and features, and the one action left to the reader.
+ * The reader's own offer wears a seal and a gold frame; every other one says « Souscrire », Checkout
+ * from the free offer, the Stripe portal from a paid one (`manage`).
+ */
 @Component({
   selector: 'dg-plan-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Button, RouterLink],
   template: `
-    <article class="card" [class.card--highlighted]="plan().highlighted">
+    <article
+      class="card"
+      [class.card--highlighted]="plan().highlighted"
+      [class.card--current]="action() === 'current'"
+    >
       <header>
         <div class="card__seals">
+          @if (action() === 'current') {
+            <span class="seal seal--current">{{ t().plans.yourPlan }}</span>
+          }
           @if (plan().highlighted) {
             <span class="seal seal--chosen">{{ t().plans.mostChosen }}</span>
           }
@@ -80,8 +91,8 @@ export type PlanAction = 'signIn' | 'current' | 'choose' | 'manage' | 'unavailab
             </dg-button>
           }
           @case ('manage') {
-            <dg-button variant="ghost" [loading]="busy()" (click)="act.emit()">
-              {{ t().plans.page.manage }}
+            <dg-button [loading]="busy()" (click)="act.emit()">
+              {{ t().plans.page.choose }}
             </dg-button>
           }
           @case ('unavailable') {
@@ -112,6 +123,12 @@ export type PlanAction = 'signIn' | 'current' | 'choose' | 'manage' | 'unavailab
     .card--highlighted {
       border: 2px solid var(--dg-blood);
     }
+    // After the highlighted rule: the reader's own offer is framed in gold whatever else it is.
+    .card--current {
+      border: 2px solid var(--dg-gold-deep);
+      background: color-mix(in srgb, var(--dg-gold) 14%, rgb(255 255 255 / 0.25));
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--dg-gold) 30%, transparent);
+    }
     .card__seals {
       display: flex;
       flex-wrap: wrap;
@@ -124,6 +141,12 @@ export type PlanAction = 'signIn' | 'current' | 'choose' | 'manage' | 'unavailab
       border-radius: 999px;
       font-size: var(--dg-text-sm);
       color: var(--dg-ink-muted);
+    }
+    .seal--current {
+      font-weight: 600;
+      color: var(--dg-parchment-0);
+      background: var(--dg-gold-ink);
+      border-color: var(--dg-gold-ink);
     }
     .seal--chosen {
       color: var(--dg-parchment-0);
@@ -241,7 +264,7 @@ export class PlanCard {
     const prices = this.plan().prices ?? {};
     return Object.keys(prices).length > 0 && prices[this.interval()]?.amount === undefined;
   });
-  /** Without a price for the period there is nothing to buy; « Ton offre » still says where one is. */
+  /** Without a price for the period there is nothing to buy; « Offre actuelle » still says where one is. */
   protected readonly shownAction = computed(() =>
     this.periodMissing() && this.action() !== 'current' ? null : this.action(),
   );

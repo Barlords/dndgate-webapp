@@ -42,6 +42,6 @@ describe('TermsPage', () => {
 
   it('links_back_to_the_offers', async () => {
     const element = await render();
-    expect(element.querySelector('a')?.getAttribute('href')).toBe('/plans');
+    expect(element.querySelector('dg-parchment a')?.getAttribute('href')).toBe('/plans');
   });
 });

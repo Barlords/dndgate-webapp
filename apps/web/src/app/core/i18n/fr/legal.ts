@@ -1,5 +1,10 @@
 export const legal = {
-  navLabel: 'CGV',
+  footer: {
+    label: 'Pied de page',
+    terms: 'CGV',
+    termsTitle: 'Conditions générales de vente',
+    copyright: '© DnDGate. Tous droits réservés.',
+  },
   terms: {
     title: 'Conditions générales de vente',
     draftNotice:

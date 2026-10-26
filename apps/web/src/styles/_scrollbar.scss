@@ -1,0 +1,29 @@
+// The scroll bar of the leather panels: a thin gold thumb on no track, brighter when hovered.
+// Firefox and recent Chromium read the standard properties; older WebKit the pseudo-elements.
+@mixin leather-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--dg-gold) 45%, transparent) transparent;
+
+  &:hover {
+    scrollbar-color: color-mix(in srgb, var(--dg-gold) 75%, transparent) transparent;
+  }
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--dg-gold) 45%, transparent);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+    border-radius: 999px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: var(--dg-gold);
+  }
+}

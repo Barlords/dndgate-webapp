@@ -110,7 +110,7 @@ describe('SignupPage', () => {
       .expectOne((r) => /\/accounts$/.test(r.url))
       .flush({ message: 'ok' }, { status: 202, statusText: 'Accepted' });
     fixture.detectChanges();
-    root.querySelector('button')!.click();
+    root.querySelector<HTMLButtonElement>('dg-parchment button')!.click();
     const resend = backend.expectOne((r) => /verification-email$/.test(r.url));
     expect(resend.request.body).toEqual({ email: 'gandalf@shire.example' });
     resend.flush({}, { status: 202, statusText: 'Accepted' });
