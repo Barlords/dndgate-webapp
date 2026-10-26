@@ -44,6 +44,7 @@ describe('Icon', () => {
   it('covers the whole fixed set', () => {
     expect(Object.keys(ICON_PATHS).sort()).toEqual(
       [
+        'beer',
         'book',
         'list',
         'filter',

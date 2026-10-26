@@ -81,7 +81,6 @@ export const account: Dictionary['account'] = {
     sessions: 'Sessions',
     signOut: 'Sign out',
     signOutEverywhere: 'Sign out everywhere',
-    back: 'Back',
     wrongPassword: 'Wrong password.',
     nothingToChange: 'Nothing to change.',
     confirmTitle: 'Confirm the changes',

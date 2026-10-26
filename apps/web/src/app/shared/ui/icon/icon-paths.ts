@@ -78,6 +78,14 @@ export const ICON_PATHS = {
     'M14 11v6',
   ],
   edit: ['M4 20h4L19 9l-4-4L4 16z', 'M13.5 6.5l4 4'],
+  // A beer mug: the glass, its handle and the foam over the rim.
+  beer: [
+    'M5 8h10v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z',
+    'M15 10h2a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-2',
+    'M5 8a2.5 2.5 0 0 1 2.5-3 3 3 0 0 1 5 0A2.5 2.5 0 0 1 15 8',
+    'M8.5 11v6',
+    'M11.5 11v6',
+  ],
   star: ['M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z'],
 } as const satisfies Record<string, readonly string[]>;
 

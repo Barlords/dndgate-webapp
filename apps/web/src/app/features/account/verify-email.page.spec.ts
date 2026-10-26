@@ -42,7 +42,7 @@ describe('VerifyEmailPage', () => {
     request.flush(null, { status: 204, statusText: 'No Content' });
     page.fixture.detectChanges();
     expect(page.root.textContent).toContain('Ton compte est validé.');
-    expect(page.root.querySelector('a')?.getAttribute('href')).toBe('/login');
+    expect(page.root.querySelector('dg-parchment a')?.getAttribute('href')).toBe('/login');
 
     // 400
     TestBed.resetTestingModule();
@@ -64,7 +64,7 @@ describe('VerifyEmailPage', () => {
     expect(page.root.textContent).toContain(
       'Ce pseudo a été pris entre-temps : inscris-toi avec un autre.',
     );
-    expect(page.root.querySelector('a')?.getAttribute('href')).toBe('/signup');
+    expect(page.root.querySelector('dg-parchment a')?.getAttribute('href')).toBe('/signup');
   });
 
   it('shows the invalid-link message without calling the API when parameters are missing', () => {

@@ -50,9 +50,7 @@ describe('ProfilePage', () => {
   }
 
   const backButton = (root: HTMLElement) =>
-    [...root.querySelectorAll<HTMLButtonElement>('dg-button button')].find(
-      (button) => button.textContent?.trim() === 'Retour',
-    )!;
+    root.querySelector<HTMLButtonElement>('.dg-account__back')!;
 
   const patch = () => backend.expectOne((r) => r.method === 'PATCH' && /accounts$/.test(r.url));
 
@@ -75,14 +73,14 @@ describe('ProfilePage', () => {
     return vi.spyOn(TestBed.inject(ConfirmService), 'typeToConfirm').mockReturnValue(of(password));
   }
 
-  it('lays out identity and danger zone on the left, password and sessions on the right', async () => {
+  it('lays out what the reader edits on the left and the subscription card on the right', async () => {
     const { root } = await setup();
     const columns = [...root.querySelectorAll('.profile > .profile__column')];
     const titles = (column: Element) =>
       [...column.querySelectorAll('h2')].map((title) => title.textContent?.trim());
     expect(columns.map(titles)).toEqual([
-      ['Identité', 'Mon abonnement', 'Zone dangereuse'],
-      ['Mot de passe', 'Sessions'],
+      ['Identité', 'Mot de passe', 'Sessions', 'Zone dangereuse'],
+      ['Mon abonnement'],
     ]);
     // The password form asks for the current password first.
     expect(

@@ -42,7 +42,9 @@ $row: 36px;
   width: 100%;
   height: 100%;
   padding: var(--dg-space-3) $gutter;
-  overflow: hidden auto;
+  // Only the navigation scrolls: the logo, the title and the ruleset select stay on top, the toggle
+  // and the account at the bottom.
+  overflow: hidden;
   border-right: 1px solid #c9a24a55;
   background: var(--dg-leather-panel);
 }
@@ -163,12 +165,10 @@ $row: 36px;
   margin-top: var(--dg-space-3);
 }
 
-.sidebar__header:not(:empty) {
-  margin-bottom: var(--dg-space-2);
-}
-
-nav {
+// Scrolls (`dg-leather-scroll`) in the room the rest of the sidebar leaves.
+.sidebar__nav {
   flex: 1;
+  min-height: 0;
 }
 
 .sidebar__section {

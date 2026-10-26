@@ -63,8 +63,10 @@ import { I18n } from '../../core/i18n/i18n.service';
     }
   `,
   styles: `
+    // Under the title of the sidebar, parted from it as the menu is.
     :host {
       display: block;
+      margin-top: var(--dg-space-3);
     }
 
     .ruleset-select {

@@ -1,7 +1,12 @@
 import type { Dictionary } from '../dictionary';
 
 export const legal: Dictionary['legal'] = {
-  navLabel: 'Terms',
+  footer: {
+    label: 'Footer',
+    terms: 'Terms',
+    termsTitle: 'Terms of sale',
+    copyright: '© DnDGate. All rights reserved.',
+  },
   terms: {
     title: 'Terms of sale',
     draftNotice:

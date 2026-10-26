@@ -45,6 +45,22 @@ describe('PlanCard', () => {
   it('the_period_that_has_a_price_keeps_its_price_and_action', async () => {
     const root = await render(MONTHLY_ONLY, 'monthly');
     expect(text(root.querySelector('.card__price'))).toContain('0,99');
-    expect(text(root.querySelector('.card__action button'))).toBe('Choisir');
+    expect(text(root.querySelector('.card__action button'))).toBe('Souscrire');
+  });
+
+  it('the_reader_s_own_plan_wears_the_seal_and_the_gold_frame', async () => {
+    const root = await render(MONTHLY_ONLY, 'monthly', 'current');
+    expect(text(root.querySelector('.seal--current'))).toBe('Ton abonnement');
+    expect(root.querySelector('.card')?.classList).toContain('card--current');
+  });
+
+  it('another_plan_has_no_seal_and_says_subscribe_even_from_a_paid_plan', async () => {
+    for (const action of ['choose', 'manage'] as const) {
+      TestBed.resetTestingModule();
+      const root = await render(MONTHLY_ONLY, 'monthly', action);
+      expect(root.querySelector('.seal--current')).toBeNull();
+      expect(root.querySelector('.card')?.classList).not.toContain('card--current');
+      expect(text(root.querySelector('.card__action button'))).toBe('Souscrire');
+    }
   });
 });

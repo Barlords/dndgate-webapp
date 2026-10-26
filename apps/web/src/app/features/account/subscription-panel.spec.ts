@@ -12,8 +12,22 @@ const CATALOG = {
   currency: 'EUR',
   defaultPlan: 'adventurer',
   plans: [
-    { id: 'adventurer', highlighted: false, badge: null, limits: {}, prices: {} },
-    { id: 'dungeon-master', highlighted: true, badge: 'dungeon-master', limits: {}, prices: {} },
+    {
+      id: 'adventurer',
+      highlighted: false,
+      badge: null,
+      limits: { spellBooks: 2, masterNotesPerAdventure: 10 },
+      features: { characterPictures: false, video: false },
+      prices: {},
+    },
+    {
+      id: 'dungeon-master',
+      highlighted: true,
+      badge: 'dungeon-master',
+      limits: { spellBooks: 10, masterNotesPerAdventure: 1000 },
+      features: { characterPictures: true, video: true, equippedTable: true },
+      prices: {},
+    },
   ],
 };
 
@@ -70,12 +84,60 @@ describe('SubscriptionPanel', () => {
       '2 / 3 · Personnages hors aventure',
     );
     expect(bars).toHaveLength(4);
-    expect(root.querySelector('a[href="/plans"]')?.textContent?.trim()).toBe('Voir les offres');
+    expect(root.querySelector('a[href="/plans"]')?.textContent?.trim()).toBe(
+      'Changer d’abonnement',
+    );
     expect(button(root, 'Gérer mon abonnement')).toBeUndefined();
     // A full limit is in the alert colour, the others are not.
     const full = root.querySelectorAll('.usage__item--full');
     expect(full).toHaveLength(1);
     expect(text(full[0])).toContain('Grimoires');
+  });
+
+  it('lists_every_feature_of_the_catalog_ticked_or_crossed_and_the_other_limits', async () => {
+    const root = await open({
+      planId: 'adventurer',
+      interval: null,
+      status: null,
+      billingEnabled: true,
+      usage: USAGE,
+    });
+    // The limits with a usage bar are not repeated: only the per adventure one is listed.
+    expect([...root.querySelectorAll('.included__limit')].map(text)).toEqual([
+      'Notes du MJ par aventure10',
+    ]);
+    // A feature only a higher plan has is listed too, crossed out.
+    const features = [...root.querySelectorAll('.included__feature')];
+    expect(features.map((feature) => feature.getAttribute('aria-label'))).toEqual([
+      'Images de personnage : non inclus',
+      'Visio : non inclus',
+      'Table équipée : non inclus',
+    ]);
+    expect(features.every((feature) => feature.matches('.included__feature--off'))).toBe(true);
+  });
+
+  it('a_paid_plan_ticks_its_features_and_keeps_both_ways_out', async () => {
+    const root = await open({
+      planId: 'dungeon-master',
+      interval: 'monthly',
+      status: 'active',
+      billingEnabled: true,
+      usage: USAGE,
+    });
+    const features = [...root.querySelectorAll('.included__feature')];
+    expect(features.map((feature) => feature.getAttribute('aria-label'))).toEqual([
+      'Images de personnage : inclus',
+      'Visio : inclus',
+      'Table équipée : inclus',
+    ]);
+    expect(root.querySelector('.included__feature--off')).toBeNull();
+    expect([...root.querySelectorAll('.included__limit')].map(text)).toEqual([
+      'Notes du MJ par aventure1 000',
+    ]);
+    expect(root.querySelector('a[href="/plans"]')?.textContent?.trim()).toBe(
+      'Changer d’abonnement',
+    );
+    expect(button(root, 'Gérer mon abonnement')).toBeDefined();
   });
 
   it('the_colon_after_the_plan_label_follows_the_language', async () => {

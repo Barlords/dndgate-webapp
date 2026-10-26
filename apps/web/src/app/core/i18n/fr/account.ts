@@ -82,7 +82,6 @@ export const account = {
     sessions: 'Sessions',
     signOut: 'Se déconnecter',
     signOutEverywhere: 'Se déconnecter de partout',
-    back: 'Retour',
     wrongPassword: 'Mot de passe incorrect.',
     nothingToChange: 'Rien à modifier.',
     confirmTitle: 'Confirmer les modifications',

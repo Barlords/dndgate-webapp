@@ -26,13 +26,20 @@
     }
   </div>
 
-  <div class="sidebar__panel" [id]="panelId">
-    <!-- Shown in both states (the ruleset select folds into an icon): the links below never move. -->
-    <div class="sidebar__header">
-      <ng-content select="[sidebarHeader]" />
-    </div>
+  <!-- With the title, out of the scroll: shown in both states (the ruleset select folds into an
+       icon), so that the links below never move. -->
+  <div class="sidebar__header">
+    <ng-content select="[sidebarHeader]" />
+  </div>
 
-    <nav [attr.aria-label]="heading()">
+  <div class="sidebar__panel" [id]="panelId">
+    <!-- The only part that scrolls: between the title and the toggle. -->
+    <!-- Folded, the rail is too narrow for a bar: the menu still scrolls with the wheel or a finger. -->
+    <nav
+      class="sidebar__nav dg-leather-scroll"
+      [class.dg-scrollbar-hidden]="collapsed()"
+      [attr.aria-label]="heading()"
+    >
       @for (group of groups(); track group.label) {
         <div class="sidebar__section">
           <!-- Folded, the heading keeps its height and becomes a rule. -->
@@ -97,29 +104,17 @@
           <span class="sidebar__label">{{ t().common.shell.signIn }}</span>
         </a>
       }
+      <!-- Leaves the site, in a new tab. -->
       <a
-        routerLink="/plans"
-        class="sidebar__account"
-        routerLinkActive="on"
-        ariaCurrentWhenActive="page"
-        [attr.title]="collapsed() ? t().plans.page.navLabel : null"
-        [attr.aria-label]="collapsed() ? t().plans.page.navLabel : null"
-        (click)="linkFollowed()"
+        class="sidebar__account sidebar__beer"
+        [href]="tipeeeUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+        [attr.title]="t().common.shell.beerTitle"
+        [attr.aria-label]="t().common.shell.beerTitle"
       >
-        <dg-icon name="crown" />
-        <span class="sidebar__label">{{ t().plans.page.navLabel }}</span>
-      </a>
-      <a
-        routerLink="/terms"
-        class="sidebar__account"
-        routerLinkActive="on"
-        ariaCurrentWhenActive="page"
-        [attr.title]="collapsed() ? t().legal.navLabel : null"
-        [attr.aria-label]="collapsed() ? t().legal.navLabel : null"
-        (click)="linkFollowed()"
-      >
-        <dg-icon name="scroll" />
-        <span class="sidebar__label">{{ t().legal.navLabel }}</span>
+        <dg-icon name="beer" />
+        <span class="sidebar__label">{{ t().common.shell.beer }}</span>
       </a>
     </div>
   </div>

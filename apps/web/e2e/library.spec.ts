@@ -135,8 +135,38 @@ test('the summary stays in place while the page scrolls, its toggle at the botto
 
   expect((await sidebar.boundingBox())!.y).toBeCloseTo(before.y, 0);
   await expect(logo).toBeInViewport();
-  // The toggle has not moved either (a window this short shows it once the sidebar is scrolled).
+  // The toggle has not moved either.
   expect((await toggle.boundingBox())!.y).toBeCloseTo(toggleBox.y, 0);
+});
+
+test('in a short window only the menu scrolls, between the ruleset select and the toggle', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 420 });
+  await page.goto('/library/dnd5e-2014/spells');
+  await expect(page.getByText('5 entrées')).toBeVisible();
+
+  const nav = page.locator('.sidebar__nav');
+  const select = page.getByRole('combobox', { name: 'Jeu de règles' });
+  const toggle = page.getByRole('button', { name: 'Réduire le sommaire' });
+  // The window is too short for the whole menu: it scrolls, the sidebar itself does not.
+  expect(await nav.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+  expect(
+    await page.locator('aside.sidebar').evaluate((el) => el.scrollHeight <= el.clientHeight),
+  ).toBe(true);
+  await expect(toggle).toBeInViewport();
+  const [selectBefore, toggleBefore] = [
+    (await select.boundingBox())!,
+    (await toggle.boundingBox())!,
+  ];
+
+  await nav.hover();
+  await page.mouse.wheel(0, 400);
+  await expect.poll(() => nav.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+
+  // The ruleset select stays with the title, the toggle at the bottom.
+  expect((await select.boundingBox())!.y).toBeCloseTo(selectBefore.y, 0);
+  expect((await toggle.boundingBox())!.y).toBeCloseTo(toggleBefore.y, 0);
 });
 
 test('texts use the whole width of the parchment and the ruleset name is centred', async ({

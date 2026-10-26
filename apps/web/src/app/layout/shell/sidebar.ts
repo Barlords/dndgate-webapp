@@ -10,11 +10,12 @@ import { NavGroup } from '../nav.model';
 import { SidebarStateService } from '../sidebar-state.service';
 import { I18n } from '../../core/i18n/i18n.service';
 import { LanguageSelect } from '../../shared/ui/language-select/language-select';
+import { environment } from '../../../environments/environment';
 
 /**
  * The sidebar: the DnDGate logo (back to the home page), the part's name, a slot for what sits
- * under it (the ruleset select), the grouped navigation and, at the bottom, the toggle above the
- * account. Collapsed, it is a 56 px rail of icons; on a small
+ * under it (the ruleset select), the grouped navigation (the only part that scrolls) and, at the
+ * bottom, the toggle above the account and the Tipeee link. Collapsed, it is a 56 px rail of icons; on a small
  * screen, opened, it is a drawer over the content.
  */
 @Component({
@@ -35,6 +36,7 @@ export class Sidebar {
   readonly groups = input.required<NavGroup[]>();
 
   protected readonly panelId = 'dg-sidebar-panel';
+  protected readonly tipeeeUrl = environment.tipeeeUrl;
   private readonly state = inject(SidebarStateService);
   protected readonly collapsed = this.state.collapsed;
   protected readonly drawer = computed(() => this.state.small() && !this.state.collapsed());

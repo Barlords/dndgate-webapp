@@ -12,12 +12,16 @@ import { ApiProblem, toApiProblem } from '../../core/errors/api-problem';
 import { I18n } from '../../core/i18n/i18n.service';
 import { Billing } from '../../core/plans/billing.service';
 import { PlanCatalog } from '../../core/plans/plan-catalog.service';
-import { limitName, planName } from '../../core/plans/plan-texts';
+import { featureName, limitName, planName } from '../../core/plans/plan-texts';
 import { Button } from '../../shared/ui/button/button';
 import { LoadError } from '../../shared/ui/load-error/load-error';
 import { Loading } from '../../shared/ui/loading/loading';
 
-/** The reader's offer: plan, billing period, renewal, usage of the account limits and the way to manage it. */
+/**
+ * The reader's offer: plan, billing period, renewal, usage of the account limits, what the plan
+ * includes (every feature of the catalog, ticked or crossed out, and the other limits) and the ways to
+ * change it (the offers page) or to manage it (the Stripe portal).
+ */
 @Component({
   selector: 'dg-subscription-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -73,13 +77,36 @@ import { Loading } from '../../shared/ui/loading/loading';
         </ul>
       }
 
+      @if (view.limits.length > 0 || view.features.length > 0) {
+        <h3 class="usage__title">{{ t().plans.subscription.included }}</h3>
+        <ul class="included">
+          @for (limit of view.limits; track limit.key) {
+            <li class="included__limit">
+              <span>{{ limit.label }}</span> <strong>{{ limit.value }}</strong>
+            </li>
+          }
+          @for (feature of view.features; track feature.key) {
+            <li
+              class="included__feature"
+              [class.included__feature--off]="!feature.included"
+              [attr.aria-label]="feature.description"
+            >
+              <span class="included__mark" aria-hidden="true">{{
+                feature.included ? '✓' : '✗'
+              }}</span>
+              <span aria-hidden="true">{{ feature.label }}</span>
+            </li>
+          }
+        </ul>
+      }
+
       <div class="actions">
+        <a class="link link--primary" routerLink="/plans">{{ t().plans.subscription.change }}</a>
         @if (view.canManage) {
-          <dg-button [loading]="billing.busy()" (click)="billing.openPortal()">
+          <dg-button variant="ghost" [loading]="billing.busy()" (click)="billing.openPortal()">
             {{ t().plans.subscription.manage }}
           </dg-button>
         }
-        <a class="link" routerLink="/plans">{{ t().plans.subscription.seeOffers }}</a>
       </div>
       @if (!view.billingEnabled) {
         <p class="note">{{ t().plans.subscription.paymentUnavailable }}</p>
@@ -171,9 +198,52 @@ import { Loading } from '../../shared/ui/loading/loading';
       font-weight: 600;
       text-decoration: none;
     }
+    .link--primary {
+      color: var(--dg-parchment-0);
+      background: var(--dg-blood);
+      transition: background var(--dg-transition);
+
+      &:hover {
+        background: var(--dg-blood-bright);
+      }
+    }
     .link:focus-visible {
       outline: 2px solid var(--dg-focus-color);
       outline-offset: 2px;
+    }
+    .included {
+      display: flex;
+      flex-direction: column;
+      margin: 0 0 var(--dg-space-4);
+      padding: 0;
+      list-style: none;
+      font-size: var(--dg-text-sm);
+    }
+    .included li {
+      display: flex;
+      gap: var(--dg-space-2);
+      padding: var(--dg-space-1) 0;
+      border-bottom: 1px dotted var(--dg-ink-muted);
+    }
+    .included__limit {
+      justify-content: space-between;
+    }
+    .included__mark {
+      flex: 0 0 1rem;
+      font-weight: 700;
+      color: var(--dg-blood);
+    }
+    // What the plan leaves out is still listed, crossed and quieter.
+    .included__feature--off {
+      color: var(--dg-ink-muted);
+
+      .included__mark {
+        color: var(--dg-ink-muted);
+      }
+
+      span:last-child {
+        text-decoration: line-through;
+      }
     }
     .note {
       margin-top: var(--dg-space-2);
@@ -206,7 +276,16 @@ export class SubscriptionPanel {
     const paid = id !== catalog.defaultPlan;
     const billingEnabled = subscription.billingEnabled !== false;
 
-    const badge = this.plans.plan(id)?.badge;
+    const plan = this.plans.plan(id);
+    const badge = plan?.badge;
+    const usage = subscription.usage ?? {};
+    const number = new Intl.NumberFormat(language);
+    // Every feature some plan of the catalog has, in the catalog order: the reader sees what they miss too.
+    const featureKeys = [
+      ...new Set(
+        (catalog.plans ?? []).flatMap((candidate) => Object.keys(candidate.features ?? {})),
+      ),
+    ];
     const intervals: Record<string, string> = t.plans.subscription.interval;
     const statuses: Record<string, string> = t.plans.subscription.status;
     const end = subscription.currentPeriodEnd;
@@ -233,7 +312,23 @@ export class SubscriptionPanel {
       pastDue: status === 'past_due',
       canManage: paid && billingEnabled,
       billingEnabled,
-      usage: Object.entries(subscription.usage ?? {}).map(([key, { used = 0, max = 0 }]) => {
+      // The limits the usage bars do not show already (per adventure ones).
+      limits: Object.entries(plan?.limits ?? {})
+        .filter(([key]) => !Object.hasOwn(usage, key))
+        .map(([key, value]) => ({ key, label: limitName(key, t), value: number.format(value) })),
+      features: featureKeys.map((key) => {
+        const label = featureName(key, t);
+        const included = plan?.features?.[key] === true;
+        return {
+          key,
+          label,
+          included,
+          description: included
+            ? t.plans.subscription.featureIncluded(label)
+            : t.plans.subscription.featureExcluded(label),
+        };
+      }),
+      usage: Object.entries(usage).map(([key, { used = 0, max = 0 }]) => {
         const label = limitName(key, t);
         return {
           key,

@@ -1,4 +1,3 @@
-import { Location } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -45,11 +44,12 @@ function sameAsNewPassword(control: AbstractControl): ValidationErrors | null {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReactiveFormsModule, AccountLayout, FormField, Button, SubscriptionPanel],
   styles: `
-    // Two columns: identity, subscription then the danger zone on the left, password then sessions on the
-    // right. On a narrow screen, one column in reading order (the danger zone last).
+    // Two columns: what the reader edits on the left (identity, password, sessions, then the danger
+    // zone), the subscription card on the right. On a narrow screen, one column in reading order
+    // (the subscription after the identity, the danger zone last).
     .profile {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
       align-items: start;
       gap: var(--dg-space-5);
     }
@@ -58,6 +58,13 @@ function sameAsNewPassword(control: AbstractControl): ValidationErrors | null {
       display: flex;
       flex-direction: column;
       gap: var(--dg-space-5);
+    }
+
+    // The card of the offer stands out: a gold frame on a lighter vellum.
+    .profile__subscription {
+      background: color-mix(in srgb, var(--dg-vellum) 55%, transparent);
+      border: 1px solid var(--dg-gold-deep);
+      box-shadow: 0 2px 10px var(--dg-parchment-shadow);
     }
 
     @media (max-width: 767.98px) {
@@ -160,24 +167,6 @@ function sameAsNewPassword(control: AbstractControl): ValidationErrors | null {
             </form>
           </section>
 
-          <section class="profile__subscription" aria-labelledby="profile-subscription">
-            <h2 id="profile-subscription">{{ t().plans.subscription.title }}</h2>
-            <dg-subscription-panel />
-          </section>
-
-          <section class="profile__danger" aria-labelledby="profile-danger">
-            <h2 id="profile-danger">{{ t().account.profile.danger }}</h2>
-            <p>{{ t().account.profile.dangerText }}</p>
-            @if (deleteFailure(); as message) {
-              <p class="dg-account__alert" role="alert">{{ message }}</p>
-            }
-            <dg-button variant="danger" [loading]="deleting()" (click)="deleteAccount()">
-              {{ t().account.profile.deleteAccount }}
-            </dg-button>
-          </section>
-        </div>
-
-        <div class="profile__column">
           <section class="profile__password" aria-labelledby="profile-password">
             <h2 id="profile-password">{{ t().account.profile.password }}</h2>
             <form id="password-form" [formGroup]="password" (ngSubmit)="savePassword()" novalidate>
@@ -222,11 +211,25 @@ function sameAsNewPassword(control: AbstractControl): ValidationErrors | null {
               </dg-button>
             </div>
           </section>
-        </div>
-      </div>
 
-      <div class="dg-account__actions">
-        <dg-button variant="ghost" (click)="back()">{{ t().account.profile.back }}</dg-button>
+          <section class="profile__danger" aria-labelledby="profile-danger">
+            <h2 id="profile-danger">{{ t().account.profile.danger }}</h2>
+            <p>{{ t().account.profile.dangerText }}</p>
+            @if (deleteFailure(); as message) {
+              <p class="dg-account__alert" role="alert">{{ message }}</p>
+            }
+            <dg-button variant="danger" [loading]="deleting()" (click)="deleteAccount()">
+              {{ t().account.profile.deleteAccount }}
+            </dg-button>
+          </section>
+        </div>
+
+        <div class="profile__column">
+          <section class="profile__subscription" aria-labelledby="profile-subscription">
+            <h2 id="profile-subscription">{{ t().plans.subscription.title }}</h2>
+            <dg-subscription-panel />
+          </section>
+        </div>
       </div>
     </dg-account-layout>
   `,
@@ -238,7 +241,6 @@ export class ProfilePage {
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly location = inject(Location);
   private readonly notifier = inject(NotifierService);
   private readonly confirm = inject(ConfirmService);
   private readonly destroyRef = inject(DestroyRef);
@@ -402,15 +404,6 @@ export class ProfilePage {
     const control = form.get(field)!;
     control.setErrors({ server: message });
     control.markAsTouched();
-  }
-
-  /** Back to the page the reader came from; home when they opened this one directly. */
-  protected back(): void {
-    if (this.router.lastSuccessfulNavigation()?.previousNavigation) {
-      this.location.back();
-    } else {
-      void this.router.navigateByUrl('/');
-    }
   }
 
   protected signOut(everywhere: boolean): void {
