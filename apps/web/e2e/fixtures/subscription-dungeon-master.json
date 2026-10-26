@@ -1,0 +1,9 @@
+{
+  "planId": "dungeon-master",
+  "interval": "yearly",
+  "status": "active",
+  "currentPeriodEnd": "2027-10-26T00:00:00Z",
+  "cancelAtPeriodEnd": false,
+  "billingEnabled": true,
+  "usage": {}
+}

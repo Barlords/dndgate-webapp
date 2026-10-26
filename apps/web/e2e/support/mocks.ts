@@ -56,6 +56,21 @@ export function authDto(token: string, refreshToken: string) {
   };
 }
 
+/** Mocks the sign-in routes: the reader Gandalf, nothing in the Tavern. */
+export async function mockSession(page: Page, apiPrefix = '**/dndgate-api'): Promise<void> {
+  await page.route(`${apiPrefix}/accounts/login`, (route) => json(route, authDto('t1', 'r1')));
+  await page.route(`${apiPrefix}/accounts/refresh`, (route) => json(route, authDto('t2', 'r2')));
+  await page.route(`${apiPrefix}/accounts/me`, (route) => json(route, ACCOUNT));
+  await page.route(`${apiPrefix}/adventures/available*`, (route) => json(route, emptyPage));
+}
+
+/** Answers `GET /plans` with the small catalog of `e2e/fixtures`. */
+export async function mockPlanCatalog(page: Page, apiPrefix = '**/dndgate-api'): Promise<void> {
+  await page.route(`${apiPrefix}/plans`, (route) => json(route, fixture('plan-catalog.json')));
+}
+
+export { fixture };
+
 export const emptyPage = { content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 };
 
 export { json };

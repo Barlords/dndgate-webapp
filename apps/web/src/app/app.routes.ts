@@ -40,6 +40,10 @@ export const routes: Routes = [
       import('./features/plans/checkout-success.page').then((m) => m.CheckoutSuccessPage),
   },
   {
+    path: 'terms',
+    loadComponent: () => import('./features/legal/terms.page').then((m) => m.TermsPage),
+  },
+  {
     path: 'account',
     canActivate: [authGuard],
     loadComponent: () => import('./features/account/profile.page').then((m) => m.ProfilePage),

@@ -151,6 +151,16 @@ describe('Shell', () => {
     expect(plans()?.textContent).toContain('Offres');
   });
 
+  it('the_terms_link_is_there_for_everyone', async () => {
+    await render();
+    const terms = () =>
+      element.querySelector<HTMLAnchorElement>('.sidebar__footer a[href="/terms"]');
+    expect(terms()?.textContent).toContain('CGV');
+    account.set({ id: '1', pseudo: 'Barlords' });
+    await fixture.whenStable();
+    expect(terms()?.textContent).toContain('CGV');
+  });
+
   it('collapsed shell shows icons with labels as tooltips', async () => {
     await render();
     toggle().click();

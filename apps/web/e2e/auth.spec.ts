@@ -1,6 +1,6 @@
 import { Page } from '@playwright/test';
 import { expect, test } from './support/test';
-import { ACCOUNT, authDto, emptyPage, json, mockDnd5eApi } from './support/mocks';
+import { ACCOUNT, authDto, emptyPage, fixture, json, mockDnd5eApi } from './support/mocks';
 
 const API = '**/dndgate-api';
 
@@ -22,6 +22,11 @@ async function mockAccountApi(page: Page) {
     return route.fulfill({ status: 204 });
   });
   await page.route(`${API}/adventures/available*`, (route) => json(route, emptyPage));
+  // The profile page shows the reader's offer.
+  await page.route(`${API}/plans`, (route) => json(route, fixture('plan-catalog.json')));
+  await page.route(`${API}/accounts/me/subscription`, (route) =>
+    json(route, fixture('subscription-free.json')),
+  );
   return calls;
 }
 

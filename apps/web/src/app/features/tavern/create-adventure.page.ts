@@ -59,7 +59,8 @@ export class CreateAdventurePage {
         error: (error: unknown) => {
           this.saving.set(false);
           const problem = toApiProblem(error);
-          if (problem.status === 409) {
+          if (problem.status === 409 && !problem.plan) {
+            // The cap of active adventures; a refusal decided by the plan is told by the notifier.
             this.notifier.error({
               status: 409,
               detail: this.t().tavern.create.limitReached,
