@@ -396,6 +396,8 @@ export const tavern = {
     stopped: 'Connexion perdue : les nouveaux messages n’arrivent plus.',
     reconnect: 'Se reconnecter',
     log: 'Messages de l’aventure',
+    historyAlmostFull: 'L’historique est bientôt plein : les plus anciens messages seront effacés.',
+    historyFull: 'Historique plein : chaque nouveau message efface le plus ancien.',
     older: 'Messages plus anciens',
     empty: 'Aucun message pour le moment. Lance la conversation !',
     yours: 'Ton message',

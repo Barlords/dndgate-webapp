@@ -58,6 +58,7 @@ export const plans: Dictionary['plans'] = {
     adventure: (planName) =>
       `Included from the ${planName} plan (or if your GM has an equipped table).`,
     unknown: 'Not included in your plan.',
+    limit: (planName) => `More room from the ${planName} plan.`,
   },
   page: {
     navLabel: 'Plans',

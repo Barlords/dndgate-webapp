@@ -395,6 +395,8 @@ export const tavern: Dictionary['tavern'] = {
     stopped: 'Connection lost: new messages no longer arrive.',
     reconnect: 'Reconnect',
     log: 'Messages of the adventure',
+    historyAlmostFull: 'The history is almost full: the oldest messages will be erased.',
+    historyFull: 'History full: each new message erases the oldest.',
     older: 'Older messages',
     empty: 'No message for now. Start the conversation!',
     yours: 'Your message',

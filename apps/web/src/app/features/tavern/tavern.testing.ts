@@ -71,7 +71,7 @@ export async function setupTavern(
     if (request.method === 'GET' && /\/adventures\/[^/]+\/entitlements$/.test(request.url)) {
       return entitlements === null
         ? throwError(() => new HttpErrorResponse({ status: 500, url: request.url }))
-        : of(new HttpResponse({ status: 200, body: entitlements }));
+        : of(new HttpResponse({ status: 200, body: structuredClone(entitlements) }));
     }
     return next(request);
   };

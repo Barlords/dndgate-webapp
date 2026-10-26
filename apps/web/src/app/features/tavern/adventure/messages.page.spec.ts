@@ -6,6 +6,7 @@ import { MessageDto } from '../../../core/api/generated/models/message-dto';
 import { AdventureDto } from '../../../core/api/generated/models/adventure-dto';
 import { NotifierService } from '../../../core/errors/notifier.service';
 import { ChatConnection, StompService } from '../../../core/realtime/stomp.service';
+import { AdventureEntitlementsDto } from '../../../core/api/generated/models/adventure-entitlements-dto';
 import { adventure, setupTavern, TavernTestbed } from '../tavern.testing';
 import { Req } from './notes.testing';
 
@@ -37,7 +38,10 @@ describe('MessagesPage', () => {
     Array.from({ length: to - from + 1 }, (_, i) => message(from + i));
   const texts = (from: number, to: number) => range(from, to).map((m) => m.content);
 
-  async function open(overrides: Partial<AdventureDto> = {}) {
+  async function open(
+    overrides: Partial<AdventureDto> = {},
+    entitlements?: AdventureEntitlementsDto | null,
+  ) {
     server = [];
     chat = new Subject<MessageDto>();
     stomp = {
@@ -46,7 +50,7 @@ describe('MessagesPage', () => {
       connection: signal<ChatConnection>('open'),
     };
     TestBed.configureTestingModule({ providers: [{ provide: StompService, useValue: stomp }] });
-    tavern = await setupTavern();
+    tavern = await setupTavern(entitlements);
     await tavern.go('/tavern/adventures/a1/messages');
     tavern.backend
       .expectOne((r) => r.method === 'GET' && /\/adventures\/a1$/.test(r.url))
@@ -338,5 +342,120 @@ describe('MessagesPage', () => {
     server = [message(1)];
     await answer();
     expect(contents()).toEqual(['Message 1']);
+  });
+
+  describe('history banners', () => {
+    const banner = () => main().querySelector('.history[role="status"]');
+    const withUsage = (used: number, max = 100): AdventureEntitlementsDto => ({
+      features: [],
+      limits: { messagesPerAdventure: { used, max } },
+    });
+    const plans = (r: Req) => r.method === 'GET' && /\/plans$/.test(r.url);
+    const CATALOG = {
+      currency: 'EUR',
+      defaultPlan: 'adventurer',
+      plans: [
+        { id: 'adventurer', limits: { messagesPerAdventure: 100 } },
+        { id: 'hero', limits: { messagesPerAdventure: 100 } },
+        { id: 'dungeon-master', limits: { messagesPerAdventure: 500 } },
+      ],
+    };
+
+    it('no_banner_below_80_percent', async () => {
+      await open({}, withUsage(79));
+      await answer();
+      expect(banner()).toBeNull();
+    });
+
+    it('no_banner_when_the_usage_is_unknown', async () => {
+      await open({}, null);
+      await answer();
+      expect(banner()).toBeNull();
+    });
+
+    it('the_almost_full_banner_from_80_percent', async () => {
+      await open({}, withUsage(80));
+      await answer();
+      expect(banner()!.textContent).toContain(
+        'L’historique est bientôt plein : les plus anciens messages seront effacés',
+      );
+      expect(
+        main().querySelector('.history')!.compareDocumentPosition(main().querySelector('.log')!),
+      ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+
+    it('the_almost_full_banner_stops_at_99_percent', async () => {
+      await open({}, withUsage(99));
+      await answer();
+      expect(banner()!.textContent).toContain('bientôt plein');
+    });
+
+    it('the_full_banner_at_100_percent', async () => {
+      await open({}, withUsage(100));
+      await answer();
+      expect(banner()!.textContent).toContain(
+        'Historique plein : chaque nouveau message efface le plus ancien',
+      );
+      expect(banner()!.textContent).not.toContain('bientôt plein');
+    });
+
+    it('the_master_sees_the_offer_that_raises_the_limit', async () => {
+      await open({ creatorId: 'me' }, withUsage(100));
+      await answer();
+      tavern.backend.expectOne(plans).flush(CATALOG);
+      await tavern.render();
+      expect(banner()!.querySelector('dg-plan-hint')!.textContent).toContain(
+        'Plus de place à partir de l’offre Maître du Donjon.',
+      );
+    });
+
+    it('a_player_does_not_see_the_offer', async () => {
+      await open({}, withUsage(100));
+      await answer();
+      expect(banner()!.querySelector('dg-plan-hint')).toBeNull();
+    });
+
+    it('messages_received_or_sent_count_once_and_resync_after_a_pause', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      try {
+        await open({}, withUsage(78));
+        await answer();
+        expect(banner()).toBeNull();
+
+        const mine = message(1, { senderId: 'me' });
+        chat.next(mine);
+        await tavern.render();
+        await type('Un');
+        await press('Enter');
+        tavern.backend.expectOne(post).flush(mine, { status: 201, statusText: 'Created' });
+        await tavern.render();
+        // Message 1 came on the topic and as the answer: 79, still below 80 %.
+        expect(banner()).toBeNull();
+
+        chat.next(message(2));
+        await tavern.render();
+        expect(banner()!.textContent).toContain('bientôt plein');
+
+        chat.next(message(3));
+        chat.next(message(4));
+        await tavern.render();
+        // Capped at the maximum.
+        for (let n = 5; n <= 30; n++) {
+          chat.next(message(n));
+        }
+        await tavern.render();
+        expect(banner()!.textContent).toContain('Historique plein');
+
+        // The count is asked again 2 s after the last message: the API says 78 (the test double).
+        vi.advanceTimersByTime(1999);
+        await tavern.render();
+        expect(banner()!.textContent).toContain('Historique plein');
+        vi.advanceTimersByTime(1);
+        await tavern.render();
+        expect(banner()).toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 });

@@ -12,7 +12,7 @@ const CATALOG = {
     { id: 'adventurer', features: { characterPictures: false, video: false } },
     { id: 'hero', features: { characterPictures: true, video: false } },
     { id: 'dungeon-master', features: { characterPictures: true, video: true } },
-  ],
+  ].map((plan, i) => ({ ...plan, limits: { messagesPerAdventure: [100, 100, 500][i] } })),
 };
 
 describe('PlanHint', () => {
@@ -27,7 +27,10 @@ describe('PlanHint', () => {
 
   afterEach(() => backend.verify());
 
-  async function render(inputs: Record<string, string | null>, answer: object | number = CATALOG) {
+  async function render(
+    inputs: Record<string, string | number | null>,
+    answer: object | number = CATALOG,
+  ) {
     const fixture = TestBed.createComponent(PlanHint);
     for (const [name, value] of Object.entries(inputs)) {
       fixture.componentRef.setInput(name, value);
@@ -70,5 +73,17 @@ describe('PlanHint', () => {
     const hint = await render({ feature: 'video' }, 500);
     expect(hint.textContent).toContain('Non inclus dans ton offre.');
     expect(hint.querySelector('a')).not.toBeNull();
+  });
+
+  it('names the lowest plan whose limit is above the current one', async () => {
+    const hint = await render({ limit: 'messagesPerAdventure', above: 100 });
+    expect(hint.textContent).toContain('Plus de place à partir de l’offre Maître du Donjon.');
+    expect(hint.querySelector('a')?.getAttribute('href')).toBe('/plans');
+  });
+
+  it('says nothing when no plan raises the limit', async () => {
+    const hint = await render({ limit: 'messagesPerAdventure', above: 500 });
+    expect(hint.textContent?.trim()).toBe('');
+    expect(hint.querySelector('a')).toBeNull();
   });
 });

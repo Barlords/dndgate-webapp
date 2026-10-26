@@ -8,6 +8,8 @@ import { planName } from '../../../core/plans/plan-texts';
  * A short line saying which plan unlocks a feature, with a link to the plans. It names the lowest
  * plan, after the reader's own when given, whose features include it.
  * `adventure` adds that a GM with an equipped table also unlocks it for the whole table.
+ * With `limit` and `above` instead of `feature`, it names the lowest plan whose limit is greater
+ * than `above`, and says nothing when there is none.
  */
 @Component({
   selector: 'dg-plan-hint',
@@ -21,8 +23,10 @@ import { planName } from '../../../core/plans/plan-texts';
     }
   `,
   template: `
-    {{ text() }}
-    <a routerLink="/plans">{{ t().plans.seeOffers }}</a>
+    @if (text(); as text) {
+      {{ text }}
+      <a routerLink="/plans">{{ t().plans.seeOffers }}</a>
+    }
   `,
 })
 export class PlanHint {
@@ -30,7 +34,11 @@ export class PlanHint {
   private readonly catalog = inject(PlanCatalog);
 
   /** Key of the feature, as in a plan's `features`. */
-  readonly feature = input.required<string>();
+  readonly feature = input<string>('');
+  /** Key of a limit, as in a plan's `limits`: names the plan that raises it above `above`. */
+  readonly limit = input<string | null>(null);
+  /** The limit the reader has now. */
+  readonly above = input<number>(0);
   /** Where the reader is: in their account, or in an adventure (the GM's table counts too). */
   readonly scope = input<'account' | 'adventure'>('account');
   /** The reader's own plan, when known: only the plans after it are proposed. */
@@ -44,6 +52,11 @@ export class PlanHint {
   private readonly unlocking = computed(() => {
     const plans = this.catalog.catalog()?.plans ?? [];
     const current = plans.findIndex((plan) => plan.id === this.currentPlanId());
+    const limit = this.limit();
+    if (limit !== null) {
+      return plans.slice(current + 1).find((plan) => (plan.limits?.[limit] ?? 0) > this.above())
+        ?.id;
+    }
     return plans.slice(current + 1).find((plan) => plan.features?.[this.feature()] === true)?.id;
   });
 
@@ -51,9 +64,12 @@ export class PlanHint {
     const hints = this.t().plans.hint;
     const id = this.unlocking();
     if (id === undefined) {
-      return hints.unknown;
+      return this.limit() === null ? hints.unknown : '';
     }
     const name = planName(id, this.t());
+    if (this.limit() !== null) {
+      return hints.limit(name);
+    }
     return this.scope() === 'adventure' ? hints.adventure(name) : hints.account(name);
   });
 }

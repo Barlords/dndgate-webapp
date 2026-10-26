@@ -38,6 +38,7 @@ import { Loading } from '../../../shared/ui/loading/loading';
 import { AdventureContext } from './adventure-context.service';
 import { I18n } from '../../../core/i18n/i18n.service';
 import { AccountBadges } from '../../../shared/ui/account-badges/account-badges';
+import { PlanHint } from '../../../shared/ui/plan-hint/plan-hint';
 
 export const MESSAGES_PAGE_SIZE = 20;
 export const MESSAGE_MAX = 5000;
@@ -45,6 +46,10 @@ export const MESSAGE_MAX = 5000;
 export const MAX_CATCH_UP_PAGES = 5;
 /** Closer than this to the bottom of the log, the reader follows the conversation. */
 const NEAR_BOTTOM_PX = 48;
+/** From this share of the history limit on, the reader is warned. */
+const WARN_FROM = 0.8;
+/** The usage is asked again this long after the last message, to correct the local count. */
+const RESYNC_DELAY_MS = 2000;
 
 const TIME_FORMAT: Intl.DateTimeFormatOptions = {
   day: 'numeric',
@@ -78,7 +83,7 @@ function byDate(a: MessageDto, b: MessageDto): number {
 @Component({
   selector: 'dg-messages-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LoadError, ReactiveFormsModule, Button, FormField, Loading, AccountBadges],
+  imports: [LoadError, ReactiveFormsModule, Button, FormField, Loading, AccountBadges, PlanHint],
   styleUrl: '../tavern-page.scss',
   styles: `
     .connection {
@@ -97,6 +102,24 @@ function byDate(a: MessageDto, b: MessageDto): number {
 
     .connection p {
       margin: 0;
+    }
+
+    .history {
+      margin: 0 0 var(--dg-space-3);
+      padding: var(--dg-space-2) var(--dg-space-3);
+      color: var(--dg-ink);
+      background: var(--dg-vellum);
+      border: 1px solid var(--dg-gold);
+      border-radius: var(--dg-radius);
+    }
+
+    .history.full {
+      border-color: var(--dg-blood);
+    }
+
+    .history p {
+      margin: 0;
+      font-weight: 600;
     }
 
     .log {
@@ -213,6 +236,20 @@ function byDate(a: MessageDto, b: MessageDto): number {
     }
     @switch (state()) {
       @case ('ready') {
+        @if (level(); as level) {
+          <div class="history" [class.full]="level === 'full'" role="status">
+            <p>
+              {{
+                level === 'full'
+                  ? t().tavern.messages.historyFull
+                  : t().tavern.messages.historyAlmostFull
+              }}
+            </p>
+            @if (context.isMaster()) {
+              <dg-plan-hint limit="messagesPerAdventure" [above]="usage()!.max" />
+            }
+          </div>
+        }
         <div class="log" #log role="log" [attr.aria-label]="t().tavern.messages.log" tabindex="0">
           @if (hasOlder()) {
             <dg-button
@@ -284,7 +321,7 @@ function byDate(a: MessageDto, b: MessageDto): number {
 export class MessagesPage {
   protected readonly t = inject(I18n).t;
 
-  private readonly context = inject(AdventureContext);
+  protected readonly context = inject(AdventureContext);
   private readonly http = inject(HttpClient);
   private readonly rootUrl = inject(ApiConfiguration).rootUrl;
   private readonly auth = inject(AuthService);
@@ -328,9 +365,22 @@ export class MessagesPage {
   protected readonly sending = signal(false);
   protected readonly sendProblem = signal<string | null>(null);
 
+  /** The history's usage: the API's count, plus the messages seen since it was read. */
+  protected readonly usage = signal<{ used: number; max: number } | null>(null);
+  protected readonly level = computed<'almost' | 'full' | null>(() => {
+    const usage = this.usage();
+    if (usage === null || usage.max <= 0 || usage.used < usage.max * WARN_FROM) {
+      return null;
+    }
+    return usage.used >= usage.max ? 'full' : 'almost';
+  });
+  private resync: ReturnType<typeof setTimeout> | undefined;
+
   private started = false;
 
   constructor() {
+    this.destroyRef.onDestroy(() => clearTimeout(this.resync));
+    effect(() => this.usage.set(this.context.usage('messagesPerAdventure')));
     effect(() => {
       // Participants only: a visitor is redirected away by the shell, and the API would refuse.
       if (this.context.state() === 'ready' && this.context.isParticipant()) {
@@ -372,7 +422,7 @@ export class MessagesPage {
     this.stomp
       .watchChat(this.adventureId())
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((message) => this.show([message], 'follow'));
+      .subscribe((message) => this.add(message, 'follow'));
     this.loadHistory();
   }
 
@@ -428,6 +478,7 @@ export class MessagesPage {
             this.olderCount.set(0);
           }
           this.show(all, 'follow');
+          this.scheduleResync();
         } else if (page + 1 < MAX_CATCH_UP_PAGES) {
           this.catchUp(page + 1, all);
         } else {
@@ -476,7 +527,7 @@ export class MessagesPage {
         next: ({ body }) => {
           this.sending.set(false);
           this.draft.reset();
-          this.show([body], 'bottom');
+          this.add(body, 'bottom');
         },
         error: (error: unknown) => {
           this.sending.set(false);
@@ -493,6 +544,22 @@ export class MessagesPage {
           }
         },
       });
+  }
+
+  /** A message just said (received or sent): shown once, and counted once in the history. */
+  private add(message: MessageDto, scroll: Scroll): void {
+    if (!this.messages().some((known) => known.id === message.id)) {
+      this.usage.update((usage) =>
+        usage === null ? null : { ...usage, used: Math.min(usage.max, usage.used + 1) },
+      );
+      this.scheduleResync();
+    }
+    this.show([message], scroll);
+  }
+
+  private scheduleResync(): void {
+    clearTimeout(this.resync);
+    this.resync = setTimeout(() => this.context.reloadEntitlements(), RESYNC_DELAY_MS);
   }
 
   /** Adds messages (once per id, in date order), then scrolls as `scroll` says. */

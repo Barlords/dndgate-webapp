@@ -57,6 +57,7 @@ export const plans = {
     adventure: (planName: string) =>
       `Inclus à partir de l’offre ${planName} (ou si ton MJ a une table équipée).`,
     unknown: 'Non inclus dans ton offre.',
+    limit: (planName: string) => `Plus de place à partir de l’offre ${planName}.`,
   },
   page: {
     navLabel: 'Offres',
