@@ -17,7 +17,7 @@
         <java.version>21</java.version>
         <minio.version>9.0.3</minio.version>
         <okhttp.version>5.5.1</okhttp.version>
-        <vavr.version>1.0.1</vavr.version>
+        <vavr.version>1.1.0</vavr.version>
         <archunit.version>1.5.1</archunit.version>
         <jacoco.version>0.8.15</jacoco.version>
         <springdoc.version>3.1.1</springdoc.version>
