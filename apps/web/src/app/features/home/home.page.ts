@@ -1,20 +1,25 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { AuthService } from '../../core/auth/auth.service';
 import { Brand } from '../../shared/ui/brand/brand';
+import { LanguageSelect } from '../../shared/ui/language-select/language-select';
 import { HomeHalfComponent, HomeSide } from './home-half.component';
 import { I18n } from '../../core/i18n/i18n.service';
 
 /**
  * The home page: the window split into the Library (left) and the Tavern (right). Lighting one
- * half up dims the other; only one half is active at a time.
+ * half up dims the other; only one half is active at a time. The logo and the language select sit
+ * on a plate above the split.
  */
 @Component({
   selector: 'dg-home-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Brand, HomeHalfComponent],
+  imports: [Brand, HomeHalfComponent, LanguageSelect],
   template: `
     <h1 class="dg-visually-hidden">DnDGate</h1>
-    <dg-brand class="home__brand" />
+    <div class="home__plate">
+      <dg-brand class="home__brand" />
+      <dg-language-select class="home__language" />
+    </div>
     <dg-home-half
       side="library"
       link="/library"

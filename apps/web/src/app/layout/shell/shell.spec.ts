@@ -5,6 +5,7 @@ import { provideRouter, Router } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import { AccountDto } from '../../core/api/generated/models/account-dto';
 import { AuthService } from '../../core/auth/auth.service';
+import { TipeeePopin } from '../../core/tipeee/tipeee-popin.service';
 import { ICON_PATHS } from '../../shared/ui/icon/icon-paths';
 import { NavGroup } from '../nav.model';
 import { Shell } from './shell';
@@ -95,9 +96,24 @@ describe('Shell', () => {
       'BIBLIOTHÈQUE',
     );
     expect(toggle().nextElementSibling).toBe(element.querySelector('.sidebar__footer'));
-    expect(toggle().previousElementSibling?.tagName).toBe('NAV');
+    // The Tipeee link sits between the navigation and the toggle.
+    expect(toggle().previousElementSibling).toBe(element.querySelector('.sidebar__beer'));
+    expect(toggle().previousElementSibling?.previousElementSibling?.tagName).toBe('NAV');
     const drawn = [...toggle().querySelectorAll('path')].map((path) => path.getAttribute('d'));
     expect(drawn).toEqual([...ICON_PATHS.sidebar]);
+  });
+
+  it('puts_the_language_select_just_under_the_logo_the_flag_alone_once_folded', async () => {
+    await render();
+    const language = element.querySelector('.sidebar__language')!;
+    expect(language.previousElementSibling?.classList).toContain('sidebar__head');
+    expect(language.nextElementSibling?.classList).toContain('sidebar__heading');
+    expect(language.querySelector('.language-select')?.textContent?.trim()).toBe('FR');
+    expect(element.querySelector('.sidebar__footer dg-language-select')).toBeNull();
+
+    toggle().click();
+    await fixture.whenStable();
+    expect(language.querySelector('dg-language-select')?.classList).toContain('compact');
   });
 
   it('folds the logo into the emblem, which still leads home', async () => {
@@ -149,16 +165,47 @@ describe('Shell', () => {
     expect(element.querySelector('.sidebar a[href="/terms"]')).toBeNull();
   });
 
-  it('offers_a_beer_on_tipeee_in_a_new_tab', async () => {
+  it('offers_a_beer_on_tipeee', async () => {
     await render();
-    const beer = element.querySelector<HTMLAnchorElement>('.sidebar__footer .sidebar__beer')!;
-    expect(beer.getAttribute('href')).toBe('https://fr.tipeee.com/barlords/');
+    const beer = element.querySelector<HTMLAnchorElement>('.sidebar__beer')!;
+    // The address stays for a new tab (middle click, Ctrl+click) and for a reader without script.
+    expect(beer.getAttribute('href')).toBe('https://fr.tipeee.com/barlords');
     expect(beer.getAttribute('target')).toBe('_blank');
     expect(beer.getAttribute('rel')).toBe('noopener noreferrer');
     expect(beer.textContent).toContain('Offrir une bière');
-    expect(beer.getAttribute('aria-label')).toBe('Offrir une bière sur Tipeee (nouvel onglet)');
+    expect(beer.getAttribute('aria-label')).toBe('Offrir une bière sur Tipeee');
     const drawn = [...beer.querySelectorAll('path')].map((path) => path.getAttribute('d'));
     expect(drawn).toEqual([...ICON_PATHS.beer]);
+  });
+
+  it('a_plain_click_on_the_beer_opens_the_tipeee_popin_on_the_site', async () => {
+    await render();
+    const open = vi.spyOn(TestBed.inject(TipeeePopin), 'open').mockImplementation(() => undefined);
+    const beer = element.querySelector<HTMLAnchorElement>('.sidebar__beer')!;
+
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 });
+    beer.dispatchEvent(click);
+
+    expect(click.defaultPrevented).toBe(true);
+    expect(open).toHaveBeenCalledWith('https://fr.tipeee.com/barlords');
+  });
+
+  it('a_click_asking_for_a_new_tab_keeps_the_link', async () => {
+    await render();
+    const open = vi.spyOn(TestBed.inject(TipeeePopin), 'open').mockImplementation(() => undefined);
+    const beer = element.querySelector<HTMLAnchorElement>('.sidebar__beer')!;
+
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true });
+    // Runs after the component's listener: notes what it did, then stops jsdom from navigating.
+    let preventedByComponent: boolean | null = null;
+    beer.addEventListener('click', (event) => {
+      preventedByComponent = event.defaultPrevented;
+      event.preventDefault();
+    });
+    beer.dispatchEvent(click);
+
+    expect(preventedByComponent).toBe(false);
+    expect(open).not.toHaveBeenCalled();
   });
 
   it('only_the_navigation_scrolls_the_title_and_the_header_stay_out_of_it', async () => {
@@ -170,7 +217,8 @@ describe('Shell', () => {
     const header = element.querySelector('.sidebar__header')!;
     expect(header.previousElementSibling?.classList).toContain('sidebar__heading');
     expect(header.nextElementSibling?.classList).toContain('sidebar__panel');
-    expect(nav.nextElementSibling).toBe(toggle());
+    expect(nav.nextElementSibling).toBe(element.querySelector('.sidebar__beer'));
+    expect(nav.nextElementSibling?.nextElementSibling).toBe(toggle());
   });
 
   it('puts_the_terms_and_the_copyright_under_the_content', async () => {

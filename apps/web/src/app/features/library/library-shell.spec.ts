@@ -7,13 +7,22 @@ describe('LibraryShell', () => {
 
   const groups = (root: HTMLElement) =>
     [...root.querySelectorAll('.sidebar__group')].map((group) => group.textContent?.trim());
-  const select = (root: HTMLElement) =>
-    root.querySelector<HTMLSelectElement>('dg-ruleset-select select')!;
+  const field = (root: HTMLElement) =>
+    root.querySelector<HTMLButtonElement>('dg-ruleset-select .ruleset-select')!;
+  // The menu opens in an overlay, out of the sidebar.
+  const items = () => [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')];
+  const labels = () => items().map((item) => item.textContent?.replace('✓', '').trim());
 
-  async function choose(library: LibraryTestbed, id: string): Promise<void> {
-    const field = select(library.root);
-    field.value = id;
-    field.dispatchEvent(new Event('change'));
+  async function open(library: LibraryTestbed): Promise<void> {
+    field(library.root).click();
+    await library.render();
+  }
+
+  async function choose(library: LibraryTestbed, label: string): Promise<void> {
+    await open(library);
+    items()
+      .find((item) => item.textContent?.includes(label))!
+      .click();
     await library.harness.fixture.whenStable();
     await library.render();
   }
@@ -22,9 +31,11 @@ describe('LibraryShell', () => {
     const library = await setupLibrary({ rulesets: [classic(), other()] });
     await library.go('/library/dnd5e-2014');
     expect(library.root.querySelector('.sidebar__title')?.textContent).toBe('BIBLIOTHÈQUE');
-    const options = [...select(library.root).options].map((option) => option.textContent?.trim());
-    expect(options).toEqual(['Jeu classique', 'Autre jeu']);
-    expect(select(library.root).value).toBe('dnd5e-2014');
+    expect(field(library.root).textContent?.trim()).toBe('Jeu classique');
+    expect(field(library.root).getAttribute('aria-label')).toBe('Jeu de règles : Jeu classique');
+    await open(library);
+    expect(labels()).toEqual(['Jeu classique', 'Autre jeu']);
+    expect(items().map((item) => item.getAttribute('aria-checked'))).toEqual(['true', 'false']);
     expect(groups(library.root)).toEqual(['POUR LES JOUEURS', 'POUR LE MJ', 'RÈGLES']);
     const links = [...library.root.querySelectorAll<HTMLAnchorElement>('.sidebar__link')];
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
@@ -53,12 +64,12 @@ describe('LibraryShell', () => {
   it('changing ruleset keeps the section when it exists', async () => {
     const library = await setupLibrary({ rulesets: [classic(), other()] });
     await library.go('/library/dnd5e-2014/monsters');
-    await choose(library, 'other-game');
+    await choose(library, 'Autre jeu');
     expect(library.router.url).toBe('/library/other-game/monsters');
 
-    await choose(library, 'dnd5e-2014');
+    await choose(library, 'Jeu classique');
     await library.go('/library/dnd5e-2014/spells');
-    await choose(library, 'other-game');
+    await choose(library, 'Autre jeu');
     expect(library.router.url).toBe('/library/other-game');
   });
 
@@ -68,19 +79,15 @@ describe('LibraryShell', () => {
     library.root.querySelector<HTMLButtonElement>('.sidebar__toggle')!.click();
     await library.render();
 
-    expect(select(library.root)).toBeNull();
+    expect(field(library.root)).toBeNull();
     const icon = library.root.querySelector<HTMLButtonElement>('.ruleset-select__icon')!;
     expect(icon.getAttribute('aria-label')).toBe('Jeu de règles : Jeu classique');
     icon.click();
     await library.render();
-    const items = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')];
-    expect(items.map((item) => item.textContent?.replace('✓', '').trim())).toEqual([
-      'Jeu classique',
-      'Autre jeu',
-    ]);
-    expect(items[0].getAttribute('aria-checked')).toBe('true');
+    expect(labels()).toEqual(['Jeu classique', 'Autre jeu']);
+    expect(items()[0].getAttribute('aria-checked')).toBe('true');
 
-    items[1].click();
+    items()[1].click();
     await library.harness.fixture.whenStable();
     await library.render();
     expect(library.router.url).toBe('/library/other-game/monsters');

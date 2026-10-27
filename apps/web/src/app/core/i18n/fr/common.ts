@@ -89,8 +89,9 @@ export const common = {
     myAccount: (pseudo: string) => `Mon compte, ${pseudo}`,
     signIn: 'Se connecter',
     language: 'Langue',
+    languageCurrent: (name: string) => `Langue : ${name}`,
     beer: 'Offrir une bière',
-    beerTitle: 'Offrir une bière sur Tipeee (nouvel onglet)',
+    beerTitle: 'Offrir une bière sur Tipeee',
     back: 'Retour',
   },
   notFound: {

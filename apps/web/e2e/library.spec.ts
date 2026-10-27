@@ -69,7 +69,8 @@ test('the query string alone restores the search and the filter', async ({ page 
 test('switching to SRD 2024 keeps the section', async ({ page }) => {
   await page.goto('/library/dnd5e-2014/spells/fireball');
 
-  await page.getByLabel('Jeu de règles').selectOption('dnd5e-2024');
+  await page.getByRole('button', { name: /Jeu de règles/ }).click();
+  await page.getByRole('menuitemradio', { name: /2024/ }).click();
 
   await expect(page).toHaveURL(/\/library\/dnd5e-2024\/spells/);
   await expect(page.getByRole('heading', { name: 'Sorts' })).toBeVisible();
@@ -147,7 +148,7 @@ test('in a short window only the menu scrolls, between the ruleset select and th
   await expect(page.getByText('5 entrées')).toBeVisible();
 
   const nav = page.locator('.sidebar__nav');
-  const select = page.getByRole('combobox', { name: 'Jeu de règles' });
+  const select = page.getByRole('button', { name: /Jeu de règles/ });
   const toggle = page.getByRole('button', { name: 'Réduire le sommaire' });
   // The window is too short for the whole menu: it scrolls, the sidebar itself does not.
   expect(await nav.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
@@ -292,6 +293,12 @@ test('on a small screen, the opened drawer lies over the page and takes the clic
   await expect(page).toHaveURL(/\/library\/dnd5e-2014\/classes$/);
 });
 
+/** Opens the language select (named after the current language) and picks a language. */
+async function chooseLanguage(page: Page, language: string): Promise<void> {
+  await page.getByRole('button', { name: /^(Langue|Language)\s?:/ }).click();
+  await page.getByRole('menuitemradio', { name: language }).click();
+}
+
 test('the language select turns the interface and the SRD texts to English, and keeps it', async ({
   page,
 }) => {
@@ -305,7 +312,7 @@ test('the language select turns the interface and the SRD texts to English, and 
   expect(asked.some((url) => url.includes('lang=fr-FR'))).toBe(true);
 
   asked.length = 0;
-  await page.getByRole('button', { name: 'English' }).click();
+  await chooseLanguage(page, 'English');
   await expect(page.getByRole('heading', { name: 'Spells' })).toBeVisible();
   await expect(page.getByText('5 entries')).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
@@ -314,10 +321,7 @@ test('the language select turns the interface and the SRD texts to English, and 
 
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Spells' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'English' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  await expect(page.getByRole('button', { name: 'Language: English' })).toHaveText('EN');
 });
 
 test('an open entry is read again from the SRD in the language chosen', async ({ page }) => {
@@ -341,11 +345,11 @@ test('an open entry is read again from the SRD in the language chosen', async ({
   await page.goto('/library/dnd5e-2014/classes/wizard');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Magicien');
 
-  await page.getByRole('button', { name: 'English' }).click();
+  await chooseLanguage(page, 'English');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Wizard');
   expect(asked.map((url) => new URL(url).search)).toEqual(['?lang=fr-FR', '?lang=en']);
 
   // Back in French, the answer already read in French is shown again.
-  await page.getByRole('button', { name: 'Français' }).click();
+  await chooseLanguage(page, 'Français');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Magicien');
 });
