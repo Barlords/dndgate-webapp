@@ -20,7 +20,7 @@
         <vavr.version>1.0.1</vavr.version>
         <archunit.version>1.5.1</archunit.version>
         <jacoco.version>0.8.15</jacoco.version>
-        <springdoc.version>3.1.1</springdoc.version>
+        <springdoc.version>3.2.0</springdoc.version>
         <stripe.version>34.0.0</stripe.version>
         <!-- Part minimale de lignes couvertes par les tests ; peut être surchargée : -Dcoverage.minimum=0.95 -->
         <coverage.minimum>0.90</coverage.minimum>
