@@ -88,8 +88,9 @@ export const common: Dictionary['common'] = {
     myAccount: (pseudo) => `My account, ${pseudo}`,
     signIn: 'Sign in',
     language: 'Language',
+    languageCurrent: (name) => `Language: ${name}`,
     beer: 'Buy me a beer',
-    beerTitle: 'Buy me a beer on Tipeee (new tab)',
+    beerTitle: 'Buy me a beer on Tipeee',
     back: 'Back',
   },
   notFound: {

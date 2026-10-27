@@ -16,16 +16,19 @@ dg-home-half {
   min-width: 0;
 }
 
-// The full DnDGate logo, centred above the split, on a small dark plate edged with its own gold.
-.home__brand {
+// The full DnDGate logo and the language select under it, centred above the split, on a small dark
+// plate edged with its own gold. The plate lets the pointer through to the halves; the select
+// takes it back.
+.home__plate {
   position: absolute;
   top: var(--dg-space-5);
   left: 50%;
   z-index: 4;
-  padding: 0.35em 0.8em;
-  font-size: 1.75rem;
-  white-space: nowrap;
-  text-shadow: 0 0 12px #d9b45a59;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--dg-space-2);
+  padding: 0.6rem 1.4rem;
   background: #0d0906d9;
   border: 1px solid var(--dg-gold);
   border-radius: var(--dg-radius);
@@ -38,9 +41,23 @@ dg-home-half {
   pointer-events: none;
 }
 
+.home__brand {
+  font-size: 1.75rem;
+  white-space: nowrap;
+  text-shadow: 0 0 12px #d9b45a59;
+}
+
+.home__language {
+  pointer-events: auto;
+}
+
 @media (max-width: 767.98px) {
   :host {
     flex-direction: column;
+  }
+
+  .home__plate {
+    padding: 0.45rem 0.9rem;
   }
 
   .home__brand {

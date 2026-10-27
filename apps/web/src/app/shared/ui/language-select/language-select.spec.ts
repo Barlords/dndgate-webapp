@@ -14,30 +14,55 @@ describe('LanguageSelect', () => {
 
   afterEach(() => localStorage.clear());
 
-  const option = (label: string) =>
-    host.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
-  const pressed = () =>
-    [...host.querySelectorAll('button[aria-pressed="true"]')].map((b) => b.textContent!.trim());
+  const trigger = () => host.querySelector<HTMLButtonElement>('.language-select')!;
+  // The list opens in an overlay, out of the host.
+  const items = () => [...document.querySelectorAll<HTMLElement>('.language-select__item')];
 
-  it('offers every language, named in itself, with the current one pressed', () => {
-    expect(host.querySelector('[role="group"]')!.getAttribute('aria-label')).toBe('Langue');
-    expect(option('Français').getAttribute('lang')).toBe('fr');
-    expect(option('English').getAttribute('lang')).toBe('en');
-    expect(pressed()).toEqual(['FR']);
+  async function open(): Promise<void> {
+    trigger().click();
+    await fixture.whenStable();
+  }
+
+  it('shows the flag and the short name of the current language, named in full', () => {
+    expect(trigger().textContent!.trim()).toBe('FR');
+    expect(trigger().querySelector('svg.language-select__flag')).not.toBeNull();
+    expect(trigger().querySelector('.language-select__chevron')).not.toBeNull();
+    expect(trigger().getAttribute('aria-label')).toBe('Langue : Français');
+    expect(trigger().getAttribute('aria-haspopup')).toBe('menu');
   });
 
-  it('switches the interface language on a click, and its own texts with it', async () => {
-    option('English').click();
+  it('lists every language with its flag and its name in itself, the current one checked', async () => {
+    await open();
+
+    expect(document.querySelector('.language-select__menu')!.getAttribute('aria-label')).toBe(
+      'Langue',
+    );
+    expect(
+      items().map((item) => item.querySelector('.language-select__label')!.textContent),
+    ).toEqual(['Français', 'English']);
+    expect(items().map((item) => item.getAttribute('lang'))).toEqual(['fr', 'en']);
+    expect(items().every((item) => item.querySelector('svg.language-select__flag'))).toBe(true);
+    expect(items().map((item) => item.getAttribute('aria-checked'))).toEqual(['true', 'false']);
+  });
+
+  it('switches the interface language on a choice, and its own texts with it', async () => {
+    await open();
+    items()[1].click();
     await fixture.whenStable();
 
     expect(TestBed.inject(I18n).language()).toBe('en');
-    expect(pressed()).toEqual(['EN']);
-    expect(host.querySelector('[role="group"]')!.getAttribute('aria-label')).toBe('Language');
+    expect(items()).toEqual([]);
+    expect(trigger().textContent!.trim()).toBe('EN');
+    expect(trigger().getAttribute('aria-label')).toBe('Language: English');
   });
 
-  it('stacks the languages when asked to', async () => {
-    fixture.componentRef.setInput('vertical', true);
+  it('keeps the flag alone when compact', async () => {
+    fixture.componentRef.setInput('compact', true);
     await fixture.whenStable();
-    expect(host.classList).toContain('vertical');
+
+    expect(host.classList).toContain('compact');
+    expect(trigger().textContent!.trim()).toBe('');
+    expect(trigger().querySelector('svg.language-select__flag')).not.toBeNull();
+    expect(trigger().getAttribute('aria-label')).toBe('Langue : Français');
   });
 });

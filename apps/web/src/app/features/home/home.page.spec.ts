@@ -63,6 +63,15 @@ describe('HomePage', () => {
     expect(tavern.hasAttribute('title')).toBe(false);
   });
 
+  it('offers the language select just under the logo, on its plate', () => {
+    const plate = element.querySelector('.home__plate')!;
+    expect([...plate.children].map((child) => child.tagName)).toEqual([
+      'DG-BRAND',
+      'DG-LANGUAGE-SELECT',
+    ]);
+    expect(plate.querySelector('.language-select')?.textContent?.trim()).toBe('FR');
+  });
+
   it('links to /library and /tavern', () => {
     expect(link(0).getAttribute('href')).toBe('/library');
     expect(link(1).getAttribute('href')).toBe('/tavern');
